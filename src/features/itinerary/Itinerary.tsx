@@ -73,11 +73,11 @@ export function Itinerary({ start, destination, route, isFetching, error, select
     <button type="button" className="mobile-sheet-toggle" aria-expanded={mobileOpen} onClick={onMobileToggle}>
       <span aria-hidden="true">{mobileOpen ? "⌄" : "⌃"}</span>{mobileOpen ? "Collapse route" : "Show route"}
     </button>
-    <p className="eyebrow">Route planner</p>
-    <h1 id="itinerary-title">{start && destination ? `${start.name} to ${destination.name}` : "Where are you heading?"}</h1>
+    <p className="eyebrow"><span>ROUTE ORDERS</span><span>01 / NAV</span></p>
+    <h1 id="itinerary-title">{start && destination ? `${start.name} to ${destination.name}` : "Select your target"}</h1>
     {controls}
 
-    {isFetching && !route && <p className="route-status" aria-live="polite">Calculating the shortest route…</p>}
+    {isFetching && !route && <p className="route-status" aria-live="polite">Plotting shortest route…</p>}
     {isFetching && route && <p className="route-status subtle" aria-live="polite">Updating route…</p>}
     {Boolean(error) && <div className="route-error" role="alert">
       <p>{routeErrorMessage(error)}</p>
@@ -98,9 +98,9 @@ export function Itinerary({ start, destination, route, isFetching, error, select
             <button type="button" className="segment-button" aria-pressed={selectedSegment === index}
               onFocus={() => onSelectSegment(index)} onMouseEnter={() => onSelectSegment(index)} onClick={() => onSelectSegment(index)}>
               <span className={`segment-icon ${segment.kind}`} aria-hidden="true">
-                {segment.kind === "walk" ? "↟" : segment.kind === "bank" ? "◇" : segment.kind === "transport" ? "→" : "✦"}
+                {String(index + 1).padStart(2, "0")}
               </span>
-              <span className="segment-copy"><strong>{segmentTitle(segment)}</strong>
+              <span className="segment-copy"><span className={`segment-kind ${segment.kind}`}>{segment.kind}</span><strong>{segmentTitle(segment)}</strong>
                 <small>{segmentDetail(segment)}</small><small>{segment.costTicks} ticks</small>
                 {segment.kind !== "walk" && segment.kind !== "bank" && segment.requirements.length > 0 && <span className="requirements">
                   {segment.requirements.map(requirement => <span key={`${requirement.kind}-${requirement.name}`}>{requirement.name}</span>)}
@@ -118,7 +118,7 @@ export function Itinerary({ start, destination, route, isFetching, error, select
     </>}
 
     {!route && !isFetching && !error && <div className="empty-step">
-      <span aria-hidden="true">⌖</span><p><strong>No route yet</strong><br />Choose a start and destination above or on the map.</p>
+      <span className="empty-target" aria-hidden="true">B</span><p><strong>AWAITING TARGET</strong><br />Place A and B on the map.<br />Your route orders appear here.</p>
     </div>}
   </aside>;
 }

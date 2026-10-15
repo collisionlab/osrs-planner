@@ -11,7 +11,7 @@ const renderRoute = (path: string) => render(
 describe("public routes", () => {
   it("redirects the root to the route planner", async () => {
     renderRoute("/");
-    expect(await screen.findByRole("heading", { name: "Where are you heading?" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Select your target" })).toBeTruthy();
   });
 
   it("does not mount the old debug viewer", () => {

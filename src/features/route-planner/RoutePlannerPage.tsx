@@ -125,7 +125,7 @@ export function RoutePlannerPage() {
   return <div className="app-shell">
     <datalist id="places">{places.map(place => <option key={place.placeId} value={place.name} />)}</datalist>
     <header className="topbar">
-      <a className="brand" href="/route" aria-label="OSRS Travel home"><span className="brand-mark" aria-hidden="true">✦</span>OSRS Travel</a>
+      <a className="brand" href="/route" aria-label="OSRS Travel home"><span className="brand-mark" aria-hidden="true">▣</span><span>OSRS TRAVEL<small>GIELINOR / ROUTE TERMINAL</small></span></a>
       <div className="searches" aria-label="Route endpoints">
         <PlaceInput label="From" location={urlState.start} onSelect={chooseStart} /><span className="arrow" aria-hidden="true">→</span>
         <PlaceInput label="To" location={urlState.destination} onSelect={chooseDestination} />
@@ -149,11 +149,12 @@ export function RoutePlannerPage() {
           }} />
       </Suspense>}
       <section className="map" aria-label="OSRS route map">
+        <div className="map-label" aria-hidden="true"><span className="live-square" /> WORLD MAP <span>GIELINOR // PLANE {urlState.start?.coordinate.plane ?? 0}</span></div>
         <Suspense fallback={<div className="map-loading" role="status">Loading map…</div>}><OsrsMap start={urlState.start}
           destination={urlState.destination} route={route.data} selectedSegment={selectedSegment}
           onSelectSegment={setSelectedSegment} onPick={pickMap} onMoveStart={point => update({ start: customLocation(point) })}
           onMoveDestination={point => update({ destination: customLocation(point) })} /></Suspense>
-        {!urlState.start || !urlState.destination ? <p className="map-message">Search or click the map to choose two places</p> : null}
+        {!urlState.start || !urlState.destination ? <p className="map-message"><span aria-hidden="true">{urlState.start ? "B" : "A"}</span>{urlState.start ? "Select destination on map" : "Select origin on map or search above"}</p> : null}
       </section>
       <Itinerary start={urlState.start} destination={urlState.destination} route={route.data} isFetching={route.isFetching}
         error={presets.isError || catalog.isError ? new Error("The planner's accounts and options could not be loaded.") : route.error}
@@ -161,10 +162,19 @@ export function RoutePlannerPage() {
         mobileOpen={mobileItineraryOpen} onMobileToggle={() => setMobileItineraryOpen(value => !value)}
         onSelectSegment={setSelectedSegment}
         onRetry={() => void (presets.isError ? presets.refetch() : catalog.isError ? catalog.refetch() : route.refetch())}
-        controls={<>{catalog.data && settings && <RouteSettings settings={catalog.data.settings} changed={settings.settings}
-          onChange={changed => update({ settings: changed })} />}
+        controls={<>{catalog.data && settings && <details className="travel-policy">
+          <summary>Travel options <span>{Object.keys(settings.settings).length ? `${Object.keys(settings.settings).length} CHANGED` : "DEFAULT"}</span></summary>
+          <RouteSettings settings={catalog.data.settings} changed={settings.settings}
+            onChange={changed => update({ settings: changed })} />
+        </details>}
           {selected && <ShareRoute state={urlState} account={selected}
             disabled={!urlState.start || !urlState.destination || route.isFetching} />}</>} />
     </main>
+    <footer className="terminal-footer">
+      <span className="terminal-state"><span className="live-square" /> {route.isFetching ? "PLOTTING ROUTE" : route.isError ? "ROUTE ERROR" : route.data ? route.data.reachable ? "ROUTE READY" : "NO ROUTE FOUND" : "AWAITING COORDINATES"}</span>
+      <span>ACCOUNT / {selected?.name ?? "LOADING"}</span>
+      <span className="footer-coordinate">A {urlState.start ? `${urlState.start.coordinate.x}, ${urlState.start.coordinate.y}` : "—, —"} <b>→</b> B {urlState.destination ? `${urlState.destination.coordinate.x}, ${urlState.destination.coordinate.y}` : "—, —"}</span>
+      <span className="footer-hint">CLICK TO PLACE / DRAG TO REFINE</span>
+    </footer>
   </div>;
 }

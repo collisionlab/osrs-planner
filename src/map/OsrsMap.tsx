@@ -12,8 +12,8 @@ const OFFSET_Y = 6208;
 const endpointIcon = (label: string, kind: string) => divIcon({
   className: `route-marker ${kind}`,
   html: `<span>${label}</span>`,
-  iconSize: [30, 40],
-  iconAnchor: [15, 40],
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
 });
 const startIcon = endpointIcon("A", "start");
 const destinationIcon = endpointIcon("B", "destination");
@@ -81,10 +81,11 @@ function MapContents({ start, destination, route, selectedSegment, fitRequest, o
       if (segment.kind === "bank") return <Marker key={`bank-${index}`} position={toLatLng(map, segment.location)} icon={bankIcon}
         title="Bank stop" keyboard={false} eventHandlers={{ click: () => onSelectSegment?.(index) }} />;
       return <Polyline key={`${segment.kind}-${index}`} positions={segmentPoints(segment).map(point => toLatLng(map, point))}
+        smoothFactor={0}
         className={`route-segment ${segment.kind}${selected ? " selected" : ""}`}
         pathOptions={segment.kind === "walk"
-          ? { color: selected ? "#ffd36a" : "#d27c2c", weight: selected ? 8 : 5, opacity: .95 }
-          : { color: segment.kind === "teleport" ? "#8f62bd" : "#398e82", weight: selected ? 7 : 4, dashArray: "8 9", opacity: .9 }}
+          ? { color: selected ? "#fff2b0" : "#ffae47", weight: selected ? 7 : 4, opacity: 1, lineCap: "square", lineJoin: "miter" }
+          : { color: segment.kind === "teleport" ? "#d7a6ff" : "#77e2d4", weight: selected ? 6 : 3, dashArray: "6 8", opacity: 1, lineCap: "square" }}
         eventHandlers={{ click: () => onSelectSegment?.(index), mouseover: () => onSelectSegment?.(index) }} />;
     })}
   </>;
