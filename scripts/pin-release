@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Opens a PR in collisionlab/infra pinning a planner release, waits for its checks and merges it.
-# infra is private on the free plan, so it has no auto-merge; the bot merges once checks pass.
+# Opens a PR in collisionlab/infra pinning a planner release. infra merges collisionlab-bot's pin/*
+# PRs itself once its checks pass, and the merge deploys the release.
 #
 #   scripts/pin-release <commit> <image@digest>      (GH_TOKEN: collisionlab-bot, infra)
 set -euo pipefail
@@ -20,8 +20,3 @@ git push -q origin "$branch"
 pr=$(gh pr create --repo collisionlab/infra --head "$branch" --title "Deploy osrs-planner ${commit:0:12}" \
   --body "Release image \`$image\` built from collisionlab/osrs-planner@$commit.")
 echo "$pr"
-
-# Checks take a few seconds to register.
-sleep 20
-gh pr checks "$pr" --watch --fail-fast
-gh pr merge "$pr" --merge --delete-branch
