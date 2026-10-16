@@ -1,0 +1,17 @@
+allprojects {
+    repositories {
+        maven {
+            url = 'https://repo.runelite.net'
+            content {
+                includeGroupByRegex('net\\.runelite.*')
+            }
+        }
+        mavenCentral()
+    }
+
+    // Like the plugin and tooling: Java 11 bytecode.
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        options.release.set(11)
+    }
+}

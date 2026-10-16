@@ -1,0 +1,4 @@
+[submodule "tooling"]
+	path = tooling
+	url = https://github.com/mpickering/shortest-path-tooling.git
+	branch = planner-split

@@ -1,0 +1,66 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: cachix/install-nix-action@v31
+      - uses: cachix/cachix-action@v17
+        with:
+          name: collisionlab
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Route service and route API
+        run: nix develop -c gradle --no-daemon :service:test
+      - name: Frontend
+        run: nix develop -c bash -c 'npm ci && npm test && npm run build'
+
+  # On main: build the release image, push it, and pin it in collisionlab/infra. Merging that pin
+  # deploys it to osrs.collisionlab.world.
+  release:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: docker/setup-buildx-action@v3
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: RELEASE=${{ github.sha }}
+          tags: ghcr.io/collisionlab/osrs-planner:${{ github.sha }}
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+          owner: collisionlab
+          repositories: infra
+      - name: Pin the release in infra
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: scripts/pin-release "$GITHUB_SHA" "ghcr.io/collisionlab/osrs-planner@$DIGEST"

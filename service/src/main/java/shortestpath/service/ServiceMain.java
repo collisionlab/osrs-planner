@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
+import io.javalin.http.staticfiles.Location;
 import io.javalin.json.JavalinJackson;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
@@ -60,7 +61,26 @@ public final class ServiceMain {
         ThreadPoolExecutor executor = new ThreadPoolExecutor(workers, workers, 0, TimeUnit.MILLISECONDS,
             new ArrayBlockingQueue<>(32), new ThreadPoolExecutor.AbortPolicy());
 
-        Javalin app = Javalin.create(config -> config.jsonMapper(new JavalinJackson(mapper)));
+        Javalin app = Javalin.create(config -> {
+            config.jsonMapper(new JavalinJackson(mapper));
+            // The release image serves the built frontend too, so one release switches both.
+            String frontend = System.getenv("FRONTEND_DIR");
+            if (frontend != null) {
+                config.staticFiles.add(files -> {
+                    files.hostedPath = "/assets";
+                    files.directory = frontend + "/assets";
+                    files.location = Location.EXTERNAL;
+                    files.headers = Map.of("Cache-Control", "public, max-age=31536000, immutable");
+                });
+                config.staticFiles.add(files -> {
+                    files.hostedPath = "/";
+                    files.directory = frontend;
+                    files.location = Location.EXTERNAL;
+                    files.headers = Map.of("Cache-Control", "no-cache");
+                });
+                config.spaRoot.addFile("/", frontend + "/index.html", Location.EXTERNAL);
+            }
+        });
         app.events(events -> events.serverStopping(executor::shutdown));
         app.before(ctx -> {
             String requestId = ctx.header("X-Request-ID");
@@ -72,6 +92,12 @@ public final class ServiceMain {
         });
         app.get("/live", ctx -> ctx.json(Map.of("status", "ok")));
         app.get("/ready", ctx -> ctx.json(Map.of("status", "ready")));
+        // The frontend compares this with the release it was loaded from and offers a reload.
+        String release = System.getenv().getOrDefault("RELEASE", "dev");
+        app.get("/version", ctx -> {
+            ctx.header("Cache-Control", "no-cache");
+            ctx.json(Map.of("release", release));
+        });
         app.get("/metrics", ctx -> ctx.contentType("text/plain; version=0.0.4").result(metrics.scrape()));
         app.get("/v1/items", ctx -> ctx.json(ItemCatalog.find(ctx.queryParam("q"), ctx.queryParam("ids"))));
         Catalog catalog = new Catalog();

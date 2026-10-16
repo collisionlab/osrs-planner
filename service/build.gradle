@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    implementation project(':routing')
+    implementation 'tooling:routing'
     implementation 'io.javalin:javalin:5.6.5'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.3'
     implementation 'com.networknt:json-schema-validator:1.5.9'
@@ -14,10 +14,13 @@ dependencies {
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
     testImplementation 'io.javalin:javalin-testtools:5.6.5'
+    // The route API tests (shortestpath.routeapi) came from tooling's JUnit 4 suite.
+    testImplementation 'junit:junit:4.13.2'
+    testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.11.4'
 }
 
 application {
-    applicationName = 'shortest-path-service'
+    applicationName = 'osrs-planner'
     mainClass = 'shortestpath.service.ServiceMain'
 }
 
@@ -41,8 +44,8 @@ def generateRouteItemNames = tasks.register('generateRouteItemNames', JavaExec) 
     } as CommandLineArgumentProvider)
 }
 
-// The API contracts live in the repository's corpus/schemas.
-def corpusDir = rootProject.file('corpus')
+// The API contracts live in tooling's corpus/schemas.
+def corpusDir = rootProject.file('tooling/corpus')
 
 processResources {
     from(generateRouteItemNames)
