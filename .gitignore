@@ -10,3 +10,4 @@ src/generated/
 build/
 service/build/
 result
+*.log
