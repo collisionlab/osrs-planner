@@ -25,6 +25,9 @@ async function loadCustomAccount(): Promise<Account | undefined> {
   } catch { return undefined; }
 }
 
+/** The shortest gap between drag previews: at most 8 a second, 80 in the edge's 10-second window. */
+const DRAG_PREVIEW_MS = 120;
+
 const insetsKey = "osrs-travel.insets.v1";
 
 function loadStoredSettings(): ChangedSettings {
@@ -152,7 +155,8 @@ export function RoutePlannerPage() {
   useEffect(() => { if (route.data && !route.isFetching) setMobileItineraryOpen(true); }, [route.data, route.isFetching]);
 
   // While an endpoint is dragged on the inset map, plan provisional routes for wherever it is: one
-  // request at a time, each for the latest tile once the last one answers. Searches take tens of
+  // request at a time, each for the latest tile once the last one answers (the service refuses
+  // previews first when busy; a refused one is simply not drawn). Searches take tens of
   // milliseconds, so the route follows the pointer. They share the route cache, so releasing
   // usually shows the route at once.
   const [dragging, setDragging] = useState<{ role: "start" | "destination"; point?: WorldPoint }>();
@@ -164,9 +168,16 @@ export function RoutePlannerPage() {
     queryFn: ({ signal }) => calculateRoute(previewRequest!, signal, "drag"), enabled: Boolean(previewRequest), retry: false,
     placeholderData: previous => previous,
   });
+  // At most one preview per DRAG_PREVIEW_MS, so a long drag stays well inside the edge's rate limit.
+  const lastPreview = useRef(0);
   useEffect(() => {
     if (!dragging?.point) { setDragTarget(undefined); return; }
-    if (!preview.isFetching) setDragTarget(dragging);
+    if (preview.isFetching) return;
+    const send = () => { lastPreview.current = Date.now(); setDragTarget(dragging); };
+    const wait = lastPreview.current + DRAG_PREVIEW_MS - Date.now();
+    if (wait <= 0) { send(); return; }
+    const timer = setTimeout(send, wait);
+    return () => clearTimeout(timer);
   }, [dragging, preview.isFetching]);
   const previewRoute = dragging && previewRequest ? preview.data : undefined;
 
