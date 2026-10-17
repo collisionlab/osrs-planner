@@ -1,9 +1,10 @@
 import { useId, useMemo, useState } from "react";
 import type { InsetArea } from "./assets";
 
-/** One entry per name: the largest area with it (areas arrive sorted by name, then largest first). */
+/** One entry per name: the largest area with it (areas arrive largest first). */
 function byName(areas: InsetArea[]) {
-  return areas.filter((area, index) => index === 0 || areas[index - 1].name !== area.name);
+  const seen = new Set<string>();
+  return areas.filter(area => !seen.has(area.name) && Boolean(seen.add(area.name)));
 }
 
 /** A search box over the named underground and instanced areas, for showing one without a route. */
@@ -19,7 +20,7 @@ export function AreaPicker({ areas, shown, onShow, onHide }: {
   const listId = useId();
   const names = useMemo(() => byName(areas || []), [areas]);
   const query = text.trim().toLowerCase();
-  const matches = useMemo(() => (query ? names.filter(area => area.name.toLowerCase().includes(query)) : names).slice(0, 50),
+  const matches = useMemo(() => query ? names.filter(area => area.name.toLowerCase().includes(query)) : names,
     [names, query]);
   const choose = (area?: InsetArea) => {
     if (!area) return;

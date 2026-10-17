@@ -99,7 +99,7 @@ export interface InsetEntrance { surface: WorldPoint; inside: WorldPoint }
 export interface InsetArea { regionId: string; name: string; tileCount: number; entrance?: InsetEntrance }
 export interface InsetDoor { point: WorldPoint; regionIds: string[]; inside: Record<string, WorldPoint> }
 export interface InsetEntrances {
-  /** Named areas, by name, then largest first. */
+  /** Named areas, largest first: size stands in for how often people go there. */
   areas: InsetArea[];
   /** Surface tiles that lead straight into a named area, and where in each area they lead. */
   doors: InsetDoor[];
@@ -149,6 +149,6 @@ export async function loadInsetEntrances(assets: InsetAssets, signal?: AbortSign
     }
     areas.push({ regionId, name: label.name, tileCount: region.tileCount, entrance });
   }
-  areas.sort((a, b) => a.name.localeCompare(b.name) || b.tileCount - a.tileCount);
+  areas.sort((a, b) => b.tileCount - a.tileCount || a.name.localeCompare(b.name));
   return { areas, doors: [...doors.values()] };
 }
