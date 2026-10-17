@@ -27,6 +27,7 @@ export const catalog: Catalog = {
     setting("useFairyRings", "Use fairy rings", "boolean", true),
     setting("unlockCanoeAxe", "Axe stored at a canoe station", "boolean", false),
     setting("costBoats", "Boat threshold", "integer", 0, "Transport Thresholds"),
+    setting("currencyThreshold", "Currency threshold", "integer", 2147483647, "Settings"),
     setting("pathfinderBackend", "Pathfinder backend", "choice", "EXACT", "Settings",
       [{ id: "LEGACY", name: "Legacy" }, { id: "EXACT", name: "Exact" }]),
   ],

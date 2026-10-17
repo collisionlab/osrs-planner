@@ -27,20 +27,32 @@ function groups(settings: Setting[]): { title: string; note?: string; settings: 
 
 const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-/** A whole-number input that only reports valid values. */
+const MAX_INT = 2_147_483_647;
+
+/** A whole-number input that only reports valid values; the largest int reads as "No limit" and an empty field sets it. */
 function NumberField({ setting, value, onChange }: { setting: Setting; value: number; onChange(value: number): void }) {
-  const [text, setText] = useState(String(value));
-  useEffect(() => setText(String(value)), [value]);
-  const valid = /^\d+$/.test(text) && Number(text) <= 2_147_483_647;
+  const unlimited = setting.defaultValue === MAX_INT;
+  const shown = (number: number) => unlimited && number === MAX_INT ? "" : String(number);
+  const [text, setText] = useState(shown(value));
+  useEffect(() => setText(shown(value)), [value]);
+  const parse = (input: string) => unlimited && input === "" ? MAX_INT : /^\d+$/.test(input) && Number(input) <= MAX_INT ? Number(input) : undefined;
+  const valid = parse(text) !== undefined;
   return <input type="number" inputMode="numeric" min={0} step={1} aria-label={setting.name} aria-invalid={!valid}
-    value={text} onChange={event => {
+    placeholder={unlimited ? "No limit" : undefined} value={text} onChange={event => {
       setText(event.target.value);
-      if (/^\d+$/.test(event.target.value) && Number(event.target.value) <= 2_147_483_647) onChange(Number(event.target.value));
+      const next = parse(event.target.value);
+      if (next !== undefined) onChange(next);
     }}
-    onBlur={() => { if (!valid) setText(String(value)); }} />;
+    onBlur={() => { if (!valid) setText(shown(value)); }} />;
 }
 
-function SettingField({ setting, changed, label = setting.name, onChange }: {
+/** Display names for choices whose ids read as jargon. */
+const choiceNames: Record<string, Record<string, string>> = {
+  pathfinderBackend: { EXACT: "A*", LEGACY: "Legacy" },
+};
+const settingNames: Record<string, string> = { exactHeuristicWeight: "A* heuristic weight" };
+
+function SettingField({ setting, changed, label = settingNames[setting.key] || setting.name, onChange }: {
   setting: Setting; changed: ChangedSettings; label?: string; onChange(changed: ChangedSettings): void;
 }) {
   const value = settingValue(setting, changed);
@@ -56,7 +68,7 @@ function SettingField({ setting, changed, label = setting.name, onChange }: {
   }
   return <label className={className} title={setting.description}>{name}<select aria-label={setting.name} value={value as string}
     onChange={event => set(event.target.value)}>
-    {setting.choices?.map(choice => <option key={choice.id} value={choice.id}>{choice.name}</option>)}
+    {setting.choices?.map(choice => <option key={choice.id} value={choice.id}>{choiceNames[setting.key]?.[choice.id] || choice.name}</option>)}
   </select></label>;
 }
 
