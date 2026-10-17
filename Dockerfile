@@ -9,6 +9,9 @@ COPY tooling/corpus tooling/corpus
 COPY index.html tsconfig*.json vite.config.ts tiles.json ./
 COPY scripts scripts
 COPY src src
+# The frontend compares this with /version to notice it is out of date (src/app/UpdatePrompt.tsx).
+ARG RELEASE=dev
+ENV VITE_RELEASE=${RELEASE}
 RUN npm run build
 
 # gradle:*-jdk11: the plugin's build asks for a Java 11 toolchain.
