@@ -28,6 +28,27 @@ Tests: `gradle :service:test` and `npm test`.
 | `tooling/` | shortest-path-tooling (submodule), with its `corpus/schemas` contracts |
 | `Dockerfile` | The release image |
 
+## End-to-end tests
+
+`e2e/` holds Playwright tests of the planner UI, mostly the inset map: floors opened from a
+staircase, stacked glider floors whose labels never overlap, area search, live drag, account
+edits, and two whole-map screenshots.
+
+```bash
+nix develop -c npm run e2e                          # all of them (CI runs this too)
+nix develop -c npm run e2e -- e2e/insets.spec.ts    # one file
+nix develop -c npm run e2e -- --update-snapshots    # after an intended visual change; review the PNGs
+nix develop -c npx playwright show-trace test-results/<test>/trace.zip   # a failure, step by step
+```
+
+The dev shell provides Chromium (Nix's `playwright-driver`; keep `@playwright/test` at that
+version). The route API is mocked in the browser from `e2e/fixtures`: recorded routes for the
+scenarios in `e2e/fixtures/scenarios.json`, and a straight walk for any other route. Re-record
+after an API or routing change with a local service running:
+`nix develop -c node scripts/record-e2e-fixtures.mjs`. Map tiles and inset assets load from
+tiles.collisionlab.world at the pinned versions, which never change. In development builds the
+inset map exposes `window.insetMap.pixel(tile)` so tests can click world tiles.
+
 ## Keeping in step with the plugin
 
 The planner's options come from the plugin's own config (`ShortestPathConfig`) through

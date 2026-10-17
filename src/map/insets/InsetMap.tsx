@@ -85,6 +85,8 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
         `${tiles.base}/tactical/${tiles.version}`, setStatus, previous,
         { shown, doors, onDoor: door => toggleDoor.current(door) });
       composition.current = instance;
+      // End-to-end tests find tiles on the map through this; it isn't in production builds.
+      if (import.meta.env.DEV) (window as unknown as { insetMap?: typeof instance }).insetMap = instance;
       if (focus.current) { instance.fitRegion(focus.current); focus.current = undefined; }
       instance.select(callbacks.current.selectedSegment);
       return () => { lastView.current = instance.view(); composition.current = undefined; instance.dispose(); };

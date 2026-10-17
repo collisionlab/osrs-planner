@@ -341,6 +341,8 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
         previewSource.addFeature(feature);
       });
     },
+    /** Where a world tile is drawn, in pixels from the map's top left (for end-to-end tests). */
+    pixel(point: WorldPoint) { return map.getPixelFromCoordinate(projected(point)); },
     select(index?: number) {
       selected = index; routes.changed();
       if (index !== undefined && route?.segments[index]) fitPoints(segmentPoints(route.segments[index]).map(projected), 10);

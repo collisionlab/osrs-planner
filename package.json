@@ -11,7 +11,9 @@
     "contracts": "node scripts/sync-contracts.mjs",
     "pretest": "npm run contracts",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "pree2e": "npm run contracts",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@dava96/osrs-icons": "^1.0.30",
@@ -19,14 +21,15 @@
     "ajv": "^8.20.0",
     "fflate": "^0.8.3",
     "leaflet": "^1.9.4",
+    "ol": "^10.11.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-hook-form": "^7.89.0",
     "react-leaflet": "^5.0.0",
-    "react-router-dom": "^7.18.4",
-    "ol": "^10.11.0"
+    "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
+    "@playwright/test": "1.59.1",
     "@testing-library/react": "^16.3.3",
     "@types/leaflet": "^1.9.22",
     "@types/react": "^19.3.0",

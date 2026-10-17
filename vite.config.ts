@@ -1,5 +1,5 @@
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [react()],
@@ -7,5 +7,6 @@ export default defineConfig({
   server: {
     proxy: { "/api": { target: "http://127.0.0.1:8080", rewrite: path => path.replace(/^\/api/, "") } },
   },
-  test: { environment: "jsdom" },
+  // e2e/ holds the Playwright tests (npm run e2e).
+  test: { environment: "jsdom", exclude: [...configDefaults.exclude, "e2e/**"] },
 });
