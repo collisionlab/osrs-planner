@@ -60,7 +60,7 @@ public final class ServiceMain {
         RouteLog routeLog = new RouteLog(mapper, PRESETS);
         int workers = Math.max(2, Math.min(8, Runtime.getRuntime().availableProcessors()));
         ThreadPoolExecutor executor = new ThreadPoolExecutor(workers, workers, 0, TimeUnit.MILLISECONDS,
-            new ArrayBlockingQueue<>(32), new ThreadPoolExecutor.AbortPolicy());
+            new ArrayBlockingQueue<>(RouteAdmission.QUEUE), new ThreadPoolExecutor.AbortPolicy());
 
         Javalin app = Javalin.create(config -> {
             config.jsonMapper(new JavalinJackson(mapper));
@@ -111,9 +111,16 @@ public final class ServiceMain {
             RouteApi.RouteRequest request = mapper.treeToValue(body, RouteApi.RouteRequest.class);
             long received = System.nanoTime();
             long[] started = {-1};
+            boolean drag = "drag".equals(ctx.header("X-Route-Trigger"));
             try {
+                if (!RouteAdmission.admit(drag, executor.getQueue().size(), workers)) {
+                    throw new RejectedExecutionException("drag preview while busy");
+                }
                 CompletableFuture<Void> future = CompletableFuture.supplyAsync(() -> {
                     started[0] = System.nanoTime();
+                    if (!RouteAdmission.fresh(drag, started[0] - received)) {
+                        throw new RouteAdmission.Stale();
+                    }
                     return engine.routeWithStats(request);
                 }, executor)
                     .orTimeout(30, TimeUnit.SECONDS)
@@ -123,6 +130,10 @@ public final class ServiceMain {
                             ctx.json(routed.plan);
                             outcome = routed.plan.reachable ? "reachable" : "unreachable";
                             record(metrics, routed);
+                        } else if (cause(error) instanceof RouteAdmission.Stale) {
+                            rejected.increment();
+                            error(ctx, 503, "route service is busy");
+                            outcome = "busy";
                         } else if (cause(error) instanceof TimeoutException) {
                             error(ctx, 504, "route calculation timed out");
                             outcome = "timeout";
