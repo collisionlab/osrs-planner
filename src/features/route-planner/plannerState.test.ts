@@ -72,4 +72,10 @@ describe("planner URL state", () => {
       expect(plannerUrlWarnings(params, ["mid"])).toContain("The shared start location was invalid and has been ignored.");
     }
   });
+
+  it("renames settings from before the plugin's A* rename", () => {
+    expect(readPlannerUrl(new URLSearchParams("from=lumbridge&pathfinderBackend=EXACT&exactHeuristicWeight=150")).settings)
+      .toEqual({ pathfinderBackend: "ASTAR", aStarHeuristicWeight: 150 });
+    expect(readPlannerUrl(new URLSearchParams(), { exactHeuristicWeight: 120 }).settings).toEqual({ aStarHeuristicWeight: 120 });
+  });
 });

@@ -55,15 +55,10 @@ public final class PlannerSettings {
 
     private static final Set<String> EVERYDAY = Set.of("avoidWilderness", "includeBankPath", "useTeleportationItems");
     private static final Set<String> ADVANCED = Set.of("pathfinderBackend", "currencyThreshold",
-        "unreachableTargetDistance", "calculationCutoff", "exactHeuristicWeight", "collisionAwareBlockedTargets");
+        "unreachableTargetDistance", "calculationCutoff", "aStarHeuristicWeight", "collisionAwareBlockedTargets");
     /** Plugin settings that are account facts, edited as unlocks. */
     static final Set<String> ACCOUNT = Arrays.stream(Unlock.values()).filter(unlock -> unlock.kind == Unlock.Kind.SETTING)
         .map(unlock -> unlock.setting).collect(Collectors.toUnmodifiableSet());
-    /** Names that read better than the plugin's in the planner. */
-    private static final Map<String, String> NAMES = Map.of("exactHeuristicWeight", "A* heuristic weight");
-    /** Choice names by {@code setting.CHOICE}. */
-    private static final Map<String, String> CHOICE_NAMES = Map.of("pathfinderBackend.EXACT", "A*",
-        "pathfinderBackend.LEGACY", "Legacy");
 
     /** The group a setting goes in, or an error for one nobody has placed. */
     static Group group(String key, String section, Class<?> type) {
@@ -102,7 +97,7 @@ public final class PlannerSettings {
         Setting(String key, String name, String description, String section, Class<?> valueType, Method setter,
                 Object defaultValue) {
             this.key = key;
-            this.name = NAMES.getOrDefault(key, name);
+            this.name = name;
             this.group = group(key, section, valueType);
             this.description = description;
             this.section = section;
@@ -118,8 +113,7 @@ public final class PlannerSettings {
             } else {
                 type = "choice";
                 choices = Arrays.stream(valueType.getEnumConstants())
-                    .map(value -> new Catalog.Option(((Enum<?>) value).name(),
-                        CHOICE_NAMES.getOrDefault(key + "." + ((Enum<?>) value).name(), value.toString())))
+                    .map(value -> new Catalog.Option(((Enum<?>) value).name(), value.toString()))
                     .collect(Collectors.toList());
             }
         }
@@ -131,7 +125,7 @@ public final class PlannerSettings {
 
     /**
      * The planner's starting settings: the plugin's defaults, with every kind of transport on, the
-     * exact backend, every teleport item carried or banked, no fare limit, a 25-second cutoff, and
+     * A* backend, every teleport item carried or banked, no fare limit, a 25-second cutoff, and
      * transport requirements never bypassed.
      */
     public static PluginSettings defaults() {
@@ -146,7 +140,7 @@ public final class PlannerSettings {
         settings.setIncludeBankPath(true);
         settings.setCurrencyThreshold(Integer.MAX_VALUE);
         settings.setCalculationCutoff(25);
-        settings.setPathfinderBackend(PathfinderBackend.EXACT);
+        settings.setPathfinderBackend(PathfinderBackend.ASTAR);
         settings.setUseSeasonalTransports(false);
         return settings;
     }
