@@ -4,13 +4,14 @@ import { mockApi, type RouteCall } from "./api";
 
 /** A test with the route API mocked; `api` lists the route requests the page made. */
 export const test = base.extend<{ api: RouteCall[] }>({
-  api: async ({ page }, use) => {
+  // Automatic, so no test reaches a real route service, even one that never names `api`.
+  api: [async ({ page }, use) => {
     const calls = await mockApi(page);
     await page.route("**/version", route => route.fulfill({ json: { release: "e2e" } }));
     // The tactical style, so map tiles come from the pinned collisionlab release.
     await page.addInitScript(() => localStorage.setItem("osrs-planner.map-style", "tactical"));
     await use(calls);
-  },
+  }, { auto: true }],
 });
 export { expect };
 

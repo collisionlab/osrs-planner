@@ -20,7 +20,9 @@ export default defineConfig({
     launchOptions: { args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader"] },
   },
   webServer: {
+    // The proxy points at a port nothing listens on, so an unmocked API call fails here as in CI.
     command: "npx vite --host 127.0.0.1 --port 5179 --strictPort",
+    env: { VITE_API_PROXY: "http://127.0.0.1:9" },
     url: "http://127.0.0.1:5179/route",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
