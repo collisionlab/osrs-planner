@@ -34,7 +34,12 @@ const skillIcons: Record<string, string> = toDataUrl({
   RUNECRAFT: runecraftIcon, SLAYER: slayerIcon, SMITHING: smithingIcon, STRENGTH: strengthIcon,
   THIEVING: thievingIcon, WOODCUTTING: woodcuttingIcon, QUEST: questListIcon, TOTAL: skillsIcon,
 });
-const quantityFormatter = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
+/** A stack's size as the game writes it: exact below 100K, then K and M, in yellow, white and green. */
+function stackLabel(quantity: number): { text: string; className?: string } {
+  if (quantity < 100_000) return { text: String(quantity) };
+  if (quantity < 10_000_000) return { text: `${Math.floor(quantity / 1000)}K`, className: "stack-k" };
+  return { text: `${Math.floor(quantity / 1_000_000)}M`, className: "stack-m" };
+}
 const numberFormatter = new Intl.NumberFormat("en");
 
 /** The editor's form: the account's fields plus the choices that decide optional ones. */
@@ -68,11 +73,16 @@ function ItemsEditor({ items, names, onChange }: {
   const [field, setField] = useState<ItemField>("inventory");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string>();
+  const [hovered, setHovered] = useState<string>();
   const searching = search.trim().length >= 2;
   const results = useQuery({ queryKey: ["items", search], queryFn: () => findItems(search), enabled: searching });
   const values = items[field];
   const options = results.data || [];
+  // The service names only the items some route can use, so an unnamed item does nothing here.
   const nameOf = (key: string) => names.get(key) || `Item ${key}`;
+  const unused = (key: string) => names.size > 0 && !names.has(key);
+  const describe = (key: string) => unused(key) ? `${nameOf(key)}: no route uses this item` : nameOf(key);
+  const caption = hovered && values[hovered] ? hovered : selected && values[selected] ? selected : undefined;
   const update = (value: Record<string, number>) => onChange(field, value);
   const add = (key: string) => {
     update({ ...values, [key]: values[key] || 1 });
@@ -102,11 +112,19 @@ function ItemsEditor({ items, names, onChange }: {
         </div>}
       </div>
       {Object.keys(values).length ? <div className="item-grid" aria-label={`${title} items`}>
-        {Object.entries(values).map(([key, quantity]) => <button type="button" className={selected === key ? "selected" : ""} key={key}
-          title={nameOf(key)} aria-label={`${nameOf(key)}, quantity ${quantity}`} aria-pressed={selected === key} onClick={() => setSelected(key)}>
-          <img src={itemSprite(key)} alt="" /><span>{quantity > 1 ? quantityFormatter.format(quantity) : ""}</span>
-        </button>)}
+        {Object.entries(values).map(([key, quantity]) => {
+          const stack = stackLabel(quantity);
+          return <button type="button" className={[selected === key && "selected", unused(key) && "unused"].filter(Boolean).join(" ")} key={key}
+            title={describe(key)} aria-label={`${describe(key)}, quantity ${quantity}`} aria-pressed={selected === key}
+            onClick={() => setSelected(key)} onMouseEnter={() => setHovered(key)} onMouseLeave={() => setHovered(undefined)}
+            onFocus={() => setHovered(key)} onBlur={() => setHovered(undefined)}>
+            <img src={itemSprite(key)} alt="" />{quantity > 1 && <span className={stack.className}>{stack.text}</span>}
+          </button>;
+        })}
       </div> : <p className="item-empty">No items in {title.toLowerCase()}.</p>}
+      {Object.keys(values).length > 0 && <p className="item-caption" aria-hidden="true">{caption
+        ? <>{nameOf(caption)} × {numberFormatter.format(values[caption])}{unused(caption) && <small> · no route uses this item</small>}</>
+        : <small>Point at an item to see what it is.</small>}</p>}
       {selected && values[selected] ? <div className="item-editor">
         <strong title={nameOf(selected)}>{nameOf(selected)}</strong>
         <input type="number" min="1" max="2147483647" value={values[selected]} aria-label={`${nameOf(selected)} quantity`}

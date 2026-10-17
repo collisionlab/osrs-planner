@@ -237,7 +237,12 @@ input, select, textarea { accent-color: var(--orange); }
 .item-grid button { position: relative; display: grid; place-items: center; width: 42px; height: 38px; padding: 1px; background: #283126; border: 1px solid #48533e; border-radius: 0; cursor: pointer; }
 .item-grid button:hover, .item-grid button.selected { background: #283126; border-color: #ffae47; box-shadow: none; }
 .item-grid img { max-width: 35px; max-height: 34px; image-rendering: pixelated; }
-.item-grid span { position: absolute; right: 2px; bottom: 0; color: #141914; text-shadow: 1px 1px #000, -1px -1px #000, 1px -1px #000, -1px 1px #000; font-size: 10px; font-weight: 900; }
+.item-grid span { position: absolute; left: 2px; top: 0; color: #ffff00; text-shadow: 1px 1px #000; font: 700 11px/1 monospace; pointer-events: none; }
+.item-grid span.stack-k { color: #ffffff; }
+.item-grid span.stack-m { color: #00ff80; }
+.item-grid button.unused img { opacity: .45; }
+.item-caption { min-height: 28px; margin: 0; padding: 6px 9px; color: #e0e5cd; border-top: 1px solid #48533e; font-size: 12px; }
+.item-caption small { color: #a4af95; }
 .item-editor { display: grid; grid-template-columns: minmax(0, 1fr) 96px auto; align-items: center; gap: 7px; padding: 7px 8px; border-top: 1px solid #48533e; font-size: 12px; }
 .item-editor strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .item-editor input { width: 100%; padding: 5px; border: 1px solid #48533e; border-radius: 0; }
