@@ -12,7 +12,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error?: 
   render() {
     if (!this.state.error) return this.props.children;
     return <main className="fatal-error">
-      <p className="eyebrow">OSRS Travel</p>
+      <p className="eyebrow">Gielinor Route Terminal</p>
       <h1>The route planner hit a problem</h1>
       <p>Your saved account has not been changed.</p>
       <button type="button" className="primary-button" onClick={() => window.location.reload()}>Reload planner</button>
