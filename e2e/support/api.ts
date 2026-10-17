@@ -61,7 +61,7 @@ export async function mockApi(page: Page): Promise<RouteCall[]> {
       const plan: RoutePlan = match ? { ...match.plan, start: body.start, destination: body.destination } : {
         apiVersion: "v1", reachable: true, costTicks: segments.reduce((sum, segment) => sum + segment.costTicks, 0),
         start: body.start, destination: body.destination, segments,
-        metadata: { worldDataVersion: "e2e", accountSchemaVersion: 1, routingEngineVersion: "exact-v1" },
+        metadata: { worldDataVersion: "e2e", accountSchemaVersion: 1, routingEngineVersion: "astar-v1" },
       } as RoutePlan;
       return route.fulfill({ json: plan });
     }

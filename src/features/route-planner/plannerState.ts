@@ -27,6 +27,19 @@ function parseSettingValue(value: string): SettingValue {
   return /^\d+$/.test(value) ? Number(value) : value;
 }
 
+/**
+ * Settings under the names the plugin uses now, for links and saved settings from before its A*
+ * rename: the exact backend became ASTAR and its weight setting `aStarHeuristicWeight`.
+ */
+export function renamedSettings(settings: ChangedSettings): ChangedSettings {
+  const result: ChangedSettings = {};
+  for (const [key, value] of Object.entries(settings)) {
+    if (key === "exactHeuristicWeight") result.aStarHeuristicWeight = value;
+    else result[key] = key === "pathfinderBackend" && value === "EXACT" ? "ASTAR" : value;
+  }
+  return result;
+}
+
 /** The settings the URL changes; with none, `fallback` (the settings this browser last used). */
 export function readPlannerUrl(params: URLSearchParams, fallback: ChangedSettings = {}): PlannerUrlState {
   const settings: ChangedSettings = {};
@@ -36,7 +49,7 @@ export function readPlannerUrl(params: URLSearchParams, fallback: ChangedSetting
     start: locationFromParam(params.get("from")),
     destination: locationFromParam(params.get("to")),
     accountId: params.get("account") || "mid",
-    settings: hasPlannerState ? settings : fallback,
+    settings: renamedSettings(hasPlannerState ? settings : fallback),
     ...params.get("insets") === "1" && { insets: true },
   };
 }
