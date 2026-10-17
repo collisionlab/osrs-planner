@@ -17,8 +17,13 @@ export function regionExtent(region: Region, offset: Coordinate = [0, 0]): numbe
   return [a[0] + offset[0], a[1] + offset[1], b[0] + offset[0], b[1] + offset[1]];
 }
 
-/** Place from actual route crossings, in either travel direction, then keep offsets in map units. */
-export function layoutRegions(regions: Region[], transitions: RouteTransition[], surfaceRoute: Coordinate[], gap: number): Map<string, Placement> {
+/**
+ * Place from actual route crossings, in either travel direction, then keep offsets in map units.
+ * `besideFootprint` regions (upper floors) are placed beside where they really are, whatever the
+ * route used to reach them: a glider landing on a platform says nothing about where it is.
+ */
+export function layoutRegions(regions: Region[], transitions: RouteTransition[], surfaceRoute: Coordinate[], gap: number,
+  besideFootprint: Set<string> = new Set()): Map<string, Placement> {
   const placements = new Map<string, Placement>([["main-world", { offset: [0, 0], anchored: true }]]);
   const shapes = new Map(regions.map(region => [region.id, region]));
   if (!surfaceRoute.length && regions.length && !transitions.some(t => t.fromRegion === "main-world" || t.toRegion === "main-world")) {
@@ -28,7 +33,9 @@ export function layoutRegions(regions: Region[], transitions: RouteTransition[],
   }
   const obstacles: number[][] = [];
   const inside = (point: Coordinate, box: number[]) => point[0] >= box[0] && point[0] <= box[2] && point[1] >= box[1] && point[1] <= box[3];
-  const place = (region: Region, anchor: Coordinate, entrance: Coordinate, parentBounds?: number[]): Coordinate => {
+  /** The side a placement went to: 0 right, 1 left, 2 above, 3 below. */
+  const sides = new Map<string, number>();
+  const place = (region: Region, anchor: Coordinate, entrance: Coordinate, parentBounds?: number[], preferredSide?: number): Coordinate => {
     const bounds = regionExtent(region);
     const candidates = [1, 2, 3].flatMap(distance => [
       [Math.max(anchor[0], parentBounds?.[2] ?? anchor[0]) + gap * distance - bounds[0], anchor[1] - entrance[1]],
@@ -43,10 +50,32 @@ export function layoutRegions(regions: Region[], transitions: RouteTransition[],
       const routeHits = surfaceRoute.filter(point => inside(point, box)).length;
       return overlaps * 1e12 + routeHits * 1e9 + Math.hypot(entrance[0] + offset[0] - anchor[0], entrance[1] + offset[1] - anchor[1]);
     };
-    const offset = candidates.reduce((best, next) => score(next) < score(best) ? next : best);
+    // A preferred side outweighs distance, but never an overlap or covering the route.
+    const ranked = (index: number) => score(candidates[index]) + (preferredSide !== undefined && index % 4 !== preferredSide ? 1e6 : 0);
+    const best = candidates.reduce((chosen, _, index) => ranked(index) < ranked(chosen) ? index : chosen, 0);
+    const offset = candidates[best];
+    sides.set(region.id, best % 4);
     obstacles.push(regionExtent(region, offset));
     return offset;
   };
+  // Lowest floors first: a floor above another one this route uses goes beyond it, on the same side,
+  // so a building's floors read as a stack.
+  const floors = regions.filter(r => besideFootprint.has(r.id)).sort((a, b) => a.plane - b.plane);
+  const centre = (box: number[]) => [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2];
+  const overlap = (a: number[], b: number[]) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+  floors.forEach((region, index) => {
+    if (placements.has(region.id)) return; // a route that never reaches the ground stays where it is
+    const footprint = regionExtent(region);
+    const below = floors.slice(0, index).reverse().find(other => other.plane < region.plane
+      && placements.has(other.id) && overlap(regionExtent(other), footprint));
+    if (below) {
+      const belowBox = regionExtent(below, placements.get(below.id)!.offset);
+      const offset = place(region, centre(belowBox), centre(footprint), belowBox, sides.get(below.id));
+      placements.set(region.id, { offset, anchored: true, parent: below.id });
+    } else {
+      placements.set(region.id, { offset: place(region, centre(footprint), centre(footprint), footprint), anchored: true, parent: "main-world" });
+    }
+  });
   let changed = true;
   while (changed) {
     changed = false;

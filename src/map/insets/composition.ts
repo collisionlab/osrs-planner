@@ -16,7 +16,7 @@ import type { OsrsMapProps } from "../OsrsMap";
 import type { WorldPoint } from "../../domain/contracts";
 import type { InsetAssets } from "./assets";
 import { contains } from "./geometry";
-import { catalogueClassifier } from "./preview";
+import { catalogueClassifier, isDetachedUpperFloor } from "./preview";
 import { decomposeRoute } from "./routeSections";
 import { layoutRegions, regionExtent, type Placement } from "./layout";
 import { worldToMap, mapToWorld, osrsProjection, resolutions, MAX_ZOOM, MIN_ZOOM } from "./projection";
@@ -46,14 +46,15 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
   callbacks: () => OsrsMapProps, layer: { url: string; attribution: string; maxNativeZoom?: number },
   tacticalBase: string, report: (message: string) => void, initialView?: { center: Coordinate; resolution: number }) {
   const { route, start, destination } = props;
-  const classify = catalogueClassifier(assets.catalogue);
+  const classify = catalogueClassifier(assets.catalogue, { detachUpperFloors: true });
   const points = [start?.coordinate, destination?.coordinate, ...(route?.segments.flatMap(segmentPoints) || [])]
     .filter((point): point is WorldPoint => !!point);
   const touched = new Set(points.map(classify));
   const shapes = assets.catalogue.regions.filter(region => touched.has(region.id));
   const decomposed = route ? decomposeRoute(route, classify) : { sections: [], transitions: [] };
   const surfacePoints = points.filter(point => classify(point) === "main-world").map(worldToMap);
-  const placements = layoutRegions(shapes, decomposed.transitions.filter(t => t.kind === "region"), surfacePoints, 40 * 8);
+  const placements = layoutRegions(shapes, decomposed.transitions.filter(t => t.kind === "region"), surfacePoints, 40 * 8,
+    new Set(shapes.filter(isDetachedUpperFloor).map(shape => shape.id)));
   // Unknown coordinates remain visible in their original world position.
   if (touched.has("unmapped") && !placements.has("unmapped")) placements.set("unmapped", { offset: [0, 0], anchored: false });
   const projected = (point: WorldPoint) => {
@@ -145,7 +146,9 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
     const placement = placements.get(shape.id)!;
     const initialOffset = [...offset];
     const label = document.createElement("button"); label.className = "inset-label"; label.type = "button";
-    label.textContent = `${assets.labels[shape.id]?.name || `Terrain at ${shape.bounds[0]}, ${shape.bounds[1]}`} · Plane ${shape.plane}`;
+    // Upper floors are small and come in stacks, so their plane is their whole label.
+    const name = assets.labels[shape.id]?.name || (isDetachedUpperFloor(shape) ? "" : `Terrain at ${shape.bounds[0]}, ${shape.bounds[1]}`);
+    label.textContent = name ? `${name} · Plane ${shape.plane}` : `Plane ${shape.plane}`;
     label.title = "Drag to move; press Enter or double-click to reset";
     const overlay = new Overlay({ element: label, positioning: "bottom-center", offset: [0, -8], stopEvent: true });
     map.addOverlay(overlay);
@@ -177,9 +180,9 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
     });
   };
   shapes.forEach((shape, index) => drawShape(shape, placements.get(shape.id)!.offset, true, index));
-  // Native upper surface floors stay at their real XY; only detached components move.
+  // Upper surface floors too large to detach stay at their real XY.
   const upper = assets.catalogue.regions.filter(shape => shape.plane > 0 && shape.classification === "main-world"
-    && points.some(point => point.plane === shape.plane && contains(shape, point.x, point.y, point.plane)));
+    && !isDetachedUpperFloor(shape) && points.some(point => point.plane === shape.plane && contains(shape, point.x, point.y, point.plane)));
   upper.forEach((shape, index) => drawShape(shape, [0, 0], false, shapes.length + index));
   const picked = new Map(shapes.map(shape => [shape.id, placements.get(shape.id)!]));
   upper.forEach(shape => picked.set(shape.id, { offset: [0, 0], anchored: true }));

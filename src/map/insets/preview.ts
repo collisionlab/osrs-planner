@@ -6,8 +6,23 @@ export interface Catalogue {
   surfaceRects: [plane: number, x: number, y: number, width: number, height: number][];
 }
 
-/** Index catalogue bounds, then require exact mask membership on the recorded floor. */
-export function catalogueClassifier(catalogue: Catalogue) {
+/** Upper floors at most this many tiles across are shown as insets; larger ones stay where they are. */
+export const MAX_UPPER_FLOOR_SPAN = 96;
+
+/** An upper-floor surface component small enough to show as an inset beside its own footprint. */
+export function isDetachedUpperFloor(region: Region) {
+  const [x1, y1, x2, y2] = region.bounds;
+  return region.plane > 0 && region.classification === "main-world"
+    && x2 - x1 <= MAX_UPPER_FLOOR_SPAN && y2 - y1 <= MAX_UPPER_FLOOR_SPAN;
+}
+
+/**
+ * Index catalogue bounds, then require exact mask membership on the recorded floor. With
+ * `detachUpperFloors`, a point on a small upper surface floor (see {@link isDetachedUpperFloor})
+ * belongs to that floor's own component rather than the main world, so a route that only climbs
+ * (a ladder, a glider platform) shows the floor beside the ground instead of on top of it.
+ */
+export function catalogueClassifier(catalogue: Catalogue, { detachUpperFloors = false } = {}) {
   const squares = new Map<string, Region[]>();
   for (const region of catalogue.regions) {
     const [x1, y1, x2, y2] = region.bounds;
@@ -29,9 +44,13 @@ export function catalogueClassifier(catalogue: Catalogue) {
     }
   }
   return (point: WorldPoint): string => {
+    const candidates = squares.get(`${point.plane}/${Math.floor(point.x / 64)}/${Math.floor(point.y / 64)}`) || [];
+    if (detachUpperFloors && point.plane > 0) {
+      const floor = candidates.find(region => isDetachedUpperFloor(region) && contains(region, point.x, point.y, point.plane));
+      if (floor) return floor.id;
+    }
     if ((surface.get(`${point.plane}/${point.x >> 6}/${point.y >> 6}`) || []).some(([plane, x, y, width, height]) => point.plane === plane
       && point.x >= x && point.x < x + width && point.y >= y && point.y < y + height)) return "main-world";
-    const candidates = squares.get(`${point.plane}/${Math.floor(point.x / 64)}/${Math.floor(point.y / 64)}`) || [];
     const region = candidates.find(region => contains(region, point.x, point.y, point.plane));
     return region?.classification === "main-world" ? "main-world" : region?.id || "unmapped";
   };

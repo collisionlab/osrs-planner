@@ -97,3 +97,45 @@ describe("live route edge cases", () => {
     expect(placements.get("a")!.anchored).toBe(false);
   });
 });
+
+describe("upper floors", () => {
+  const floor = (plane: number, size = 8): Region => ({ id: `p${plane}`, plane, bounds: [2462, 3492, 2462 + size, 3492 + size],
+    mask: [[2462, 3492, size, size]], classification: "main-world", tileCount: size * size, surfaceTiles: size * size,
+    touchesUnknown: false, examples: [] });
+  const surface: Catalogue["surfaceRects"] = [[0, 2400, 3400, 200, 200], [1, 2462, 3492, 8, 8], [2, 2462, 3492, 8, 8], [3, 2462, 3492, 8, 8]];
+
+  it("gives a small upper floor its own region, and leaves large ones in the main world", () => {
+    const catalogue: Catalogue = { surfaceRects: [...surface, [1, 3000, 3000, 200, 200]],
+      regions: [floor(1), floor(2), { ...floor(1, 200), id: "big", bounds: [3000, 3000, 3200, 3200], mask: [[3000, 3000, 200, 200]] }] };
+    const detached = catalogueClassifier(catalogue, { detachUpperFloors: true });
+    expect(detached({ x: 2465, y: 3495, plane: 1 })).toBe("p1");
+    expect(detached({ x: 2465, y: 3495, plane: 2 })).toBe("p2");
+    expect(detached({ x: 2465, y: 3495, plane: 0 })).toBe("main-world");
+    expect(detached({ x: 3100, y: 3100, plane: 1 })).toBe("main-world");
+    expect(catalogueClassifier(catalogue)({ x: 2465, y: 3495, plane: 1 })).toBe("main-world");
+  });
+
+  it("stacks a building's floors beside it, on one side, wherever the route arrived from", () => {
+    const floors = [floor(3), floor(1), floor(2)];
+    // A glider lands on the top floor from far away; that must not decide where the floor goes.
+    const glider = crossing("main-world", "p3", point(3284, 3213), { x: 2465, y: 3501, plane: 3 }, 0);
+    const placements = layoutRegions(floors, [glider], [worldToMap(point(2465, 3490))], 320, new Set(floors.map(f => f.id)));
+    const boxes = [1, 2, 3].map(plane => regionExtent(floor(plane), placements.get(`p${plane}`)!.offset));
+    const footprint = regionExtent(floor(1));
+    const separate = (a: number[], b: number[]) => a[2] <= b[0] || b[2] <= a[0] || a[3] <= b[1] || b[3] <= a[1];
+    for (const box of boxes) expect(separate(box, footprint)).toBe(true);
+    expect(separate(boxes[0], boxes[1]) && separate(boxes[1], boxes[2]) && separate(boxes[0], boxes[2])).toBe(true);
+    // One side: the floors move away from the footprint in the same direction, each beyond the last.
+    const shift = boxes.map(box => [box[0] - footprint[0], box[1] - footprint[1]]);
+    const axis = Math.abs(shift[0][0]) > Math.abs(shift[0][1]) ? 0 : 1;
+    expect(Math.abs(shift[1][axis])).toBeGreaterThan(Math.abs(shift[0][axis]));
+    expect(Math.abs(shift[2][axis])).toBeGreaterThan(Math.abs(shift[1][axis]));
+    expect(Math.sign(shift[1][axis])).toBe(Math.sign(shift[0][axis]));
+    expect(placements.get("p2")).toMatchObject({ parent: "p1", anchored: true });
+  });
+
+  it("leaves a route that never reaches the ground where it is", () => {
+    const placements = layoutRegions([floor(1)], [], [], 320, new Set(["p1"]));
+    expect(placements.get("p1")).toMatchObject({ offset: [0, 0], anchored: true });
+  });
+});
