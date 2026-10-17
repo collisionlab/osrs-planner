@@ -60,8 +60,12 @@ input, select, textarea { accent-color: var(--orange); }
 .route-marker.destination span::before { content: ''; position: absolute; inset: -4px; background: linear-gradient(currentColor,currentColor) left top / 11px 3px, linear-gradient(currentColor,currentColor) left top / 3px 11px, linear-gradient(currentColor,currentColor) right top / 11px 3px, linear-gradient(currentColor,currentColor) right top / 3px 11px, linear-gradient(currentColor,currentColor) left bottom / 11px 3px, linear-gradient(currentColor,currentColor) left bottom / 3px 11px, linear-gradient(currentColor,currentColor) right bottom / 11px 3px, linear-gradient(currentColor,currentColor) right bottom / 3px 11px; background-repeat: no-repeat; filter: drop-shadow(1px 1px 0 #141914); }
 .bank-marker span { display: grid; place-items: center; width: 24px; height: 24px; color: var(--text); background: var(--ink); border: 2px solid var(--cyan); font: 14px var(--pixel); }
 .route-segment { cursor: pointer; }
-.fit-route-button { position: absolute; z-index: 600; right: 12px; top: 12px; padding: 7px 10px; color: var(--text); background: var(--ink); border: 1px solid var(--line); font: 10px var(--pixel); }
-.fit-route-button:hover { color: var(--orange); border-color: var(--orange); }
+.map-controls { position: absolute; z-index: 600; right: 12px; top: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.fit-route-button, .map-style-toggle button { padding: 7px 10px; color: var(--text); background: var(--ink); border: 1px solid var(--line); font: 10px var(--pixel); }
+.fit-route-button:hover, .map-style-toggle button:hover { color: var(--orange); border-color: var(--orange); }
+.map-style-toggle { display: flex; }
+.map-style-toggle button + button { border-left: 0; }
+.map-style-toggle button[aria-pressed='true'] { color: var(--ink); background: var(--orange); border-color: var(--orange); }
 .map-message { position: absolute; z-index: 500; left: 12px; bottom: 12px; display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 12px 8px 8px; color: var(--text); background: var(--ink); border: 1px solid var(--line); font-size: 12px; pointer-events: none; }
 .map-message > span { display: grid; place-items: center; width: 22px; height: 22px; color: var(--orange); border: 1px solid var(--orange); font: 12px var(--pixel); }
 .map .leaflet-bar { border: 1px solid var(--line); border-radius: 0; box-shadow: none; }
