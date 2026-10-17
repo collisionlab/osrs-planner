@@ -12,7 +12,7 @@ class RoutingEngineTest {
     private static final RoutingEngine ENGINE = new RoutingEngine(Requests.MAPPER);
 
     @Test
-    void canonicalProfileRunsThroughExactPathfinder() {
+    void canonicalProfileRunsThroughAStarPathfinder() {
         RouteApi.RouteRequest request = Requests.route("mid", 3222, 3218, 3210, 3424);
         new SchemaValidator().validate(Requests.MAPPER.valueToTree(request));
 
@@ -20,7 +20,7 @@ class RoutingEngineTest {
 
         assertTrue(plan.reachable);
         assertTrue(plan.costTicks > 0);
-        assertEquals("exact-v1", plan.metadata.routingEngineVersion);
+        assertEquals("astar-v1", plan.metadata.routingEngineVersion);
         assertFalse(plan.segments.isEmpty());
         assertTrue(plan.segments.stream().filter(RouteApi.TravelSegment.class::isInstance)
                 .map(RouteApi.TravelSegment.class::cast).anyMatch(segment -> !segment.requirements.isEmpty()),

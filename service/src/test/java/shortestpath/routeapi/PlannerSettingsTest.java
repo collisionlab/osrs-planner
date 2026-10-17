@@ -18,7 +18,7 @@ public class PlannerSettingsTest {
     public void everyRoutingConfigItemIsASettingAndDisplayAndHouseItemsAreNot() {
         Set<String> keys = PlannerSettings.catalog().stream().map(setting -> setting.key).collect(Collectors.toSet());
         assertTrue(keys.containsAll(Set.of("useFairyRings", "costBoats", "useTeleportationItems", "currencyThreshold",
-            "pathfinderBackend", "exactHeuristicWeight", "costBankVisit")));
+            "pathfinderBackend", "aStarHeuristicWeight", "costBankVisit")));
         // Unlocks the game doesn't report are account facts, not route settings.
         assertFalse(keys.contains("unlockCanoeAxe"));
         assertFalse(keys.contains("respawnPrifddinas"));
@@ -42,7 +42,7 @@ public class PlannerSettingsTest {
     @Test
     public void jsonValuesOverrideThePlannerDefaults() {
         PluginSettings defaults = PlannerSettings.fromJson(null);
-        assertEquals(PathfinderBackend.EXACT, defaults.pathfinderBackend());
+        assertEquals(PathfinderBackend.ASTAR, defaults.pathfinderBackend());
         assertFalse(defaults.isBypassVarbitChecks());
         assertEquals(TeleportationItem.INVENTORY_AND_BANK, defaults.useTeleportationItems());
 

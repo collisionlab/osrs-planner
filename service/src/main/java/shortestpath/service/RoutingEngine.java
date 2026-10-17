@@ -9,15 +9,15 @@ import java.util.Map;
 import java.util.Set;
 import shortestpath.accounts.Account;
 import shortestpath.pathfinder.CollisionMap;
-import shortestpath.pathfinder.ExactPathfinder;
-import shortestpath.pathfinder.ExactRoutingStaticProvider;
+import shortestpath.pathfinder.AStarPathfinder;
+import shortestpath.pathfinder.AStarRoutingStaticProvider;
 import shortestpath.pathfinder.Pathfinder;
 import shortestpath.pathfinder.PathfinderBackend;
 import shortestpath.pathfinder.PathfinderResult;
 import shortestpath.pathfinder.PluginResources;
-import shortestpath.pathfinder.exact.ExactForwardSearch;
-import shortestpath.pathfinder.exact.ExactRoutingSession;
-import shortestpath.pathfinder.exact.RoutingStatic;
+import shortestpath.pathfinder.astar.AStarForwardSearch;
+import shortestpath.pathfinder.astar.AStarRoutingSession;
+import shortestpath.pathfinder.astar.RoutingStatic;
 import shortestpath.profiles.AccountPathfinderConfig;
 import shortestpath.profiles.CompiledAccount;
 import shortestpath.profiles.PluginSettings;
@@ -37,7 +37,7 @@ final class RoutingEngine {
 
     RoutingEngine(ObjectMapper mapper) {
         this.mapper = mapper;
-        this.routingStatic = new ExactRoutingStaticProvider(() -> new CollisionMap(PluginResources.map())).get();
+        this.routingStatic = new AStarRoutingStaticProvider(() -> new CollisionMap(PluginResources.map())).get();
     }
 
     RouteApi.RoutePlan route(RouteApi.RouteRequest request) {
@@ -84,11 +84,11 @@ final class RoutingEngine {
             pathfinder.run();
             result = pathfinder.getResult();
         } else {
-            ExactPathfinder pathfinder = new ExactPathfinder(account.config, routingStatic, account.session,
-                start, Set.of(target), null, account.config.getExactHeuristicWeight());
+            AStarPathfinder pathfinder = new AStarPathfinder(account.config, routingStatic, account.session,
+                start, Set.of(target), null, account.config.getAStarHeuristicWeight());
             pathfinder.run();
             result = pathfinder.getResult();
-            exactStats(pathfinder, stats);
+            astarStats(pathfinder, stats);
         }
         if (result == null) {
             throw new IllegalStateException("the pathfinder returned no result");
@@ -122,7 +122,7 @@ final class RoutingEngine {
     }
 
     /** The exact search's phase timings and the forward search counters most useful for tuning. */
-    private static void exactStats(ExactPathfinder pathfinder, Map<String, Object> stats) {
+    private static void astarStats(AStarPathfinder pathfinder, Map<String, Object> stats) {
         stats.put("graphReused", pathfinder.isGraphReused());
         stats.put("targetReused", pathfinder.isTargetReused());
         Map<String, Object> phases = new LinkedHashMap<>();
@@ -135,7 +135,7 @@ final class RoutingEngine {
         phases.put("walkCanonicalize", millis(pathfinder.getWalkCanonicalizeNanos()));
         phases.put("walkRewrite", millis(pathfinder.getWalkRewriteNanos()));
         stats.put("phasesMs", phases);
-        ExactForwardSearch.Counters counters = pathfinder.getExactStats();
+        AStarForwardSearch.Counters counters = pathfinder.getAStarStats();
         if (counters != null) {
             Map<String, Object> forward = new LinkedHashMap<>();
             forward.put("statesPopped", counters.statesPopped());
@@ -170,7 +170,7 @@ final class RoutingEngine {
     private static final class AccountSession {
         private final AccountPathfinderConfig config;
         private final PathfinderBackend backend;
-        private final ExactRoutingSession session = new ExactRoutingSession();
+        private final AStarRoutingSession session = new AStarRoutingSession();
 
         private AccountSession(RouteApi.RouteRequest request) {
             Account account = request.account.toAccount();
