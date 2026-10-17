@@ -24,7 +24,7 @@ import { surfaceLayer } from "./tactical";
 import { regionTerrain } from "./terrain";
 import { PastedTerrainSource } from "./PastedTerrainSource";
 import { RegionFeatures } from "./RegionFeatures";
-import { routeFeatureStyle, routeMarkerOverlay } from "./routeStyles";
+import { endpointPixels, routeFeatureStyle, routeMarkerOverlay } from "./routeStyles";
 import { regionContour } from "./contour";
 
 export function segmentPoints(segment: NonNullable<OsrsMapProps["route"]>["segments"][number]): WorldPoint[] {
@@ -77,8 +77,13 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
   const routeSource = new VectorSource();
   let selected: number | undefined;
   const routes = new VectorLayer({ source: routeSource, zIndex: 100, updateWhileInteracting: true, updateWhileAnimating: true,
-    style: feature => routeFeatureStyle(feature, selected),
+    style: (feature, resolution) => routeFeatureStyle(feature, selected, resolution),
   });
+  const sizeEndpoints = () => target.style.setProperty("--endpoint-px", `${endpointPixels(view.getResolution() ?? 1)}px`);
+  view.on("change:resolution", sizeEndpoints); sizeEndpoints();
+  // Filled in once every region is placed; until then markers sit where they were put.
+  let hitPlacements: Map<string, Placement> | undefined;
+  const snap = (coordinate: Coordinate) => hitPlacements ? projected(pickWorld(coordinate, assets, hitPlacements)) : coordinate;
   map.addLayer(routes);
   const addPoint = (point: WorldPoint, role: string, segmentIndex?: number) => {
     const feature = new Feature(new Point(projected(point)));
@@ -86,7 +91,7 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
     routeSource.addFeature(feature); owned.add(classify(point), feature);
     if (role === "start" || role === "destination" || role === "bank") {
       const title = role === "start" ? `Start: ${start?.name}` : role === "destination" ? `Destination: ${destination?.name}` : "Bank stop";
-      const marker = routeMarkerOverlay(feature, role, title);
+      const marker = routeMarkerOverlay(feature, role, title, role === "bank" ? undefined : snap);
       map.addOverlay(marker.overlay); cleanup.push(marker.dispose);
     }
   };
@@ -172,8 +177,9 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
   const upper = assets.catalogue.regions.filter(shape => shape.plane > 0 && shape.classification === "main-world"
     && points.some(point => point.plane === shape.plane && contains(shape, point.x, point.y, point.plane)));
   upper.forEach((shape, index) => drawShape(shape, [0, 0], false, shapes.length + index));
-  const hitPlacements = new Map(shapes.map(shape => [shape.id, placements.get(shape.id)!]));
-  upper.forEach(shape => hitPlacements.set(shape.id, { offset: [0, 0], anchored: true }));
+  const picked = new Map(shapes.map(shape => [shape.id, placements.get(shape.id)!]));
+  upper.forEach(shape => picked.set(shape.id, { offset: [0, 0], anchored: true }));
+  hitPlacements = picked;
   const fitPoints = (coordinates: Coordinate[], maxZoom = 9) => {
     if (!coordinates.length) return;
     const extent = createEmpty(); coordinates.forEach(point => extend(extent, [...point, ...point]));
@@ -192,7 +198,7 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
   translate.on("translatestart", () => { draggingEndpoint = true; });
   translate.on("translateend", event => {
     const feature = event.features.item(0);
-    const point = pickWorld(event.coordinate, assets, hitPlacements);
+    const point = pickWorld(event.coordinate, assets, picked);
     if (feature.get("role") === "start") callbacks().onMoveStart?.(point);
     else callbacks().onMoveDestination?.(point);
     // OL emits click events separately; singleclick must not turn a drag into a pick.
@@ -206,7 +212,7 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
       if (typeof index === "number") callbacks().onSelectSegment?.(index);
       return;
     }
-    callbacks().onPick(pickWorld(event.coordinate, assets, hitPlacements, 0));
+    callbacks().onPick(pickWorld(event.coordinate, assets, picked, 0));
   });
   map.on("pointermove", event => {
     if (event.dragging) return;

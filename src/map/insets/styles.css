@@ -2,7 +2,16 @@
 .inset-label { max-width: min(260px, 75vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; height: 28px; padding: 0 6px; border: 0; background: transparent; color: #f7f1dc; font: 700 .75rem/1 monospace; letter-spacing: .08em; text-transform: uppercase; text-shadow: 1px 0 #262b25, -1px 0 #262b25, 0 1px #262b25, 0 -1px #262b25, 0 2px 3px #000; cursor: grab; user-select: none; touch-action: none; }
 .inset-label:active { cursor: grabbing; }
 .inset-label:focus-visible { outline: 1px solid #f7f1dc; outline-offset: 2px; }
-.inset-actions { position: absolute; top: 12px; left: 48px; display: flex; gap: 6px; z-index: 4; }
-.inset-actions button { background: #283126; color: #e0e5cd; border: 1px solid #48533e; padding: 7px 11px; cursor: pointer; }
+.inset-actions { position: absolute; top: 46px; left: 50px; display: flex; gap: 6px; z-index: 500; }
+.inset-actions button { padding: 7px 10px; color: var(--text, #e0e5cd); background: var(--ink, #141914); border: 1px solid var(--line, #48533e); font: 10px var(--pixel, monospace); cursor: pointer; }
+.inset-actions button:hover { color: var(--orange, #ffae47); border-color: var(--orange, #ffae47); }
 .inset-map .ol-control button { background: #283126; color: #e0e5cd; }
 .inset-map .ol-attribution { max-width: 85%; }
+
+/* Endpoints: the game tile itself, outlined, with its A/B tag up and to the right. */
+.inset-endpoint { position: relative; width: 0; height: 0; color: var(--cyan, #77e2d4); pointer-events: none; }
+.inset-endpoint.destination { color: var(--orange, #ffae47); }
+.inset-endpoint-tile { position: absolute; left: calc(var(--endpoint-px, 10px) / -2); top: calc(var(--endpoint-px, 10px) / -2); width: var(--endpoint-px, 10px); height: var(--endpoint-px, 10px); box-sizing: border-box; border: 2px solid currentColor; background: color-mix(in srgb, currentColor 22%, transparent); box-shadow: 0 0 0 1px var(--ink, #141914), inset 0 0 0 1px var(--ink, #141914); }
+/* The tag's background is the marker colour (currentColor), so its letter is painted in ink. */
+.inset-endpoint-tag { position: absolute; left: calc(var(--endpoint-px, 10px) / 2 + 3px); bottom: calc(var(--endpoint-px, 10px) / 2 + 3px); display: grid; place-items: center; width: 15px; height: 15px; box-sizing: border-box; background: currentColor; box-shadow: 0 0 0 1px var(--ink, #141914); -webkit-text-fill-color: var(--ink, #141914); font: 9px/1 var(--pixel, Silkscreen, monospace); }
+.inset-endpoint-tag::before { content: ''; position: absolute; left: -3px; bottom: -3px; width: 3px; height: 3px; background: currentColor; }
