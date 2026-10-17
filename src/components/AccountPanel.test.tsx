@@ -32,7 +32,7 @@ describe("account panel", () => {
     fireEvent.click(within(screen.getByRole("group", { name: "Ardougne" })).getByLabelText("Elite"));
     fireEvent.click(within(screen.getByRole("group", { name: "Active spellbook" })).getByLabelText("Lunar"));
     fireEvent.click(screen.getByLabelText("Fairy rings"));
-    fireEvent.click(screen.getByLabelText("Balloon entrana"));
+    fireEvent.click(screen.getByLabelText("Entrana"));
     fireEvent.click(screen.getByLabelText("Dragon Slayer I"));
     fireEvent.click(screen.getByRole("button", { name: "Save as custom" }));
 
@@ -94,5 +94,31 @@ describe("account panel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(onSave).toHaveBeenCalled());
     expect((onSave.mock.calls[0][0] as Account).levels).toEqual({ AGILITY: 75, ATTACK: 1 });
+  });
+
+  it("keeps one respawn point, including the Prifddinas setting", async () => {
+    const onSettingsChange = vi.fn();
+    const { onSave } = renderPanel({ changedSettings: {}, onSettingsChange,
+      selected: { id: "custom", name: "Mine", account: { ...account, unlocks: ["RESPAWN_FALADOR", "RESPAWN_EDGEVILLE"] } } });
+    const respawn = screen.getByLabelText("Respawn point") as HTMLSelectElement;
+    expect(respawn.value).toBe("RESPAWN_FALADOR");
+    fireEvent.change(respawn, { target: { value: "RESPAWN_EDGEVILLE" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect((onSave.mock.calls[0][0] as Account).unlocks).toEqual(["RESPAWN_EDGEVILLE"]);
+    fireEvent.change(respawn, { target: { value: "PRIFDDINAS" } });
+    expect(onSettingsChange).toHaveBeenLastCalledWith({ respawnPrifddinas: true });
+    // The plugin's other unlock settings are edited here too.
+    fireEvent.click(screen.getByLabelText("Axe stored at a canoe station"));
+    expect(onSettingsChange).toHaveBeenLastCalledWith({ unlockCanoeAxe: true });
+  });
+
+  it("reports the edited account as a draft while it differs from the saved one", async () => {
+    const onDraft = vi.fn();
+    renderPanel({ onDraft });
+    fireEvent.change(screen.getByLabelText("Agility"), { target: { value: "88" } });
+    await waitFor(() => expect(onDraft).toHaveBeenLastCalledWith(expect.objectContaining({ levels: expect.objectContaining({ AGILITY: 88 }) })));
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    await waitFor(() => expect(onDraft).toHaveBeenLastCalledWith(undefined));
   });
 });

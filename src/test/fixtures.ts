@@ -12,7 +12,9 @@ export const catalog: Catalog = {
   diaryTiers: ["NONE", "EASY", "MEDIUM", "HARD", "ELITE"].map(id => ({ id, name: id[0] + id.slice(1).toLowerCase() })),
   unlocks: [
     { id: "FAIRY_RINGS", name: "Fairy rings", group: "Transport" },
-    { id: "BALLOON_ENTRANA", name: "Balloon entrana", group: "Hot air balloon" },
+    { id: "BALLOON_ENTRANA", name: "Entrana", group: "Hot air balloons" },
+    { id: "RESPAWN_FALADOR", name: "Falador", group: "Respawn point" },
+    { id: "RESPAWN_EDGEVILLE", name: "Edgeville", group: "Respawn point" },
   ],
   spellbooks: ["STANDARD", "ANCIENT", "LUNAR", "ARCEUUS"].map(id => ({ id, name: id[0] + id.slice(1).toLowerCase() })),
   houseLocations: [{ id: "RIMMINGTON", name: "Rimmington" }, { id: "YANILLE", name: "Yanille" }],
@@ -26,6 +28,7 @@ export const catalog: Catalog = {
       [{ id: "NONE", name: "None" }, { id: "INVENTORY_AND_BANK", name: "Inventory and bank" }, { id: "ALL", name: "All" }]),
     setting("useFairyRings", "Use fairy rings", "boolean", true),
     setting("unlockCanoeAxe", "Axe stored at a canoe station", "boolean", false),
+    setting("respawnPrifddinas", "Prifddinas respawn point", "boolean", false),
     setting("costBoats", "Boat threshold", "integer", 0, "Transport Thresholds"),
     setting("currencyThreshold", "Currency threshold", "integer", 2147483647, "Settings"),
     setting("pathfinderBackend", "Pathfinder backend", "choice", "EXACT", "Settings",

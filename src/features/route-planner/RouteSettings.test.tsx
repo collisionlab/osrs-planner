@@ -34,7 +34,8 @@ describe("route settings", () => {
   it("groups the settings and counts the changed ones", () => {
     renderSettings({ pathfinderBackend: "LEGACY" });
     expect(screen.getByText("Advanced").parentElement?.textContent).toContain("1 changed");
-    expect(screen.getByText("Unlocks the game doesn't report")).toBeTruthy();
+    // Unlocks the game doesn't report belong to the account panel.
+    expect(screen.queryByLabelText("Axe stored at a canoe station")).toBeNull();
   });
 
   it("ignores invalid numbers", () => {

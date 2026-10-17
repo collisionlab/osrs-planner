@@ -6,19 +6,23 @@ import { changeSetting, settingValue, type ChangedSettings } from "../../domain/
 const everyday = ["avoidWilderness", "includeBankPath", "useTeleportationItems"];
 
 /**
- * The plugin's own settings, as the route service's catalog lists them, in four groups: transport
- * toggles (`use…`), unlocks the game doesn't report (`unlock…`, `respawn…`), transport thresholds,
- * and everything else as advanced. `label` shortens a name where the group title already says it.
+ * Plugin settings that describe the account rather than how to travel: unlocks the game doesn't
+ * report (`unlock…`, `respawn…`). The account panel shows them; they stay route settings.
+ */
+export const isAccountSetting = (setting: Setting) => /^(unlock|respawn)/.test(setting.key);
+
+/**
+ * The plugin's travel settings, as the route service's catalog lists them, in three groups:
+ * transport toggles (`use…`), transport thresholds, and everything else as advanced. `label`
+ * shortens a name where the group title already says it.
  */
 function groups(settings: Setting[]): { title: string; note?: string; settings: Setting[]; label?(name: string): string }[] {
-  const rest = settings.filter(setting => !everyday.includes(setting.key));
+  const rest = settings.filter(setting => !everyday.includes(setting.key) && !isAccountSetting(setting));
   const transports = rest.filter(setting => setting.section === "Settings" && setting.type === "boolean" && setting.key.startsWith("use"));
-  const unlocks = rest.filter(setting => /^(unlock|respawn)/.test(setting.key));
   const thresholds = rest.filter(setting => setting.section === "Transport Thresholds");
-  const grouped = new Set([...transports, ...unlocks, ...thresholds]);
+  const grouped = new Set([...transports, ...thresholds]);
   return [
     { title: "Transports", settings: transports, label: name => capitalise(name.replace(/^Use /, "")) },
-    { title: "Unlocks the game doesn't report", settings: unlocks },
     { title: "Transport thresholds", note: "Extra tiles a transport must save before it is preferred.", settings: thresholds,
       label: name => name.replace(/ threshold$/, "") },
     { title: "Advanced", settings: rest.filter(setting => !grouped.has(setting)) },
@@ -52,7 +56,7 @@ const choiceNames: Record<string, Record<string, string>> = {
 };
 const settingNames: Record<string, string> = { exactHeuristicWeight: "A* heuristic weight" };
 
-function SettingField({ setting, changed, label = settingNames[setting.key] || setting.name, onChange }: {
+export function SettingField({ setting, changed, label = settingNames[setting.key] || setting.name, onChange }: {
   setting: Setting; changed: ChangedSettings; label?: string; onChange(changed: ChangedSettings): void;
 }) {
   const value = settingValue(setting, changed);

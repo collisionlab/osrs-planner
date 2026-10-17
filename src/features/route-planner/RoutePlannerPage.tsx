@@ -10,7 +10,7 @@ import type { Account, Location, WorldPoint } from "../../domain/contracts";
 import { asSettings, validSettings, type ChangedSettings } from "../../domain/settings";
 import { Itinerary } from "../itinerary/Itinerary";
 import { ShareRoute } from "./ShareRoute";
-import { RouteSettings } from "./RouteSettings";
+import { isAccountSetting, RouteSettings } from "./RouteSettings";
 import { plannerUrlWarnings, profileFromHash, readPlannerUrl, readStoredSettings, SharedProfileError, writePlannerUrl, type PlannerUrlState } from "./plannerState";
 
 const customAccountKey = "osrs-travel.custom-account.v2";
@@ -53,6 +53,8 @@ export function RoutePlannerPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [customAccount, setCustomAccount] = useState<Account>();
+  // The account as edited in the panel, before it is saved: routes follow the edits.
+  const [draftAccount, setDraftAccount] = useState<Account>();
   const [shared, setShared] = useState<{ account?: Account; error?: SharedProfileError; loading?: boolean }>({});
   const [accountPanel, setAccountPanel] = useState<"closed" | "open" | "hidden">("closed");
   const [selectedSegment, setSelectedSegment] = useState<number>();
@@ -105,8 +107,8 @@ export function RoutePlannerPage() {
   useEffect(() => { setSelectedSegment(undefined); }, [urlState.start, urlState.destination, selected, settings]);
 
   const request = useMemo(() => selected && settings && urlState.start && urlState.destination
-    ? { account: selected.account, settings: asSettings(settings.settings), start: urlState.start, destination: urlState.destination }
-    : undefined, [selected, settings, urlState.start, urlState.destination]);
+    ? { account: draftAccount || selected.account, settings: asSettings(settings.settings), start: urlState.start, destination: urlState.destination }
+    : undefined, [selected, draftAccount, settings, urlState.start, urlState.destination]);
   const route = useQuery({
     queryKey: ["route", request],
     queryFn: ({ signal }) => calculateRoute(request!, signal), enabled: Boolean(request), retry: false,
@@ -133,6 +135,8 @@ export function RoutePlannerPage() {
   }, [dragging, preview.isFetching]);
   const previewRoute = dragging && previewRequest ? preview.data : undefined;
 
+  const travelChanges = catalog.data && settings ? catalog.data.settings
+    .filter(setting => setting.key in settings.settings && !isAccountSetting(setting)).length : 0;
   const chooseStart = (start?: Location) => update({ start });
   const chooseDestination = (destination?: Location) => update({ destination });
   const closeAccountPanel = () => { setAccountPanel("hidden"); accountToggle.current?.focus(); };
@@ -152,7 +156,7 @@ export function RoutePlannerPage() {
       <button type="button" ref={accountToggle} className="account-toggle" disabled={!selected || !catalog.data}
         aria-expanded={accountPanel === "open"} aria-controls="account-panel"
         onClick={() => accountPanel === "open" ? closeAccountPanel() : setAccountPanel("open")}>
-        <span>Account</span><strong>{selected ? selected.name : "Loading…"}</strong>
+        <span>Account</span><strong>{selected ? selected.name : "Loading…"}{draftAccount && <em className="draft-mark" title="Routes use your unsaved edits"> · edited</em>}</strong>
       </button>
     </header>
 
@@ -161,7 +165,8 @@ export function RoutePlannerPage() {
     <main className={accountPanel === "open" ? "workspace with-account" : "workspace"}>
       {selected && catalog.data && accountPanel !== "closed" && <Suspense fallback={<aside className="account-panel"><p className="panel-loading">Loading account…</p></aside>}>
         <AccountPanel accounts={accounts} selected={selected} catalog={catalog.data} open={accountPanel === "open"}
-          onSelect={chooseAccount} onClose={closeAccountPanel} onSave={value => {
+          onSelect={chooseAccount} onClose={closeAccountPanel} onDraft={setDraftAccount}
+          changedSettings={settings?.settings} onSettingsChange={changed => update({ settings: changed })} onSave={value => {
             try { localStorage.setItem(customAccountKey, JSON.stringify(value)); }
             catch { throw new Error("This browser could not save the custom build. Check its storage permissions and try again."); }
             setCustomAccount(value); chooseAccount("custom");
@@ -184,7 +189,7 @@ export function RoutePlannerPage() {
         onSelectSegment={setSelectedSegment}
         onRetry={() => void (presets.isError ? presets.refetch() : catalog.isError ? catalog.refetch() : route.refetch())}
         controls={<>{catalog.data && settings && <details className="travel-policy">
-          <summary>Travel options <span>{Object.keys(settings.settings).length ? `${Object.keys(settings.settings).length} CHANGED` : "DEFAULT"}</span></summary>
+          <summary>Travel options <span>{travelChanges ? `${travelChanges} CHANGED` : "DEFAULT"}</span></summary>
           <RouteSettings settings={catalog.data.settings} changed={settings.settings}
             onChange={changed => update({ settings: changed })} />
         </details>}

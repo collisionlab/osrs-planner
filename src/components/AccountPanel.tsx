@@ -5,12 +5,14 @@ import {
   miningIcon, prayerIcon, rangedIcon, runecraftIcon, slayerIcon, smithingIcon, strengthIcon,
   thievingIcon, toDataUrl, woodcuttingIcon, questListIcon, skillsIcon,
 } from "@dava96/osrs-icons";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentProps, type KeyboardEvent, type ReactNode } from "react";
 import { useForm, type FieldErrors } from "react-hook-form";
 import { findItems, lookupItems } from "../api/items";
 import { validateAccount } from "../domain/accountValidation";
 import { orderSkills, totalLevel, type PlannerAccount } from "../domain/accounts";
-import type { Account, Catalog, House, Option } from "../domain/contracts";
+import type { Account, Catalog, House, Option, Setting } from "../domain/contracts";
+import { changeSetting, settingValue, type ChangedSettings } from "../domain/settings";
+import { isAccountSetting, SettingField } from "../features/route-planner/RouteSettings";
 
 const itemFields = ["inventory", "equipment", "runePouch", "bank"] as const;
 const itemTitles = { inventory: "Inventory", equipment: "Equipment", runePouch: "Rune pouch", bank: "Bank" };
@@ -51,6 +53,16 @@ interface AccountForm extends Omit<Account, "inventory" | "runePouch" | "equipme
   minigameTeleportUsedAt: number;
 }
 
+/** A yes/no fact as a named row with a switch, as the travel options show them. */
+function SwitchRow({ label, ...input }: { label: ReactNode } & ComponentProps<"input">) {
+  return <label className="option-row"><span className="option-name">{label}</span>
+    <input type="checkbox" className="option-switch" {...input} /></label>;
+}
+
+/** The respawn point a plugin setting rather than an account unlock records. */
+const PRIFDDINAS = "PRIFDDINAS";
+const isRespawn = (unlock: string) => unlock.startsWith("RESPAWN_");
+
 function Section({ id, title, summary, open, onToggle, children }: {
   id: SectionId;
   title: string;
@@ -78,10 +90,10 @@ function ItemsEditor({ items, names, onChange }: {
   const results = useQuery({ queryKey: ["items", search], queryFn: () => findItems(search), enabled: searching });
   const values = items[field];
   const options = results.data || [];
-  // The service names only the items some route can use, so an unnamed item does nothing here.
+  // The service names only items some transport requires, so an unnamed one never helps a route.
   const nameOf = (key: string) => names.get(key) || `Item ${key}`;
   const unused = (key: string) => names.size > 0 && !names.has(key);
-  const describe = (key: string) => unused(key) ? `${nameOf(key)}: no route uses this item` : nameOf(key);
+  const describe = (key: string) => unused(key) ? `${nameOf(key)}: no transport requires this item` : nameOf(key);
   const caption = hovered && values[hovered] ? hovered : selected && values[selected] ? selected : undefined;
   const update = (value: Record<string, number>) => onChange(field, value);
   const add = (key: string) => {
@@ -123,7 +135,7 @@ function ItemsEditor({ items, names, onChange }: {
         })}
       </div> : <p className="item-empty">No items in {title.toLowerCase()}.</p>}
       {Object.keys(values).length > 0 && <p className="item-caption" aria-hidden="true">{caption
-        ? <>{nameOf(caption)} × {numberFormatter.format(values[caption])}{unused(caption) && <small> · no route uses this item</small>}</>
+        ? <>{nameOf(caption)} × {numberFormatter.format(values[caption])}{unused(caption) && <small> · no transport requires this item</small>}</>
         : <small>Point at an item to see what it is.</small>}</p>}
       {selected && values[selected] ? <div className="item-editor">
         <strong title={nameOf(selected)}>{nameOf(selected)}</strong>
@@ -140,7 +152,8 @@ function ItemsEditor({ items, names, onChange }: {
   </>;
 }
 
-export function AccountPanel({ accounts, selected, catalog, open, onSelect, onSave, onClose }: {
+export function AccountPanel({ accounts, selected, catalog, open, onSelect, onSave, onClose, onDraft,
+  changedSettings = {}, onSettingsChange }: {
   accounts: PlannerAccount[];
   selected: PlannerAccount;
   catalog: Catalog;
@@ -148,6 +161,11 @@ export function AccountPanel({ accounts, selected, catalog, open, onSelect, onSa
   onSelect(id: string): void;
   onSave(account: Account): void;
   onClose(): void;
+  /** The account as edited so far, while it differs from the saved one and is valid; else undefined. */
+  onDraft?(account?: Account): void;
+  /** The route settings that describe the account (unlocks the game doesn't report), edited here. */
+  changedSettings?: ChangedSettings;
+  onSettingsChange?(changed: ChangedSettings): void;
 }) {
   const account = selected.account;
   const heading = useRef<HTMLHeadingElement>(null);
@@ -175,12 +193,38 @@ export function AccountPanel({ accounts, selected, catalog, open, onSelect, onSa
   const selectedPortals = values.house.portals || [];
   const visibleQuests = catalog.quests.filter(quest => quest.name.toLowerCase().includes(questFilter.toLowerCase()));
   const visiblePortals = catalog.portals.filter(portal => portal.name.toLowerCase().includes(portalFilter.toLowerCase()));
-  const unlockGroups = useMemo(() => groupBy(catalog.unlocks), [catalog]);
+  const unlockGroups = useMemo(() => groupBy(catalog.unlocks.filter(unlock => !isRespawn(unlock.id))), [catalog]);
+  const respawns = useMemo(() => catalog.unlocks.filter(unlock => isRespawn(unlock.id)), [catalog]);
+  const accountSettings = useMemo(() => catalog.settings.filter(isAccountSetting), [catalog]);
+  const prifddinas = accountSettings.find(setting => setting.key === "respawnPrifddinas");
+  const unlocked = checked(values.unlocks);
+  // The game keeps one respawn point; Lumbridge is the default, and Prifddinas is a plugin setting.
+  const respawn = prifddinas && settingValue(prifddinas, changedSettings) === true ? PRIFDDINAS : unlocked.find(isRespawn) || "";
+  const respawnName = respawn === PRIFDDINAS ? "Prifddinas" : respawns.find(option => option.id === respawn)?.name || "Lumbridge";
+  const chooseRespawn = (choice: string) => {
+    setValue("unlocks", [...unlocked.filter(unlock => !isRespawn(unlock)), ...choice && choice !== PRIFDDINAS ? [choice] : []],
+      { shouldDirty: true });
+    if (prifddinas && (respawn === PRIFDDINAS) !== (choice === PRIFDDINAS)) {
+      onSettingsChange?.(changeSetting(changedSettings, prifddinas, choice === PRIFDDINAS));
+    }
+  };
   const itemCount = itemFields.reduce((count, field) => count + Object.keys(items[field]).length, 0);
   const nameOf = (options: Option[], id: string) => options.find(option => option.id === id)?.name || id;
 
   useEffect(() => { reset(defaults); setItems(pickItems(account)); setMessage(""); }, [account, defaults, reset]);
   useEffect(() => { if (open) heading.current?.focus(); }, [open]);
+  // Plan routes with the account as it is edited, once the edits pause; invalid values keep the last good draft.
+  const draftKey = JSON.stringify([values, items]);
+  const reportDraft = useRef(onDraft);
+  reportDraft.current = onDraft;
+  useEffect(() => {
+    if (!dirty) { reportDraft.current?.(undefined); return; }
+    const timer = setTimeout(() => {
+      try { reportDraft.current?.(build(getValues())); } catch { /* keep the last valid draft */ }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [draftKey, dirty]);
+  useEffect(() => () => reportDraft.current?.(undefined), []);
 
   const toggleSection = (id: SectionId, isOpen: boolean) => setOpenSections(current => {
     if (current.has(id) === isOpen) return current;
@@ -304,23 +348,36 @@ export function AccountPanel({ accounts, selected, catalog, open, onSelect, onSa
         </Section>
 
         <Section id="unlocks" title="Unlocks" open={openSections.has("unlocks")} onToggle={toggleSection}
-          summary={[plural(values.unlocks.length, "unlock"), plural(values.plantedSpiritTrees.length, "spirit tree")].join(" · ")}>
+          summary={[`Respawn ${respawnName}`, plural(unlocked.filter(unlock => !isRespawn(unlock)).length, "unlock"),
+            plural(values.plantedSpiritTrees.length, "spirit tree")].join(" · ")}>
+          <div className="option-rows">
+            <label className="option-row"><span className="option-name">Respawn point</span>
+              <select aria-label="Respawn point" value={respawn} onChange={event => chooseRespawn(event.target.value)}>
+                <option value="">Lumbridge</option>
+                {respawns.map(option => <option key={option.id} value={option.id}>{option.name}</option>)}
+                {prifddinas && <option value={PRIFDDINAS}>Prifddinas</option>}
+              </select></label>
+          </div>
           {[...unlockGroups].map(([group, unlocks]) => <fieldset className="check-group" key={group}>
             <legend>{group}</legend>
-            <div className="check-grid">{unlocks.map(unlock => <label className="check-pill" key={unlock.id}>
-              <input type="checkbox" value={unlock.id} {...register("unlocks")} /><span>{unlock.name}</span>
-            </label>)}</div>
+            <div className="option-rows">{unlocks.map(unlock =>
+              <SwitchRow key={unlock.id} label={unlock.name} value={unlock.id} {...register("unlocks")} />)}</div>
           </fieldset>)}
+          {accountSettings.length > 1 && onSettingsChange && <fieldset className="check-group">
+            <legend>Not reported by the game</legend>
+            <p className="option-note">Route settings: they apply to every account.</p>
+            <div className="option-rows">{accountSettings.filter(setting => setting !== prifddinas).map(setting =>
+              <SettingField key={setting.key} setting={setting} changed={changedSettings} onChange={onSettingsChange} />)}</div>
+          </fieldset>}
           <fieldset className="check-group"><legend>Planted spirit trees</legend>
-            <div className="check-grid">{catalog.plantedSpiritTrees.map(tree => <label className="check-pill" key={tree.id}>
-              <input type="checkbox" value={tree.id} {...register("plantedSpiritTrees")} /><span>{tree.name}</span>
-            </label>)}</div>
+            <div className="option-rows">{catalog.plantedSpiritTrees.map(tree =>
+              <SwitchRow key={tree.id} label={tree.name} value={tree.id} {...register("plantedSpiritTrees")} />)}</div>
           </fieldset>
         </Section>
 
         <Section id="house" title="Player-owned house" open={openSections.has("house")} onToggle={toggleSection}
           summary={values.hasHouse ? nameOf(catalog.houseLocations, values.house.location) : "None"}>
-          <label className="check-pill"><input type="checkbox" {...register("hasHouse")} /><span>Has a player-owned house</span></label>
+          <div className="option-rows"><SwitchRow label="Has a player-owned house" {...register("hasHouse")} /></div>
           {values.hasHouse && <>
             <label className="field-label">House location<select {...register("house.location")}>
               {catalog.houseLocations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}</select></label>
@@ -330,16 +387,14 @@ export function AccountPanel({ accounts, selected, catalog, open, onSelect, onSa
               </label>)}
             </div></fieldset>
             <h4>Fixtures</h4>
-            <div className="check-grid">{houseFixtures.map(([name, label]) => <label className="check-pill" key={name}>
-              <input type="checkbox" {...register(`house.${name}`)} /><span>{label}</span>
-            </label>)}</div>
-            <label className="check-pill"><input type="checkbox" {...register("allPortals")} /><span>Every nexus portal</span></label>
+            <div className="option-rows">{houseFixtures.map(([name, label]) =>
+              <SwitchRow key={name} label={label} {...register(`house.${name}`)} />)}
+              <SwitchRow label="Every nexus portal" {...register("allPortals")} /></div>
             {!values.allPortals && <>
               <div className="list-toolbar"><input type="search" value={portalFilter} onChange={event => setPortalFilter(event.target.value)}
                 placeholder="Filter portal destinations" aria-label="Filter portal destinations" /><span>{selectedPortals.length} selected</span></div>
-              <fieldset className="check-list"><legend className="sr-only">Portal destinations</legend>{visiblePortals.map(portal => <label className="check-pill" key={portal.id}>
-                <input type="checkbox" value={portal.id} {...register("house.portals")} /><span>{portal.name}</span>
-              </label>)}</fieldset>
+              <fieldset className="check-list option-rows"><legend className="sr-only">Portal destinations</legend>{visiblePortals.map(portal =>
+                <SwitchRow key={portal.id} label={portal.name} value={portal.id} {...register("house.portals")} />)}</fieldset>
             </>}
           </>}
         </Section>
@@ -367,9 +422,8 @@ export function AccountPanel({ accounts, selected, catalog, open, onSelect, onSa
             <button type="button" className="text-button" onClick={() => setValue("completedQuests",
               completedQuests.filter(quest => !visibleQuests.some(shown => shown.id === quest)), { shouldDirty: true })}>Clear shown</button>
           </div>
-          <fieldset className="check-list"><legend className="sr-only">Completed quests</legend>{visibleQuests.map(quest => <label className="check-pill" key={quest.id}>
-            <input type="checkbox" value={quest.id} {...register("completedQuests")} /><span>{quest.name}</span>
-          </label>)}</fieldset>
+          <fieldset className="check-list option-rows"><legend className="sr-only">Completed quests</legend>{visibleQuests.map(quest =>
+            <SwitchRow key={quest.id} label={quest.name} value={quest.id} {...register("completedQuests")} />)}</fieldset>
         </Section>
       </form>
     </div>
