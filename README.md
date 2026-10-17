@@ -28,6 +28,23 @@ Tests: `gradle :service:test` and `npm test`.
 | `tooling/` | shortest-path-tooling (submodule), with its `corpus/schemas` contracts |
 | `Dockerfile` | The release image |
 
+## Keeping in step with the plugin
+
+The planner's options come from the plugin's own config (`ShortestPathConfig`) through
+`GET /v1/catalog`, so a plugin update can't silently leave the web UI behind. Bumping the
+`tooling` submodule runs these guards:
+
+- `PlannerSettings` puts every routing setting in a group (everyday, transport, threshold,
+  advanced). A setting it doesn't place stops the catalog from building.
+- Plugin settings that describe the account (unlocks the game doesn't report) are account
+  `Unlock`s of kind `SETTING`, not route settings.
+- `CatalogNames` names every unlock; `CatalogTest` fails on a missing name.
+- `RouteSchemaTest` checks the served catalog against `route-api-v1.schema.json`.
+- `RequirementCoverageTest` fails when a transport needs a game variable no account fact sets,
+  beyond the reviewed `KNOWN_GAPS`.
+
+The frontend keeps no lists of setting keys: it shows settings by the catalog's group and names.
+
 ## Route logs
 
 Every `POST /v1/route` writes one JSON log line from the `route` logger. It records the endpoints, the
