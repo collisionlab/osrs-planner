@@ -64,7 +64,7 @@ final class RoutingEngine {
         RouteApi.RoutePlan cached = routes.getIfPresent(routeKey);
         stats.put("routeCacheHit", cached != null);
         if (cached != null) {
-            return new Routed(cached, stats);
+            return new Routed(named(cached, request), stats);
         }
 
         long compileStart = System.nanoTime();
@@ -103,6 +103,22 @@ final class RoutingEngine {
             account.backend, ItemCatalog::name);
         routes.put(routeKey, plan);
         return new Routed(plan, stats);
+    }
+
+    /**
+     * A cached plan for this request's own endpoints: the cache key is the tiles, so the plan holds
+     * whichever place names first asked for them.
+     */
+    private static RouteApi.RoutePlan named(RouteApi.RoutePlan cached, RouteApi.RouteRequest request) {
+        RouteApi.RoutePlan plan = new RouteApi.RoutePlan();
+        plan.apiVersion = cached.apiVersion;
+        plan.reachable = cached.reachable;
+        plan.costTicks = cached.costTicks;
+        plan.start = request.start;
+        plan.destination = request.destination;
+        plan.segments = cached.segments;
+        plan.metadata = cached.metadata;
+        return plan;
     }
 
     /** The exact search's phase timings and the forward search counters most useful for tuning. */

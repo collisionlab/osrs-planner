@@ -28,6 +28,16 @@ class RoutingEngineTest {
     }
 
     @Test
+    void cachedPlansCarryTheirOwnPlaceNames() {
+        RouteApi.RouteRequest first = Requests.route("early", 3222, 3218, 3230, 3230);
+        first.start.name = "a";
+        ENGINE.route(first);
+        RouteApi.RouteRequest second = Requests.route("early", 3222, 3218, 3230, 3230);
+        second.start.name = "Lumbridge";
+        assertEquals("Lumbridge", ENGINE.route(second).start.name);
+    }
+
+    @Test
     void settingsReachThePathfinder() {
         RouteApi.RouteRequest request = Requests.route("maxed", 3222, 3218, 2757, 3477);
         request.settings.put("includeBankPath", false);
