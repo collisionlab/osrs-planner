@@ -102,10 +102,15 @@ export interface OsrsMapProps {
   onMoveStart?(point: WorldPoint): void;
   onMoveDestination?(point: WorldPoint): void;
   onSelectSegment?(index?: number): void;
+  /** Whether the inset map is shown; without it, the map keeps its own choice. */
+  insets?: boolean;
+  onInsetsChange?(insets: boolean): void;
 }
 
 export function OsrsMap(props: OsrsMapProps) {
-  const [insets, setInsets] = useState(() => !!insetPin && new URLSearchParams(location.search).get("insets") === "1");
+  const [ownInsets, setOwnInsets] = useState(false);
+  const insets = !!insetPin && (props.insets ?? ownInsets);
+  const setInsets = (value: boolean) => props.onInsetsChange ? props.onInsetsChange(value) : setOwnInsets(value);
   const [fitRequest, setFitRequest] = useState(0);
   const [style, setStyle] = useState<MapStyle>(savedStyle);
   const layer = mapLayers[style] ?? mapLayers.standard!;
@@ -117,7 +122,7 @@ export function OsrsMap(props: OsrsMapProps) {
       <MapContents {...props} fitRequest={fitRequest} />
     </MapContainer>}
     <div className="map-controls">
-      {insetPin && <button type="button" aria-pressed={insets} onClick={() => setInsets(value => !value)}>Insets</button>}
+      {insetPin && <button type="button" className="inset-toggle" aria-pressed={insets} onClick={() => setInsets(!insets)}>Insets</button>}
       {!insets && <button type="button" className="fit-route-button" onClick={() => setFitRequest(value => value + 1)}>Fit route</button>}
       {styles.length > 1 && <div className="map-style-toggle" role="group" aria-label="Map style">
         {styles.map(([id, { label }]) => <button key={id} type="button" aria-pressed={style === id}

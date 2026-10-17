@@ -51,11 +51,11 @@ input, select, textarea { accent-color: var(--orange); }
 .live-square { display: inline-block; width: 6px; height: 6px; flex-shrink: 0; background: var(--orange); }
 
 .map-controls { position: absolute; z-index: 600; right: 12px; top: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-.fit-route-button, .map-style-toggle button { padding: 7px 10px; color: var(--text); background: var(--ink); border: 1px solid var(--line); font: 10px var(--pixel); }
-.fit-route-button:hover, .map-style-toggle button:hover { color: var(--orange); border-color: var(--orange); }
+.fit-route-button, .inset-toggle, .map-style-toggle button { padding: 7px 10px; color: var(--text); background: var(--ink); border: 1px solid var(--line); font: 10px var(--pixel); }
+.fit-route-button:hover, .inset-toggle:hover, .map-style-toggle button:hover { color: var(--orange); border-color: var(--orange); }
 .map-style-toggle { display: flex; }
 .map-style-toggle button + button { border-left: 0; }
-.map-style-toggle button[aria-pressed='true'] { color: var(--ink); background: var(--orange); border-color: var(--orange); }
+.inset-toggle[aria-pressed='true'], .map-style-toggle button[aria-pressed='true'] { color: var(--ink); background: var(--orange); border-color: var(--orange); }
 .update-prompt { position: fixed; z-index: 2000; left: 50%; bottom: 36px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 12px; color: var(--text); background: var(--ink); border: 1px solid var(--orange); font-size: 12px; }
 .update-prompt button { padding: 6px 10px; color: var(--ink); background: var(--orange); border: 0; font: 10px var(--pixel); cursor: pointer; }
 .map-message { position: absolute; z-index: 500; left: 12px; bottom: 12px; display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 12px 8px 8px; color: var(--text); background: var(--ink); border: 1px solid var(--line); font-size: 12px; pointer-events: none; }

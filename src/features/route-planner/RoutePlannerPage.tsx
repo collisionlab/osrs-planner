@@ -153,7 +153,8 @@ export function RoutePlannerPage() {
         <Suspense fallback={<div className="map-loading" role="status">Loading map…</div>}><OsrsMap start={urlState.start}
           destination={urlState.destination} route={route.data} selectedSegment={selectedSegment}
           onSelectSegment={setSelectedSegment} onPick={pickMap} onMoveStart={point => update({ start: customLocation(point) })}
-          onMoveDestination={point => update({ destination: customLocation(point) })} /></Suspense>
+          onMoveDestination={point => update({ destination: customLocation(point) })}
+          insets={urlState.insets ?? false} onInsetsChange={insets => update({ insets: insets || undefined }, true)} /></Suspense>
         {!urlState.start || !urlState.destination ? <p className="map-message"><span aria-hidden="true">{urlState.start ? "B" : "A"}</span>{urlState.start ? "Select destination on map" : "Select origin on map or search above"}</p> : null}
       </section>
       <Itinerary start={urlState.start} destination={urlState.destination} route={route.data} isFetching={route.isFetching}

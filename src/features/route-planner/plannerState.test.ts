@@ -18,6 +18,14 @@ describe("planner URL state", () => {
     expect(readPlannerUrl(params)).toEqual({ ...state, start: { ...state.start, name: "3200, 3201, plane 1" } });
   });
 
+  it("keeps the inset map choice out of the settings", () => {
+    const state = readPlannerUrl(new URLSearchParams("insets=1&from=lumbridge"));
+    expect(state.insets).toBe(true);
+    expect(state.settings).toEqual({});
+    expect(writePlannerUrl(state).get("insets")).toBe("1");
+    expect(readPlannerUrl(new URLSearchParams("insets=1"), { useFairyRings: false }).settings).toEqual({ useFairyRings: false });
+  });
+
   it("uses the stored settings only when the URL has no planner state", () => {
     expect(readPlannerUrl(new URLSearchParams(), { useFairyRings: false }).settings).toEqual({ useFairyRings: false });
     expect(readPlannerUrl(new URLSearchParams("account=mid"), { useFairyRings: false }).settings).toEqual({});
