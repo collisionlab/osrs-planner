@@ -28,7 +28,7 @@ input, select, textarea { accent-color: var(--orange); }
 .topbar { display: grid; grid-template-columns: 238px minmax(0, 1fr) 154px; align-items: center; gap: 20px; min-height: 66px; padding: 10px 16px; background: var(--ink); border-bottom: 2px solid var(--line); position: relative; z-index: 1100; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font: 16px/1.2 var(--pixel); }
 .brand-mark { color: var(--orange); font: 32px/1 monospace; }
-.brand small { display: block; margin-top: 6px; color: var(--muted); font: 9px/1 var(--pixel); }
+.brand small { display: block; color: var(--muted); font: 10px/1.2 var(--pixel); }
 .searches { display: flex; align-items: center; gap: 10px; }
 .searches label { display: flex; align-items: center; flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--line); }
 .searches label:focus-within { border-color: var(--cyan); box-shadow: 0 2px 0 var(--cyan); }
@@ -285,7 +285,7 @@ input, select, textarea { accent-color: var(--orange); }
 @media (max-width: 1100px) {
   .topbar { grid-template-columns: 200px minmax(0, 1fr) 138px; gap: 12px; padding-inline: 12px; }
   .brand { font-size: 14px; }
-  .brand small { font-size: 8px; }
+  .brand small { font-size: 9px; }
   .footer-hint { display: none; }
   .map-label > span:last-child { display: none; }
 }
@@ -310,7 +310,7 @@ input, select, textarea { accent-color: var(--orange); }
   .topbar { grid-template-columns: 1fr 128px; }
   .brand { font-size: 12px; gap: 6px; }
   .brand-mark { font-size: 24px; }
-  .brand small { font-size: 7px; }
+  .brand small { font-size: 8px; }
   .account-toggle { display: grid; gap: 3px; }
   .searches { gap: 5px; }
   .searches label span { width: 34px; font-size: 8px; }

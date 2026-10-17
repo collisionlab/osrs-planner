@@ -125,7 +125,7 @@ export function RoutePlannerPage() {
   return <div className="app-shell">
     <datalist id="places">{places.map(place => <option key={place.placeId} value={place.name} />)}</datalist>
     <header className="topbar">
-      <a className="brand" href="/route" aria-label="OSRS Travel home"><span className="brand-mark" aria-hidden="true">▣</span><span>OSRS TRAVEL<small>GIELINOR / ROUTE TERMINAL</small></span></a>
+      <a className="brand" href="/route" aria-label="Route planner home"><span className="brand-mark" aria-hidden="true">▣</span><small>GIELINOR / ROUTE TERMINAL</small></a>
       <div className="searches" aria-label="Route endpoints">
         <PlaceInput label="From" location={urlState.start} onSelect={chooseStart} /><span className="arrow" aria-hidden="true">→</span>
         <PlaceInput label="To" location={urlState.destination} onSelect={chooseDestination} />
