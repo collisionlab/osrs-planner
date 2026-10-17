@@ -84,3 +84,14 @@ export function routeMarkerOverlay(feature: Feature<Point>, kind: keyof typeof r
   feature.on("change", update); update();
   return { overlay, dispose: () => feature.un("change", update) };
 }
+
+const ink = "#141914";
+const doorLooks = [false, true].map(open => [
+  new Style({ image: new RegularShape({ points: 4, radius: 8, angle: Math.PI / 4,
+    fill: new Fill({ color: open ? "#ffae47" : ink }), stroke: new Stroke({ color: open ? ink : "#f7f1dc", width: 1.5 }) }) }),
+  new Style({ image: new RegularShape({ points: 3, radius: 3.5, rotation: Math.PI, fill: new Fill({ color: open ? ink : "#f7f1dc" }) }) }),
+]);
+/** An entrance to a named area, as a small square with a down arrow; filled once the area is shown. */
+export function doorStyle(feature: FeatureLike): Style[] {
+  return doorLooks[feature.get("open") ? 1 : 0];
+}

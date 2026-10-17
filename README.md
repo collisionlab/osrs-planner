@@ -74,6 +74,13 @@ It stays `null` until a validated bundle has been published. Once pinned, the
 The normal map remains available during rollout. Inset code loads only when
 needed. The default stays on the existing map for this first integration.
 
+Areas a route doesn't reach can be shown too. Search for one in the **Area** box, or zoom in to
+level 8 or closer and click a surface entrance marker. The area is drawn beside the entrance, and
+clicking inside it places A or B there. The named areas and their entrances come from the
+release's `anchors.json`, which is fetched only once the inset map is open. Small upper floors (at most
+96 tiles across) a route climbs to are drawn as insets beside their building, stacked in plane
+order, so a route that only changes plane is not drawn on top of the ground floor.
+
 All imagery uses Explv's tile layout. Base plane-0 tiles are reused; missing
 coverage and higher floors come from the sidecar's supplemental tiles. Runtime
 checks schemas, release versions, content hashes and label compatibility before

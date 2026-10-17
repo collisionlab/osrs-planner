@@ -14,17 +14,17 @@ import { createEmpty, extend, isEmpty } from "ol/extent";
 import type { Coordinate } from "ol/coordinate";
 import type { OsrsMapProps } from "../OsrsMap";
 import type { WorldPoint } from "../../domain/contracts";
-import type { InsetAssets } from "./assets";
+import type { InsetArea, InsetAssets, InsetDoor } from "./assets";
 import { contains } from "./geometry";
 import { catalogueClassifier, isDetachedUpperFloor } from "./preview";
-import { decomposeRoute } from "./routeSections";
+import { decomposeRoute, type RouteTransition } from "./routeSections";
 import { layoutRegions, regionExtent, type Placement } from "./layout";
 import { worldToMap, mapToWorld, osrsProjection, resolutions, MAX_ZOOM, MIN_ZOOM } from "./projection";
 import { surfaceLayer } from "./tactical";
 import { regionTerrain } from "./terrain";
 import { PastedTerrainSource } from "./PastedTerrainSource";
 import { RegionFeatures } from "./RegionFeatures";
-import { endpointPixels, routeFeatureStyle, routeMarkerOverlay } from "./routeStyles";
+import { doorStyle, endpointPixels, routeFeatureStyle, routeMarkerOverlay } from "./routeStyles";
 import { regionContour } from "./contour";
 
 export function segmentPoints(segment: NonNullable<OsrsMapProps["route"]>["segments"][number]): WorldPoint[] {
@@ -42,18 +42,36 @@ export function pickWorld(coordinate: Coordinate, assets: InsetAssets, placement
   return mapToWorld(coordinate, fallbackPlane);
 }
 
+export interface AreaOptions {
+  /** Named areas to show even though the route doesn't reach them. */
+  shown?: InsetArea[];
+  /** Surface entrances to mark when zoomed in; clicking one calls `onDoor`. */
+  doors?: InsetDoor[];
+  onDoor?(door: InsetDoor): void;
+}
+
 export function createComposition(target: HTMLElement, assets: InsetAssets, props: OsrsMapProps,
   callbacks: () => OsrsMapProps, layer: { url: string; attribution: string; maxNativeZoom?: number },
-  tacticalBase: string, report: (message: string) => void, initialView?: { center: Coordinate; resolution: number }) {
+  tacticalBase: string, report: (message: string) => void, initialView?: { center: Coordinate; resolution: number },
+  areas: AreaOptions = {}) {
   const { route, start, destination } = props;
   const classify = catalogueClassifier(assets.catalogue, { detachUpperFloors: true });
   const points = [start?.coordinate, destination?.coordinate, ...(route?.segments.flatMap(segmentPoints) || [])]
     .filter((point): point is WorldPoint => !!point);
   const touched = new Set(points.map(classify));
-  const shapes = assets.catalogue.regions.filter(region => touched.has(region.id));
+  // A shown area keeps its entrance placement once an endpoint is put in it; a route that really
+  // crosses into it is laid out first, so its own crossing wins.
+  const shown = areas.shown || [];
+  const shapes = assets.catalogue.regions.filter(region => touched.has(region.id) || shown.some(area => area.regionId === region.id));
   const decomposed = route ? decomposeRoute(route, classify) : { sections: [], transitions: [] };
   const surfacePoints = points.filter(point => classify(point) === "main-world").map(worldToMap);
-  const placements = layoutRegions(shapes, decomposed.transitions.filter(t => t.kind === "region"), surfacePoints, 40 * 8,
+  // A shown area is entered the way its anchors say, as if the route crossed there.
+  const entrances: RouteTransition[] = shown.filter(area => area.entrance).map(area => ({
+    segmentIndex: -1, kind: "region", fromRegion: classify(area.entrance!.surface), toRegion: area.regionId,
+    source: { kind: "transport", name: area.name, transportId: `entrance:${area.regionId}`, from: area.entrance!.surface,
+      to: area.entrance!.inside, costTicks: 0, requirements: [] },
+  }));
+  const placements = layoutRegions(shapes, [...decomposed.transitions.filter(t => t.kind === "region"), ...entrances], surfacePoints, 40 * 8,
     new Set(shapes.filter(isDetachedUpperFloor).map(shape => shape.id)));
   // Unknown coordinates remain visible in their original world position.
   if (touched.has("unmapped") && !placements.has("unmapped")) placements.set("unmapped", { offset: [0, 0], anchored: false });
@@ -121,6 +139,17 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
   const contours = new VectorSource();
   map.addLayer(new VectorLayer({ source: contours, zIndex: 5, updateWhileInteracting: true, updateWhileAnimating: true,
     style: [new Style({ stroke: new Stroke({ color: "#c6b994", width: 8 }) }), new Style({ stroke: new Stroke({ color: "#262b25", width: 6 }) })] }));
+  // Shown areas: a faint line from the surface entrance to where it leads, which follows inset drags.
+  const entranceSource = new VectorSource();
+  map.addLayer(new VectorLayer({ source: entranceSource, zIndex: 90, updateWhileInteracting: true, updateWhileAnimating: true,
+    style: new Style({ stroke: new Stroke({ color: "#f7f1dc", width: 2, lineDash: [2, 6] }) }) }));
+  for (const crossing of entrances) {
+    const line = new LineString([projected(crossing.source.from), projected(crossing.source.to)]);
+    entranceSource.addFeature(new Feature(line)); owned.addLink(crossing.fromRegion, crossing.toRegion, line);
+  }
+  const doorSource = new VectorSource();
+  const doorLayer = new VectorLayer({ source: doorSource, zIndex: 95, maxResolution: 8.01, style: doorStyle });
+  map.addLayer(doorLayer);
   const resets: (() => void)[] = [];
   let failures = 0;
   const warnings = touched.has("unmapped") ? ["Some route points have no inset terrain."] : [];
@@ -187,6 +216,15 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
   const picked = new Map(shapes.map(shape => [shape.id, placements.get(shape.id)!]));
   upper.forEach(shape => picked.set(shape.id, { offset: [0, 0], anchored: true }));
   hitPlacements = picked;
+  for (const door of areas.doors || []) {
+    // Entrances under a pasted inset would look like part of it.
+    const at = projected(door.point), under = pickWorld(at, assets, picked);
+    if (classify(door.point) !== "main-world" || classify(under) !== "main-world") continue;
+    const feature = new Feature(new Point(at));
+    feature.setProperties({ door, open: door.regionIds.some(id => placements.has(id)),
+      name: [...new Set(door.regionIds.map(id => assets.labels[id]?.name).filter(Boolean))].join(" / ") });
+    doorSource.addFeature(feature);
+  }
   const fitPoints = (coordinates: Coordinate[], maxZoom = 9) => {
     if (!coordinates.length) return;
     const extent = createEmpty(); coordinates.forEach(point => extend(extent, [...point, ...point]));
@@ -221,6 +259,8 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
   });
   map.on("singleclick", event => {
     if (draggingEndpoint) return;
+    const door = map.forEachFeatureAtPixel(event.pixel, feature => feature, { layerFilter: candidate => candidate === doorLayer, hitTolerance: 4 });
+    if (door) { areas.onDoor?.(door.get("door")); return; }
     const hit = map.forEachFeatureAtPixel(event.pixel, feature => feature, { layerFilter: candidate => candidate === routes, hitTolerance: 6 });
     if (hit) {
       const index = hit.get("segmentIndex");
@@ -231,8 +271,10 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
   });
   map.on("pointermove", event => {
     if (event.dragging) return;
-    const hit = map.forEachFeatureAtPixel(event.pixel, feature => feature, { layerFilter: candidate => candidate === routes, hitTolerance: 4 });
+    const door = map.forEachFeatureAtPixel(event.pixel, feature => feature, { layerFilter: candidate => candidate === doorLayer, hitTolerance: 4 });
+    const hit = door || map.forEachFeatureAtPixel(event.pixel, feature => feature, { layerFilter: candidate => candidate === routes, hitTolerance: 4 });
     target.style.cursor = hit ? "pointer" : "";
+    target.title = door ? `${door.get("name")} — click to ${door.get("open") ? "hide" : "show"}` : "";
   });
   const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => map.updateSize()) : undefined;
   observer?.observe(target);
@@ -240,6 +282,15 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
   else fit();
   return {
     fit,
+    /** Show a whole region and where it is entered from. */
+    fitRegion(regionId: string) {
+      const shape = shapes.find(candidate => candidate.id === regionId), placement = placements.get(regionId);
+      if (!shape || !placement) return;
+      const extent = regionExtent(shape, placement.offset);
+      const crossing = entrances.find(entrance => entrance.toRegion === regionId);
+      if (crossing) extend(extent, [...projected(crossing.source.from), ...projected(crossing.source.from)]);
+      view.fit(extent, { padding: [90, 70, 70, 70], maxZoom: 9, duration: 250 });
+    },
     /** Where the view is, to restore it in a rebuilt composition. */
     view: () => ({ center: view.getCenter()!, resolution: view.getResolution()! }),
     reset() { resets.forEach(reset => reset()); fit(); },
@@ -266,7 +317,7 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
     },
     dispose() {
       disposed = true; observer?.disconnect(); cleanup.forEach(fn => fn());
-      map.setTarget(undefined); map.dispose(); target.style.cursor = "";
+      map.setTarget(undefined); map.dispose(); target.style.cursor = ""; target.title = "";
     },
   };
 }

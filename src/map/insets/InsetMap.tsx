@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { OsrsMapProps } from "../OsrsMap";
 import type { WorldPoint } from "../../domain/contracts";
 import { mapLayers, insetPin, type MapStyle } from "../layers";
 import tiles from "../../../tiles.json";
-import { loadInsetAssets, type InsetAssets } from "./assets";
+import { loadInsetAssets, loadInsetEntrances, type InsetArea, type InsetAssets, type InsetDoor, type InsetEntrances } from "./assets";
+import { AreaPicker } from "./AreaPicker";
 import { createComposition } from "./composition";
 import "ol/ol.css";
 import "../routeMarkers.css";
@@ -30,6 +31,24 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
   const [assets, setAssets] = useState<InsetAssets>();
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
+  // Named areas shown without a route: from the search box, or by clicking an entrance on the map.
+  const [entrances, setEntrances] = useState<InsetEntrances>();
+  // Each shown area, entered from the door clicked, or else its default entrance.
+  const [shownAreas, setShownAreas] = useState<{ regionId: string; entrance?: InsetArea["entrance"] }[]>([]);
+  const focus = useRef<string>(undefined);
+  const areasById = useMemo(() => new Map(entrances?.areas.map(area => [area.regionId, area])), [entrances]);
+  const shown = useMemo(() => shownAreas.flatMap(({ regionId, entrance }) => {
+    const area = areasById.get(regionId);
+    return area ? [{ ...area, entrance: entrance || area.entrance }] : [];
+  }), [shownAreas, areasById]);
+  const show = (regionId: string, entrance?: InsetArea["entrance"]) => {
+    focus.current = regionId;
+    setShownAreas(current => [...current.filter(area => area.regionId !== regionId), { regionId, entrance }]);
+  };
+  const hide = (regionIds: string[]) => setShownAreas(current => current.filter(area => !regionIds.includes(area.regionId)));
+  const toggleDoor = useRef((_: InsetDoor) => {});
+  toggleDoor.current = door => door.regionIds.every(id => shownAreas.some(area => area.regionId === id)) ? hide(door.regionIds)
+    : door.regionIds.forEach(id => show(id, { surface: door.point, inside: door.inside[id] }));
   useEffect(() => {
     const abort = new AbortController();
     if (!insetPin || insetPin.tileVersion !== tiles.version) { setError("Insets are not available for these map tiles."); return; }
@@ -39,18 +58,31 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
     return () => abort.abort();
   }, []);
   useEffect(() => {
+    if (!assets) return;
+    const abort = new AbortController();
+    // Without entrances the map still works; there is just no area search.
+    void loadInsetEntrances(assets, abort.signal).then(value => { if (!abort.signal.aborted) setEntrances(value); }, () => {});
+    return () => abort.abort();
+  }, [assets]);
+  // Showing or hiding an area keeps the view (or moves to the new area) instead of fitting the route.
+  const areasChanged = useRef(false);
+  useEffect(() => { areasChanged.current = true; }, [shown, entrances]);
+  useEffect(() => {
     if (!assets || !target.current) return;
     try {
       const layer = mapLayers[props.style] || mapLayers.standard!;
-      const previous = keepView.current ? lastView.current : undefined;
+      const previous = keepView.current || areasChanged.current ? lastView.current : undefined;
+      areasChanged.current = false;
       if (keepView.current && routeMatches(props)) keepView.current = false;
       const instance = createComposition(target.current, assets, props, () => callbacks.current, layer,
-        `${tiles.base}/tactical/${tiles.version}`, setStatus, previous);
+        `${tiles.base}/tactical/${tiles.version}`, setStatus, previous,
+        { shown, doors: entrances?.doors, onDoor: door => toggleDoor.current(door) });
       composition.current = instance;
+      if (focus.current) { instance.fitRegion(focus.current); focus.current = undefined; }
       instance.select(callbacks.current.selectedSegment);
       return () => { lastView.current = instance.view(); composition.current = undefined; instance.dispose(); };
     } catch (error) { setError(String(error)); }
-  }, [assets, props.route, props.start, props.destination, props.style]);
+  }, [assets, props.route, props.start, props.destination, props.style, shown, entrances]);
   useEffect(() => { composition.current?.select(props.selectedSegment); }, [props.selectedSegment]);
   useEffect(() => { composition.current?.preview(props.previewRoute); }, [props.previewRoute]);
   return <>
@@ -59,6 +91,7 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
       <button type="button" onClick={() => composition.current?.fit()}>Fit route</button>
       <button type="button" onClick={() => composition.current?.reset()}>Reset insets</button>
     </div>
+    {assets && <AreaPicker areas={entrances?.areas} shown={shown} onShow={area => show(area.regionId)} onHide={area => hide([area.regionId])} />}
     {(error || status || !assets) && <div className="map-message" role="status">
       {error || status || "Loading inset terrain…"}
       {error && <button type="button" onClick={props.onFallback}>Use standard map</button>}

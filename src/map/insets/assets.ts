@@ -1,4 +1,5 @@
 import Ajv from "ajv";
+import type { WorldPoint } from "../../domain/contracts";
 import type { Catalogue } from "./preview";
 
 export interface InsetManifest {
@@ -7,13 +8,13 @@ export interface InsetManifest {
   layout: "explv-tms-v1";
   tileVersion: string;
   cacheIdx255Sha256: string;
-  files: Record<"regions.json" | "labels.json", string>;
+  files: Record<"regions.json" | "labels.json", string> & { "anchors.json"?: string };
   planes: number[][];
   supplemental: number[][];
 }
 export interface InsetAssets {
   catalogue: Catalogue;
-  labels: Record<string, { name: string; plane: number }>;
+  labels: Record<string, { name: string; plane: number; status?: string }>;
   manifest: InsetManifest;
   base: string;
 }
@@ -91,4 +92,63 @@ export async function loadInsetAssets(base: string, tileVersion: string, signal:
     }
   }
   return { catalogue, labels: naming.regions, manifest: checked, base };
+}
+
+/** A named area's way in from the surface: where to stand outside, and where that puts you. */
+export interface InsetEntrance { surface: WorldPoint; inside: WorldPoint }
+export interface InsetArea { regionId: string; name: string; tileCount: number; entrance?: InsetEntrance }
+export interface InsetDoor { point: WorldPoint; regionIds: string[]; inside: Record<string, WorldPoint> }
+export interface InsetEntrances {
+  /** Named areas, by name, then largest first. */
+  areas: InsetArea[];
+  /** Surface tiles that lead straight into a named area, and where in each area they lead. */
+  doors: InsetDoor[];
+}
+
+const worldPoint = (value: unknown): WorldPoint | undefined => Array.isArray(value) && value.length === 3
+  && value.every(Number.isInteger) ? { x: value[0], y: value[1], plane: value[2] } : undefined;
+
+/**
+ * The named areas and their surface entrances, from the release's `anchors.json` (fetched only when
+ * first needed). An area's entrance is its default anchor; its inside point is where the anchor's
+ * last connection arrives in it.
+ */
+export async function loadInsetEntrances(assets: InsetAssets, signal?: AbortSignal): Promise<InsetEntrances> {
+  const hash = assets.manifest.files["anchors.json"];
+  if (!hash) throw new Error("This inset release has no entrances");
+  const response = await fetch(`${assets.base}/anchors.json`, { signal });
+  if (!response.ok) throw new Error(`Inset entrances unavailable (${response.status})`);
+  const raw = await response.text();
+  if (await sha256(raw) !== hash) throw new Error("Inset asset hash mismatch");
+  const anchors = JSON.parse(raw) as {
+    connections: Record<string, { source: { point: unknown; regionId: string }; target: { point: unknown; regionId: string } }>;
+    regions: Record<string, { anchors: { hops: number; point: unknown; path: { connectionId: string; reversed: boolean }[] }[]; defaultAnchor: number | null }>;
+  };
+  const regions = new Map(assets.catalogue.regions.map(region => [region.id, region]));
+  const areas: InsetArea[] = [];
+  const doors = new Map<string, InsetDoor>();
+  for (const [regionId, label] of Object.entries(assets.labels)) {
+    const region = regions.get(regionId);
+    if (!region || label.status === "unresolved") continue;
+    const entry = anchors.regions?.[regionId];
+    let entrance: InsetEntrance | undefined;
+    for (const [index, anchor] of (entry?.anchors || []).entries()) {
+      const last = anchor.path.at(-1), connection = last && anchors.connections[last.connectionId];
+      const surface = worldPoint(anchor.point);
+      const inside = connection && worldPoint(last.reversed ? connection.source.point : connection.target.point);
+      if (!surface || !inside) continue;
+      if (index === (entry!.defaultAnchor ?? 0) || !entrance) entrance = { surface, inside };
+      // One entrance often spans neighbouring tiles; mark it once.
+      if (anchor.hops === 1 && ![...doors.values()].some(door => door.regionIds.includes(regionId)
+        && door.point.plane === surface.plane && Math.max(Math.abs(door.point.x - surface.x), Math.abs(door.point.y - surface.y)) <= 3)) {
+        const key = `${surface.x},${surface.y},${surface.plane}`;
+        const door = doors.get(key) || { point: surface, regionIds: [], inside: {} };
+        door.regionIds.push(regionId); door.inside[regionId] = inside;
+        doors.set(key, door);
+      }
+    }
+    areas.push({ regionId, name: label.name, tileCount: region.tileCount, entrance });
+  }
+  areas.sort((a, b) => a.name.localeCompare(b.name) || b.tileCount - a.tileCount);
+  return { areas, doors: [...doors.values()] };
 }

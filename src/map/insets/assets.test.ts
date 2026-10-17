@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkCatalogue, loadInsetAssets, sha256 } from "./assets";
+import { checkCatalogue, loadInsetAssets, loadInsetEntrances, sha256 } from "./assets";
 import { requiredAssets } from "./testAssets";
 import { nativeTileUrl } from "./tactical";
 import { pickWorld } from "./composition";
@@ -42,6 +42,34 @@ describe("inset asset boundary", () => {
     await expect(loadInsetAssets("https://tiles/insets/i", "wrong", signal)).rejects.toThrow("match");
     files["regions.json"] += " ";
     await expect(loadInsetAssets("https://tiles/insets/i", "v", signal)).rejects.toThrow("hash mismatch");
+  });
+});
+
+describe("named areas and their entrances", () => {
+  it("lists named areas with where their entrances lead, and marks each entrance once", async () => {
+    const other: Region = { ...room, id: "nameless", bounds: [2900, 10000, 2905, 10005], mask: [[2900, 10000, 5, 5]] };
+    const base = requiredAssets([room, other]);
+    const hop = (connectionId: string, point: number[]) => ({ hops: 1, point, path: [{ connectionId, reversed: false }] });
+    const anchors = JSON.stringify({
+      connections: {
+        ladder: { source: { point: [2884, 3397, 0], regionId: "main" }, target: { point: [2805, 10005, 2], regionId: "cave" } },
+        stairs: { source: { point: [2805, 10001, 2], regionId: "cave" }, target: { point: [2950, 3300, 0], regionId: "main" } },
+      },
+      regions: { cave: { defaultAnchor: 1, anchors: [hop("ladder", [2884, 3397, 0]), hop("ladder", [2885, 3398, 0]),
+        { hops: 1, point: [2950, 3300, 0], path: [{ connectionId: "stairs", reversed: true }] }] } },
+    });
+    const assets = { ...base, base: "https://tiles/insets/i",
+      labels: { cave: { name: "Cave", plane: 2, status: "named" }, nameless: { name: "Unidentified", plane: 2, status: "unresolved" } },
+      manifest: { ...base.manifest, files: { ...base.manifest.files, "anchors.json": await sha256(anchors) } } };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(anchors)));
+    const { areas, doors } = await loadInsetEntrances(assets);
+    expect(areas).toEqual([{ regionId: "cave", name: "Cave", tileCount: 100,
+      entrance: { surface: { x: 2885, y: 3398, plane: 0 }, inside: { x: 2805, y: 10005, plane: 2 } } }]);
+    // The neighbouring ladder tile is the same entrance; the reversed stairs lead in from their target.
+    expect(doors.map(door => [door.point.x, door.inside.cave])).toEqual([[2884, { x: 2805, y: 10005, plane: 2 }],
+      [2950, { x: 2805, y: 10001, plane: 2 }]]);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(anchors + " ")));
+    await expect(loadInsetEntrances(assets)).rejects.toThrow("hash mismatch");
   });
 });
 

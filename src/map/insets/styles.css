@@ -15,3 +15,26 @@
 /* The tag's background is the marker colour (currentColor), so its letter is painted in ink. */
 .inset-endpoint-tag { position: absolute; left: calc(var(--endpoint-px, 10px) / 2 + 3px); bottom: calc(var(--endpoint-px, 10px) / 2 + 3px); display: grid; place-items: center; width: 15px; height: 15px; box-sizing: border-box; background: currentColor; box-shadow: 0 0 0 1px var(--ink, #141914); -webkit-text-fill-color: var(--ink, #141914); font: 9px/1 var(--pixel, Silkscreen, monospace); }
 .inset-endpoint-tag::before { content: ''; position: absolute; left: -3px; bottom: -3px; width: 3px; height: 3px; background: currentColor; }
+
+/* Area search: show a named underground or instanced area without a route. */
+.area-picker { position: absolute; z-index: 500; top: 80px; left: 50px; width: min(280px, calc(100% - 62px)); font-size: 12px; }
+.area-search { display: flex; align-items: stretch; background: var(--ink, #141914); border: 1px solid var(--line, #48533e); }
+.area-search:focus-within { border-color: var(--cyan, #77e2d4); }
+.area-search > span { display: grid; place-items: center; padding: 0 8px; color: var(--cyan, #77e2d4); border-right: 1px solid var(--line, #48533e); font: 9px var(--pixel, monospace); }
+.area-search input { flex: 1; min-width: 0; height: 28px; padding: 0 8px; color: var(--text, #e0e5cd); background: transparent; border: 0; outline: none; font: 12px 'Courier New', monospace; }
+.area-search input::placeholder { color: var(--muted, #a4af95); }
+.area-results { max-height: 260px; margin: 0; padding: 0; overflow: auto; list-style: none; background: var(--ink, #141914); border: 1px solid var(--line, #48533e); border-top: 0; scrollbar-width: thin; scrollbar-color: var(--line, #48533e) var(--ink, #141914); }
+.area-results li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 9px; color: var(--text, #e0e5cd); cursor: pointer; }
+.area-results li[aria-selected='true'] { color: var(--ink, #141914); background: var(--orange, #ffae47); }
+.area-results small { color: inherit; opacity: .7; font-size: 10px; white-space: nowrap; }
+.area-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 0; padding: 0; list-style: none; }
+.area-chips li { display: flex; align-items: center; max-width: 100%; color: var(--ink, #141914); background: var(--orange, #ffae47); font: 9px/1 var(--pixel, monospace); }
+.area-chips span { overflow: hidden; padding: 5px 0 5px 7px; text-overflow: ellipsis; white-space: nowrap; }
+.area-chips button { padding: 3px 7px; color: inherit; background: none; border: 0; font: 14px/1 monospace; cursor: pointer; }
+.area-chips button:hover { color: var(--text, #e0e5cd); background: var(--ink, #141914); }
+@media (max-width: 760px) {
+  /* Room for the inset controls beside the map style controls. */
+  .map:has(.inset-map) .map-label { display: none; }
+  .inset-actions { top: 12px; }
+  .area-picker { top: 86px; left: 12px; width: calc(100% - 24px); }
+}
