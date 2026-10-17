@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { loadCatalog } from "../../api/catalog";
 import { loadPresets } from "../../api/presets";
@@ -30,18 +30,49 @@ function loadStoredSettings(): ChangedSettings {
   catch { return {}; }
 }
 
+/** "3222, 3218" or "3222 3218 1" as a tile, else undefined. */
+function parseCoordinate(text: string): WorldPoint | undefined {
+  const match = /^\s*(\d{3,5})\s*[, ]\s*(\d{3,5})(?:\s*[, ]\s*(?:plane\s*)?([0-3]))?\s*$/i.exec(text);
+  return match ? { x: Number(match[1]), y: Number(match[2]), plane: Number(match[3] || 0) } : undefined;
+}
+
+/** A place search in the terminal's style: named places, or a typed coordinate. */
 function PlaceInput({ label, location, onSelect }: { label: string; location?: Location; onSelect(location?: Location): void }) {
   const [text, setText] = useState(location?.name || "");
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const listId = useId();
   useEffect(() => setText(location?.name || ""), [location]);
-  const choose = (value: string) => {
-    setText(value);
-    const place = places.find(candidate => candidate.name?.toLowerCase() === value.toLowerCase());
-    if (place) onSelect(place);
-    else if (!value) onSelect(undefined);
+  const query = text.trim().toLowerCase();
+  const typed = parseCoordinate(text);
+  const matches: Location[] = [...typed ? [customLocation(typed)] : [],
+    ...places.filter(place => !query || query === location?.name?.toLowerCase() || place.name?.toLowerCase().includes(query))];
+  const choose = (place?: Location) => {
+    if (!place) return;
+    onSelect(place); setText(place.name || ""); setOpen(false); setActive(0);
   };
-  return <label><span>{label}</span><input type="search" list="places" value={text}
-    placeholder={`Choose ${label.toLowerCase()}`} onChange={event => choose(event.target.value)}
-    onBlur={() => { if (!places.some(place => place.name?.toLowerCase() === text.toLowerCase())) setText(location?.name || ""); }} /></label>;
+  return <div className="place-field">
+    <label><span>{label}</span><input type="search" role="combobox" aria-expanded={open && matches.length > 0} aria-controls={listId}
+      aria-autocomplete="list" aria-activedescendant={open && matches[active] ? `${listId}-${active}` : undefined}
+      value={text} placeholder={`Choose ${label.toLowerCase()} or type x, y`}
+      onChange={event => { setText(event.target.value); setOpen(true); setActive(0); if (!event.target.value) onSelect(undefined); }}
+      onFocus={event => { setOpen(true); event.target.select(); }}
+      onBlur={() => { setOpen(false); setText(location?.name || ""); }}
+      onKeyDown={event => {
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault(); setOpen(true);
+          setActive(index => Math.max(0, Math.min(matches.length - 1, index + (event.key === "ArrowDown" ? 1 : -1))));
+        } else if (event.key === "Enter") { event.preventDefault(); choose(matches[active]); }
+        else if (event.key === "Escape") setOpen(false);
+      }} /></label>
+    {open && matches.length > 0 && <ul className="place-results" id={listId} role="listbox" aria-label={`${label} places`}>
+      {matches.map((place, index) => <li key={place.placeId || "typed"} id={`${listId}-${index}`} role="option" aria-selected={index === active}
+        onMouseDown={event => { event.preventDefault(); choose(place); }} onMouseEnter={() => setActive(index)}>
+        <span>{place.placeId ? place.name : `Tile ${place.name}`}</span>
+        <small>{place.coordinate.x}, {place.coordinate.y}{place.coordinate.plane ? ` · P${place.coordinate.plane}` : ""}</small>
+      </li>)}
+    </ul>}
+  </div>;
 }
 
 function customLocation(point: WorldPoint): Location {
@@ -146,7 +177,6 @@ export function RoutePlannerPage() {
   };
 
   return <div className="app-shell">
-    <datalist id="places">{places.map(place => <option key={place.placeId} value={place.name} />)}</datalist>
     <header className="topbar">
       <a className="brand" href="/route" aria-label="Route planner home"><span className="brand-mark" aria-hidden="true">▣</span><small>GIELINOR / ROUTE TERMINAL</small></a>
       <div className="searches" aria-label="Route endpoints">
