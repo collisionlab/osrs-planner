@@ -9,7 +9,7 @@ import LineString from "ol/geom/LineString";
 import MultiLineString from "ol/geom/MultiLineString";
 import Point from "ol/geom/Point";
 import Translate from "ol/interaction/Translate";
-import { Circle, Fill, Stroke, Style, Text } from "ol/style";
+import { Stroke, Style } from "ol/style";
 import { createEmpty, extend, isEmpty } from "ol/extent";
 import type { Coordinate } from "ol/coordinate";
 import type { OsrsMapProps } from "../OsrsMap";
@@ -24,6 +24,7 @@ import { surfaceLayer } from "./tactical";
 import { regionTerrain } from "./terrain";
 import { PastedTerrainSource } from "./PastedTerrainSource";
 import { RegionFeatures } from "./RegionFeatures";
+import { routeFeatureStyle, routeMarkerOverlay } from "./routeStyles";
 import { regionContour } from "./contour";
 
 export function segmentPoints(segment: NonNullable<OsrsMapProps["route"]>["segments"][number]): WorldPoint[] {
@@ -62,32 +63,32 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
   const view = new View({ projection: osrsProjection, resolutions, minZoom: MIN_ZOOM, maxZoom: MAX_ZOOM,
     enableRotation: false, center: worldToMap({ x: 3222, y: 3218, plane: 0 }), zoom: 7 });
   const base = surfaceLayer(layer.url, layer.attribution, layer.maxNativeZoom ?? 11);
+  const surfaceBounds = createEmpty();
+  for (const [plane, x, y, width, height] of assets.catalogue.surfaceRects) {
+    if (plane !== 0) continue;
+    extend(surfaceBounds, [...worldToMap({ x: x - 0.5, y: y - 0.5, plane }),
+      ...worldToMap({ x: x + width - 0.5, y: y + height - 0.5, plane })]);
+  }
+  if (!isEmpty(surfaceBounds)) base.setExtent(surfaceBounds);
   const map = new OLMap({ target, view, layers: [base] });
   let disposed = false;
   const cleanup: (() => void)[] = [];
   const owned = new RegionFeatures();
   const routeSource = new VectorSource();
   let selected: number | undefined;
-  const colors: Record<string, string> = { walk: "#ffda65", transport: "#77e2d4", teleport: "#d7a6ff", connector: "#c6b994" };
   const routes = new VectorLayer({ source: routeSource, zIndex: 100, updateWhileInteracting: true, updateWhileAnimating: true,
-    style: feature => {
-      const role = String(feature.get("role")), isSelected = feature.get("segmentIndex") === selected && selected !== undefined;
-      if (feature.getGeometry() instanceof Point) {
-        const endpoint = role === "start" || role === "destination";
-        return new Style({ image: new Circle({ radius: endpoint ? 12 : 6,
-          fill: new Fill({ color: role === "start" ? "#69e08b" : role === "destination" ? "#ffda65" : "#f7f1dc" }),
-          stroke: new Stroke({ color: "#17202a", width: 2 }) }),
-        text: endpoint ? new Text({ text: role === "start" ? "A" : "B", fill: new Fill({ color: "#17202a" }) }) : undefined });
-      }
-      return new Style({ stroke: new Stroke({ color: isSelected ? "#fff2b0" : colors[role] || "#74d7ff",
-        width: isSelected ? 7 : role === "walk" ? 4 : 3, lineDash: role === "walk" ? undefined : [6, 8] }) });
-    },
+    style: feature => routeFeatureStyle(feature, selected),
   });
   map.addLayer(routes);
   const addPoint = (point: WorldPoint, role: string, segmentIndex?: number) => {
     const feature = new Feature(new Point(projected(point)));
     feature.setProperties({ role, segmentIndex, plane: point.plane });
     routeSource.addFeature(feature); owned.add(classify(point), feature);
+    if (role === "start" || role === "destination" || role === "bank") {
+      const title = role === "start" ? `Start: ${start?.name}` : role === "destination" ? `Destination: ${destination?.name}` : "Bank stop";
+      const marker = routeMarkerOverlay(feature, role, title);
+      map.addOverlay(marker.overlay); cleanup.push(marker.dispose);
+    }
   };
   for (const section of decomposed.sections) for (const step of section.steps) {
     if (step.kind === "bank") addPoint(step.source.location, "bank", step.segmentIndex);
@@ -101,10 +102,9 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
   }
   for (const crossing of decomposed.transitions) {
     const feature = new Feature(new LineString([projected(crossing.source.from), projected(crossing.source.to)]));
-    feature.setProperties({ role: crossing.source.kind === "teleport" ? "teleport" : crossing.kind === "region" ? "connector" : "transport",
+    feature.setProperties({ role: crossing.source.kind,
       segmentIndex: crossing.segmentIndex });
     routeSource.addFeature(feature); owned.addLink(crossing.fromRegion, crossing.toRegion, feature.getGeometry()!);
-    addPoint(crossing.source.from, "exit", crossing.segmentIndex); addPoint(crossing.source.to, "entry", crossing.segmentIndex);
   }
   if (start) addPoint(start.coordinate, "start");
   if (destination) addPoint(destination.coordinate, "destination");

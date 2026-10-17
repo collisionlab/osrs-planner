@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { divIcon, latLngBounds, type LatLng, type Map as LeafletMap } from "leaflet";
 import { MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { routeLineAppearance, routeMarkers } from "./routeAppearance";
 import type { Location, RoutePlan, WorldPoint } from "../domain/contracts";
 import { insetPin, mapLayers, savedStyle, saveStyle, type MapStyle, type MapLayer } from "./layers";
 export { mapLayers, defaultStyle } from "./layers";
@@ -13,15 +14,14 @@ const TILE_SIZE = 32;
 const OFFSET_X = 960;
 const OFFSET_Y = 6208;
 
-const endpointIcon = (label: string, kind: string) => divIcon({
-  className: `route-marker ${kind}`,
-  html: `<span>${label}</span>`,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-const startIcon = endpointIcon("A", "start");
-const destinationIcon = endpointIcon("B", "destination");
-const bankIcon = divIcon({ className: "bank-marker", html: "<span>◇</span>", iconSize: [24, 24], iconAnchor: [12, 12] });
+const markerIcon = (kind: keyof typeof routeMarkers) => {
+  const marker = routeMarkers[kind];
+  return divIcon({ className: marker.className, html: `<span>${marker.label}</span>`,
+    iconSize: [marker.size, marker.size], iconAnchor: [marker.size / 2, marker.size / 2] });
+};
+const startIcon = markerIcon("start");
+const destinationIcon = markerIcon("destination");
+const bankIcon = markerIcon("bank");
 
 export function toLatLng(map: LeafletMap, point: WorldPoint): LatLng {
   const x = (point.x - OFFSET_X + 0.5) * TILE_SIZE;
@@ -87,9 +87,7 @@ function MapContents({ start, destination, route, selectedSegment, fitRequest, o
       return <Polyline key={`${segment.kind}-${index}`} positions={segmentPoints(segment).map(point => toLatLng(map, point))}
         smoothFactor={0}
         className={`route-segment ${segment.kind}${selected ? " selected" : ""}`}
-        pathOptions={segment.kind === "walk"
-          ? { color: selected ? "#fff2b0" : "#ffae47", weight: selected ? 7 : 4, opacity: 1, lineCap: "square", lineJoin: "miter" }
-          : { color: segment.kind === "teleport" ? "#d7a6ff" : "#77e2d4", weight: selected ? 6 : 3, dashArray: "6 8", opacity: 1, lineCap: "square" }}
+        pathOptions={routeLineAppearance(segment.kind, selected)}
         eventHandlers={{ click: () => onSelectSegment?.(index), mouseover: () => onSelectSegment?.(index) }} />;
     })}
   </>;

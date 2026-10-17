@@ -1,0 +1,14 @@
+@font-face {
+  font-family: Silkscreen;
+  src: url('../assets/Silkscreen-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+.route-marker, .bank-marker { background: none; border: 0; }
+.route-marker span { position: absolute; inset: 0; display: grid; place-items: center; color: var(--cyan, #77e2d4); background: #141914db; border: 2px solid currentColor; box-shadow: 0 0 0 2px var(--ink, #141914), inset 0 0 0 3px var(--ink, #141914); font: 16px/1 var(--pixel, Silkscreen, monospace); }
+.route-marker.destination span { color: var(--orange, #ffae47); background: #141914db; border: 0; box-shadow: none; }
+.route-marker.destination span::before { content: ''; position: absolute; inset: -4px; background: linear-gradient(currentColor,currentColor) left top / 11px 3px, linear-gradient(currentColor,currentColor) left top / 3px 11px, linear-gradient(currentColor,currentColor) right top / 11px 3px, linear-gradient(currentColor,currentColor) right top / 3px 11px, linear-gradient(currentColor,currentColor) left bottom / 11px 3px, linear-gradient(currentColor,currentColor) left bottom / 3px 11px, linear-gradient(currentColor,currentColor) right bottom / 11px 3px, linear-gradient(currentColor,currentColor) right bottom / 3px 11px; background-repeat: no-repeat; filter: drop-shadow(1px 1px 0 #141914); }
+.bank-marker span { display: grid; place-items: center; width: 24px; height: 24px; color: var(--text, #e0e5cd); background: var(--ink, #141914); border: 2px solid var(--cyan, #77e2d4); font: 14px var(--pixel, Silkscreen, monospace); }
+.route-segment { cursor: pointer; }
+.route-marker span, .bank-marker span { box-sizing: border-box; }
+.inset-map .route-marker, .inset-map .bank-marker { pointer-events: none; }

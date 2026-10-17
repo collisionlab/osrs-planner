@@ -5,6 +5,7 @@ import tiles from "../../../tiles.json";
 import { loadInsetAssets, type InsetAssets } from "./assets";
 import { createComposition } from "./composition";
 import "ol/ol.css";
+import "../routeMarkers.css";
 import "./styles.css";
 
 
