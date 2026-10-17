@@ -6,7 +6,7 @@ WORKDIR /src
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY tooling/corpus tooling/corpus
-COPY index.html tsconfig*.json vite.config.ts ./
+COPY index.html tsconfig*.json vite.config.ts tiles.json ./
 COPY scripts scripts
 COPY src src
 RUN npm run build

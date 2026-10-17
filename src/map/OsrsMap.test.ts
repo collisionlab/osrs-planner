@@ -1,6 +1,7 @@
 import { CRS, map as leafletMap } from "leaflet";
 import { describe, expect, it } from "vitest";
-import { fromLatLng, segmentPoints, toLatLng } from "./OsrsMap";
+import tiles from "../../tiles.json";
+import { fromLatLng, mapLayers, segmentPoints, toLatLng } from "./OsrsMap";
 
 describe("route map coordinates", () => {
   it("maps a picked tile back to the same tile", () => {
@@ -14,5 +15,12 @@ describe("route map coordinates", () => {
     expect(segmentPoints({ kind: "teleport", transportId: "x", name: "Teleport", costTicks: 2, requirements: [],
       from: { x: 1, y: 2, plane: 0 }, to: { x: 3000, y: 4000, plane: 0 } })).toHaveLength(2);
     expect(segmentPoints({ kind: "bank", costTicks: 0, location: { x: 3, y: 4, plane: 0 } })).toHaveLength(1);
+  });
+});
+
+describe("map styles", () => {
+  it("serves the tactical style at the pinned tiles version", () => {
+    expect(mapLayers.tactical?.url).toBe(`https://tiles.collisionlab.world/tactical/${tiles.version}/{z}/{x}/{y}.png`);
+    expect(mapLayers.tactical?.maxNativeZoom).toBe(8);
   });
 });

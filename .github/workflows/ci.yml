@@ -2,6 +2,8 @@ name: ci
 
 on:
   pull_request:
+    # ready_for_review: a tiles pin opened as a draft merges once marked ready.
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
@@ -24,6 +26,29 @@ jobs:
         run: nix develop -c gradle --no-daemon :service:test
       - name: Frontend
         run: nix develop -c bash -c 'npm ci && npm test && npm run build'
+
+  # collisionlab-bot's tiles pins (from collisionlab/osrs-tiles) merge themselves once the tests
+  # pass, unless they were opened as drafts for review. Merging releases the new tiles.
+  merge-pin:
+    needs: test
+    if: >-
+      github.event_name == 'pull_request' &&
+      startsWith(github.head_ref, 'pin/') &&
+      github.event.pull_request.user.login == 'collisionlab-bot[bot]' &&
+      !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+          owner: collisionlab
+          repositories: osrs-planner
+      - name: Merge
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+        run: gh pr merge "${{ github.event.number }}" --repo collisionlab/osrs-planner --merge --delete-branch
 
   # On main: build the release image, push it, and pin it in collisionlab/infra. Merging that pin
   # deploys it to osrs.collisionlab.world.
