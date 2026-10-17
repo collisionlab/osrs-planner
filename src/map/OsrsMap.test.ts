@@ -1,7 +1,7 @@
 import { CRS, map as leafletMap } from "leaflet";
 import { describe, expect, it } from "vitest";
 import tiles from "../../tiles.json";
-import { fromLatLng, mapLayers, segmentPoints, toLatLng } from "./OsrsMap";
+import { defaultStyle, fromLatLng, mapLayers, segmentPoints, toLatLng } from "./OsrsMap";
 
 describe("route map coordinates", () => {
   it("maps a picked tile back to the same tile", () => {
@@ -22,5 +22,9 @@ describe("map styles", () => {
   it("serves the tactical style at the pinned tiles version", () => {
     expect(mapLayers.tactical?.url).toBe(`https://tiles.collisionlab.world/tactical/${tiles.version}/{z}/{x}/{y}.png`);
     expect(mapLayers.tactical?.maxNativeZoom).toBe(8);
+  });
+
+  it("defaults to the tactical style", () => {
+    expect(defaultStyle).toBe("tactical");
   });
 });

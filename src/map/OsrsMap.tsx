@@ -41,6 +41,9 @@ export const mapLayers: Partial<Record<MapStyle, MapLayer>> = {
 
 const STYLE_KEY = "osrs-planner.map-style";
 
+// Tactical when the pinned tiles have it; Standard is the fallback.
+export const defaultStyle: MapStyle = mapLayers.tactical ? "tactical" : "standard";
+
 function savedStyle(): MapStyle {
   try {
     const saved = localStorage.getItem(STYLE_KEY);
@@ -48,7 +51,7 @@ function savedStyle(): MapStyle {
   } catch {
     // Storage can be unavailable (private windows, blocked site data).
   }
-  return "standard";
+  return defaultStyle;
 }
 
 function saveStyle(style: MapStyle) {
