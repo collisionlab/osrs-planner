@@ -36,8 +36,3 @@ export function catalogueClassifier(catalogue: Catalogue) {
     return region?.classification === "main-world" ? "main-world" : region?.id || "unmapped";
   };
 }
-
-export function previewUrl(fixture: string): string {
-  const query = new URLSearchParams({ fixture });
-  return `?${query}`;
-}

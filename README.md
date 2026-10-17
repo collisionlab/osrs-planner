@@ -72,3 +72,9 @@ bot/release flow. Substantial terrain changes wait in draft for review.
 Frontend regressions run with `npm test`; `npm run build` includes both the
 planner and gallery. The map implementation and fixtures came from tooling
 `experiment/map-insets` commit `66b1bff`.
+
+The fixture catalogue contains only the 44 components touched by the saved
+routes. These routes are shared by the layout tests and gallery; no separate
+case list needs maintaining. They are historical regressions, not release data,
+and do not need refreshing when the game cache changes. Runtime catalogues are
+generated from the current cache by the sidecar.

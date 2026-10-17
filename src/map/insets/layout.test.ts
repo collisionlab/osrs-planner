@@ -1,12 +1,11 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
 import type { RoutePlan, WorldPoint } from "../../domain/contracts";
 import type { Region } from "./geometry";
 import { layoutRegions, regionExtent } from "./layout";
 import { catalogueClassifier, type Catalogue } from "./preview";
 import { decomposeRoute, type RouteTransition } from "./routeSections";
-import fixtures from "./fixtures/detached-route-corpus.json";
+import catalogueFixture from "./fixtures/regions.json";
 import { worldToMap } from "./projection";
 import { regionTiles } from "./terrain";
 import { requiredAssets } from "./testAssets";
@@ -51,10 +50,10 @@ describe("pasted region layout", () => {
     expect(tiles[1]).toEqual({ url: "https://tiles/tactical/v/8/30/140.png", x: 252, y: 0 });
   });
 
-  const catalogue = JSON.parse(readFileSync(new URL("./fixtures/regions.json", import.meta.url), "utf8")) as Catalogue;
+  const catalogue = catalogueFixture as Catalogue;
   const classify = catalogueClassifier(catalogue);
-  it.each(fixtures)("lays out every required mask for $areaName at its native scale", entry => {
-    const plan = JSON.parse(readFileSync(new URL(`./fixtures/routes/${entry.areaId}.json`, import.meta.url), "utf8")) as RoutePlan;
+  const fixtures = import.meta.glob("./fixtures/routes/*.json", { eager: true, import: "default" }) as Record<string, RoutePlan>;
+  it.each(Object.entries(fixtures))("lays out every required mask for %s at its native scale", (_name, plan) => {
     const points = [plan.start.coordinate, plan.destination.coordinate, ...plan.segments.flatMap(step => step.kind === "walk" ? step.path
       : step.kind === "bank" ? [step.location] : [step.from, step.to])];
     const touched = new Set(points.map(classify));
