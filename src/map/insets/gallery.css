@@ -1,0 +1,5 @@
+html, body, #root { margin: 0; height: 100%; background: #17202a; color: #f7f1dc; font: 14px sans-serif; }
+nav { padding: 12px; }
+.route-map { position: absolute; inset: 0; }
+.map-message { position: absolute; bottom: 20px; left: 20px; background: #17202a; padding: 10px; }
+output { margin-left: 12px; }
