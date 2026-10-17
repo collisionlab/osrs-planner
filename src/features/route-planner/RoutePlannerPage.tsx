@@ -44,17 +44,6 @@ function PlaceInput({ label, location, onSelect }: { label: string; location?: L
     onBlur={() => { if (!places.some(place => place.name?.toLowerCase() === text.toLowerCase())) setText(location?.name || ""); }} /></label>;
 }
 
-/** `value`, once it has stopped changing for `delay` ms; `undefined` passes through at once. */
-function useDebounced<T>(value: T | undefined, delay: number): T | undefined {
-  const [settled, setSettled] = useState(value);
-  useEffect(() => {
-    if (value === undefined) { setSettled(undefined); return; }
-    const timer = setTimeout(() => setSettled(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  return settled;
-}
-
 function customLocation(point: WorldPoint): Location {
   return { name: `${point.x}, ${point.y}${point.plane ? `, plane ${point.plane}` : ""}`, coordinate: point };
 }
@@ -125,10 +114,12 @@ export function RoutePlannerPage() {
   });
   useEffect(() => { if (route.data && !route.isFetching) setMobileItineraryOpen(true); }, [route.data, route.isFetching]);
 
-  // While an endpoint is dragged on the inset map, plan provisional routes for where it is, once it
-  // has rested on a tile briefly. They share the route cache, so releasing usually shows the route at once.
+  // While an endpoint is dragged on the inset map, plan provisional routes for wherever it is: one
+  // request at a time, each for the latest tile once the last one answers. Searches take tens of
+  // milliseconds, so the route follows the pointer. They share the route cache, so releasing
+  // usually shows the route at once.
   const [dragging, setDragging] = useState<{ role: "start" | "destination"; point?: WorldPoint }>();
-  const dragTarget = useDebounced(dragging?.point && dragging, 200);
+  const [dragTarget, setDragTarget] = useState<typeof dragging>();
   const previewRequest = useMemo(() => request && dragTarget?.point
     ? { ...request, [dragTarget.role]: customLocation(dragTarget.point) } : undefined, [request, dragTarget]);
   const preview = useQuery({
@@ -136,6 +127,10 @@ export function RoutePlannerPage() {
     queryFn: ({ signal }) => calculateRoute(previewRequest!, signal, "drag"), enabled: Boolean(previewRequest), retry: false,
     placeholderData: previous => previous,
   });
+  useEffect(() => {
+    if (!dragging?.point) { setDragTarget(undefined); return; }
+    if (!preview.isFetching) setDragTarget(dragging);
+  }, [dragging, preview.isFetching]);
   const previewRoute = dragging && previewRequest ? preview.data : undefined;
 
   const chooseStart = (start?: Location) => update({ start });
