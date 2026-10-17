@@ -96,7 +96,7 @@ export function Itinerary({ start, destination, route, isFetching, error, select
         <ol className="segments">
           {route.segments.map((segment, index) => <li key={`${segment.kind}-${index}`} className={selectedSegment === index ? "selected" : undefined}>
             <button type="button" className="segment-button" aria-pressed={selectedSegment === index}
-              onFocus={() => onSelectSegment(index)} onMouseEnter={() => onSelectSegment(index)} onClick={() => onSelectSegment(index)}>
+              onClick={() => onSelectSegment(selectedSegment === index ? undefined : index)}>
               <span className={`segment-icon ${segment.kind}`} aria-hidden="true">
                 {String(index + 1).padStart(2, "0")}
               </span>
