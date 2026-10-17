@@ -66,6 +66,8 @@ input, select, textarea { accent-color: var(--orange); }
 .map-style-toggle { display: flex; }
 .map-style-toggle button + button { border-left: 0; }
 .map-style-toggle button[aria-pressed='true'] { color: var(--ink); background: var(--orange); border-color: var(--orange); }
+.update-prompt { position: fixed; z-index: 2000; left: 50%; bottom: 36px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 12px; color: var(--text); background: var(--ink); border: 1px solid var(--orange); font-size: 12px; }
+.update-prompt button { padding: 6px 10px; color: var(--ink); background: var(--orange); border: 0; font: 10px var(--pixel); cursor: pointer; }
 .map-message { position: absolute; z-index: 500; left: 12px; bottom: 12px; display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 12px 8px 8px; color: var(--text); background: var(--ink); border: 1px solid var(--line); font-size: 12px; pointer-events: none; }
 .map-message > span { display: grid; place-items: center; width: 22px; height: 22px; color: var(--orange); border: 1px solid var(--orange); font: 12px var(--pixel); }
 .map .leaflet-bar { border: 1px solid var(--line); border-radius: 0; box-shadow: none; }
