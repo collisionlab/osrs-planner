@@ -43,10 +43,12 @@ public final class Catalog {
     public final List<Option> skills = options(Arrays.stream(Skill.values()).filter(skill -> skill != Skill.OVERALL),
         Skill::getName);
     public final List<Option> quests = options(Arrays.stream(Quest.values()), Quest::getName);
-    public final List<Option> diaries = options(Arrays.stream(Diary.values()), Catalog::title);
+    public final List<Option> diaries = options(Arrays.stream(Diary.values()),
+        diary -> CatalogNames.DIARIES.getOrDefault(diary, title(diary)));
     public final List<Option> diaryTiers = options(Arrays.stream(Diary.Tier.values()), Catalog::title);
     public final List<Option> unlocks = Arrays.stream(Unlock.values())
-        .map(unlock -> new Option(unlock.name(), title(unlock), title(unlock.group))).collect(Collectors.toList());
+        .map(unlock -> new Option(unlock.name(), named(CatalogNames.UNLOCKS, unlock), named(CatalogNames.GROUPS, unlock.group)))
+        .collect(Collectors.toList());
     public final List<Option> spellbooks = options(Arrays.stream(Spellbook.values()), Catalog::title);
     public final List<Option> houseLocations = options(Arrays.stream(Poh.Location.values()), Catalog::title);
     public final List<Option> jewelleryBoxes = options(Arrays.stream(Poh.JewelleryBox.values()), Catalog::title);
@@ -58,6 +60,14 @@ public final class Catalog {
 
     private static <T extends Enum<T>> List<Option> options(java.util.stream.Stream<T> values, Function<T, String> name) {
         return values.map(value -> new Option(value.name(), name.apply(value))).collect(Collectors.toList());
+    }
+
+    private static <K extends Enum<K>> String named(java.util.Map<K, String> names, K value) {
+        String name = names.get(value);
+        if (name == null) {
+            throw new IllegalStateException("no display name for " + value + "; add one to CatalogNames");
+        }
+        return name;
     }
 
     /** {@code KOUREND_KEBOS} as {@code Kourend kebos}. */
