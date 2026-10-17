@@ -166,6 +166,25 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   if (shapes.some(r => !placements.get(r.id)?.anchored)) warnings.push("Some regions have no physical entrance on this route.");
   const status = () => report([...warnings, ...(failures ? [`${failures} terrain tiles unavailable.`] : [])].join(" "));
   status();
+  // Inset labels, in drawing order (the route's own areas first). A label is hidden while its inset
+  // is too small on screen to name, or where it would cover a label drawn before it.
+  const labels: { element: HTMLElement; extent(): number[] }[] = [];
+  const MIN_LABELLED_PX = 24;
+  const declutter = () => {
+    const shown: DOMRect[] = [];
+    for (const label of labels) {
+      const [x1, , x2] = label.extent();
+      const a = map.getPixelFromCoordinate([x1, 0]), b = map.getPixelFromCoordinate([x2, 0]);
+      const box = label.element.getBoundingClientRect();
+      const hidden = !a || !b || Math.abs(b[0] - a[0]) < MIN_LABELLED_PX
+        || shown.some(other => box.left < other.right && other.left < box.right && box.top < other.bottom && other.top < box.bottom);
+      label.element.style.visibility = hidden ? "hidden" : "";
+      if (!hidden) shown.push(box);
+    }
+  };
+  let declutterFrame = 0;
+  map.on("postrender", () => { if (!declutterFrame) declutterFrame = requestAnimationFrame(() => { declutterFrame = 0; declutter(); }); });
+  cleanup.push(() => cancelAnimationFrame(declutterFrame));
   const drawShape = (shape: typeof shapes[number], offset: Coordinate, draggable: boolean, index: number) => {
     let source: PastedTerrainSource;
     try {
@@ -191,6 +210,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     label.title = "Drag to move; press Enter or double-click to reset";
     const overlay = new Overlay({ element: label, positioning: "bottom-center", offset: [0, -8], stopEvent: true });
     map.addOverlay(overlay);
+    labels.push({ element: label, extent: () => regionExtent(shape, placement.offset) });
     let rendered = [...offset], frame = 0;
     const update = () => {
       const dx = placement.offset[0] - rendered[0], dy = placement.offset[1] - rendered[1];
