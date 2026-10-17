@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { RoutePlan, WorldPoint } from "../../domain/contracts";
 import type { Region } from "./geometry";
 import { layoutRegions, regionExtent } from "./layout";
-import { catalogueClassifier, type Catalogue } from "./preview";
+import { catalogueClassifier, withRouteFloors, type Catalogue } from "./preview";
 import { decomposeRoute, type RouteTransition } from "./routeSections";
 import catalogueFixture from "./fixtures/regions.json";
 import { worldToMap } from "./projection";
@@ -48,6 +48,15 @@ describe("pasted region layout", () => {
     expect(tiles).toHaveLength(2);
     expect(tiles[0]).toEqual({ url: "https://tiles/tactical/v/8/29/139.png", x: -4, y: 256 });
     expect(tiles[1]).toEqual({ url: "https://tiles/tactical/v/8/30/140.png", x: 252, y: 0 });
+  });
+
+  it("cuts upper floors from the supplemental tiles of the map's style, else tactical", () => {
+    const floor: Region = { ...room("floor", 3200), plane: 1 };
+    const assets = requiredAssets([floor]);
+    expect(regionTiles(floor, assets, "https://tiles/standard/v", "standard")[0].url).toMatch(/^https:\/\/tiles\/insets\/i\/planes\/1\//);
+    assets.manifest.supplementalStyles = { tactical: "planes", standard: "planes-standard" };
+    expect(regionTiles(floor, assets, "https://tiles/standard/v", "standard")[0].url).toMatch(/\/planes-standard\/1\//);
+    expect(regionTiles(floor, assets, "https://tiles/tactical/v")[0].url).toMatch(/\/insets\/i\/planes\/1\//);
   });
 
   const catalogue = catalogueFixture as Catalogue;
@@ -95,5 +104,62 @@ describe("live route edge cases", () => {
     teleport.source.kind = "teleport";
     const placements = layoutRegions([room("a", 100)], [teleport], [worldToMap(point(3000, 3500))], 320);
     expect(placements.get("a")!.anchored).toBe(false);
+  });
+});
+
+describe("upper floors", () => {
+  const floor = (plane: number, size = 8): Region => ({ id: `p${plane}`, plane, bounds: [2462, 3492, 2462 + size, 3492 + size],
+    mask: [[2462, 3492, size, size]], classification: "main-world", tileCount: size * size, surfaceTiles: size * size,
+    touchesUnknown: false, examples: [] });
+  const surface: Catalogue["surfaceRects"] = [[0, 2400, 3400, 200, 200], [1, 2462, 3492, 8, 8], [2, 2462, 3492, 8, 8], [3, 2462, 3492, 8, 8]];
+
+  it("gives a small upper floor its own region, and leaves large ones in the main world", () => {
+    const catalogue: Catalogue = { surfaceRects: [...surface, [1, 3000, 3000, 200, 200]],
+      regions: [floor(1), floor(2), { ...floor(1, 200), id: "big", bounds: [3000, 3000, 3200, 3200], mask: [[3000, 3000, 200, 200]] }] };
+    const detached = catalogueClassifier(catalogue, { detachUpperFloors: true });
+    expect(detached({ x: 2465, y: 3495, plane: 1 })).toBe("p1");
+    expect(detached({ x: 2465, y: 3495, plane: 2 })).toBe("p2");
+    expect(detached({ x: 2465, y: 3495, plane: 0 })).toBe("main-world");
+    expect(detached({ x: 3100, y: 3100, plane: 1 })).toBe("main-world");
+    expect(catalogueClassifier(catalogue)({ x: 2465, y: 3495, plane: 1 })).toBe("main-world");
+  });
+
+  it("grows a floor over the route's tiles on it that no region holds", () => {
+    const catalogue: Catalogue = { surfaceRects: [...surface, [1, 2400, 3400, 200, 200]], regions: [floor(1)] };
+    // Up the ladder, along a bare branch out of the room, then away by teleport.
+    const branch = [2470, 2471, 2472].map(x => ({ x, y: 3494, plane: 1 }));
+    const route = [{ x: 2467, y: 3494, plane: 0 }, { x: 2467, y: 3495, plane: 1 }, { x: 2469, y: 3494, plane: 1 }, ...branch,
+      { x: 3222, y: 3218, plane: 0 }];
+    const grown = withRouteFloors(catalogue, route);
+    const classify = catalogueClassifier(grown, { detachUpperFloors: true });
+    for (const tile of branch) expect(classify(tile)).toBe("p1");
+    expect(grown.regions[0].bounds).toEqual([2462, 3492, 2473, 3500]);
+    // A run far beyond the inset size limit stays where it is.
+    const far = [{ x: 2467, y: 3495, plane: 1 }, ...Array.from({ length: 100 }, (_, i) => ({ x: 2470 + i, y: 3494, plane: 1 }))];
+    expect(withRouteFloors(catalogue, far)).toBe(catalogue);
+  });
+
+  it("stacks a building's floors beside it, on one side, wherever the route arrived from", () => {
+    const floors = [floor(3), floor(1), floor(2)];
+    // A glider lands on the top floor from far away; that must not decide where the floor goes.
+    const glider = crossing("main-world", "p3", point(3284, 3213), { x: 2465, y: 3501, plane: 3 }, 0);
+    const placements = layoutRegions(floors, [glider], [worldToMap(point(2465, 3490))], 320, new Set(floors.map(f => f.id)));
+    const boxes = [1, 2, 3].map(plane => regionExtent(floor(plane), placements.get(`p${plane}`)!.offset));
+    const footprint = regionExtent(floor(1));
+    const separate = (a: number[], b: number[]) => a[2] <= b[0] || b[2] <= a[0] || a[3] <= b[1] || b[3] <= a[1];
+    for (const box of boxes) expect(separate(box, footprint)).toBe(true);
+    expect(separate(boxes[0], boxes[1]) && separate(boxes[1], boxes[2]) && separate(boxes[0], boxes[2])).toBe(true);
+    // One side: the floors move away from the footprint in the same direction, each beyond the last.
+    const shift = boxes.map(box => [box[0] - footprint[0], box[1] - footprint[1]]);
+    const axis = Math.abs(shift[0][0]) > Math.abs(shift[0][1]) ? 0 : 1;
+    expect(Math.abs(shift[1][axis])).toBeGreaterThan(Math.abs(shift[0][axis]));
+    expect(Math.abs(shift[2][axis])).toBeGreaterThan(Math.abs(shift[1][axis]));
+    expect(Math.sign(shift[1][axis])).toBe(Math.sign(shift[0][axis]));
+    expect(placements.get("p2")).toMatchObject({ parent: "p1", anchored: true });
+  });
+
+  it("leaves a route that never reaches the ground where it is", () => {
+    const placements = layoutRegions([floor(1)], [], [], 320, new Set(["p1"]));
+    expect(placements.get("p1")).toMatchObject({ offset: [0, 0], anchored: true });
   });
 });

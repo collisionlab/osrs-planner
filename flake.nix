@@ -24,6 +24,11 @@
           pkgs.python3
           pkgs.nodejs_24
         ];
+        # Browsers for the Playwright end-to-end tests (npm run e2e). @playwright/test in
+        # package.json must be this nixpkgs' playwright-driver version.
+        PLAYWRIGHT_BROWSERS_PATH = pkgs.playwright-driver.browsers.override { withFirefox = false; withWebkit = false; withFfmpeg = false; };
+        PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
+        PLAYWRIGHT_DRIVER_VERSION = pkgs.playwright-driver.version;
       };
 
       formatter.${system} = pkgs.nixpkgs-fmt;

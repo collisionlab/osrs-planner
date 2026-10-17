@@ -28,6 +28,17 @@ jobs:
         run: nix develop -c python3 scripts/check-map-assets
       - name: Frontend
         run: nix develop -c bash -c 'npm ci && npm test && npm run build'
+      - name: End-to-end
+        run: nix develop -c npm run e2e
+      - name: End-to-end report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 14
 
   # collisionlab-bot's tiles pins (from collisionlab/osrs-tiles) merge themselves once the tests
   # pass, unless they were opened as drafts for review. Merging releases the new tiles.

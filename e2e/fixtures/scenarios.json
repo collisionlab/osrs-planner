@@ -1,0 +1,7 @@
+[
+  { "id": "lumbridge-varrock", "account": "mid", "from": [3222, 3218, 0], "to": [3210, 3424, 0] },
+  { "id": "lumbridge-castle-bank", "account": "early", "from": [3222, 3218, 0], "to": [3209, 3218, 2] },
+  { "id": "glider-upper-floors", "account": "early", "from": [3222, 3218, 0], "to": [2465, 3501, 0] },
+  { "id": "grand-tree-daero", "account": "mid", "from": [2462, 3482, 0], "to": [2484, 3486, 1] },
+  { "id": "dueling-teleport", "account": "early", "from": [3222, 3218, 0], "to": [3300, 3245, 0] }
+]

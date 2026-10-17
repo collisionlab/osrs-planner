@@ -7,12 +7,18 @@ import { osrsProjection, osrsTileGrid, resolutions } from "./projection";
 export const TACTICAL_NATIVE_ZOOM = 8;
 export const TACTICAL_PIXELS_PER_TILE = 4;
 
-export function nativeTileUrl(assets: InsetAssets, tilesBase: string, squareX: number, squareY: number, plane: number) {
+/**
+ * A native (zoom 8) tile of `style`: from the pinned pyramid at `tilesBase`, or from the inset
+ * release's supplemental tiles for squares the pyramid lacks. A release without that style's
+ * supplemental tiles falls back to its tactical ones.
+ */
+export function nativeTileUrl(assets: InsetAssets, tilesBase: string, squareX: number, squareY: number, plane: number,
+  style = "tactical") {
   const square = (squareX << 8) | squareY;
   if (!assets.manifest.planes[plane]?.includes(square)) return undefined;
   const path = `8/${squareX - 15}/${squareY - 19}.png`;
   return assets.manifest.supplemental[plane].includes(square)
-    ? `${assets.base}/planes/${plane}/${path}` : `${tilesBase}/${path}`;
+    ? `${assets.base}/${assets.manifest.supplementalStyles?.[style] ?? "planes"}/${plane}/${path}` : `${tilesBase}/${path}`;
 }
 
 export function surfaceLayer(url: string, attribution: string, maxNativeZoom = 8, plane = 0) {

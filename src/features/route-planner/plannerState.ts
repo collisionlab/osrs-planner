@@ -8,7 +8,7 @@ export const maxShareProfileLength = 8 * 1024;
 const maxDecodedProfileBytes = 128 * 1024;
 
 /** URL search parameters that are not plugin settings; every other parameter is one. */
-const routeParams = new Set(["from", "to", "account"]);
+const routeParams = new Set(["from", "to", "account", "insets"]);
 
 export class SharedProfileError extends Error {}
 
@@ -17,6 +17,8 @@ export interface PlannerUrlState {
   destination?: Location;
   accountId: string;
   settings: ChangedSettings;
+  /** Whether the map shows underground and upper-floor areas as movable insets. */
+  insets?: boolean;
 }
 
 /** `true`/`false` are booleans, digits are whole numbers, anything else is a choice. */
@@ -29,12 +31,13 @@ function parseSettingValue(value: string): SettingValue {
 export function readPlannerUrl(params: URLSearchParams, fallback: ChangedSettings = {}): PlannerUrlState {
   const settings: ChangedSettings = {};
   params.forEach((value, key) => { if (!routeParams.has(key)) settings[key] = parseSettingValue(value); });
-  const hasPlannerState = [...params.keys()].length > 0;
+  const hasPlannerState = [...params.keys()].some(key => key !== "insets");
   return {
     start: locationFromParam(params.get("from")),
     destination: locationFromParam(params.get("to")),
     accountId: params.get("account") || "mid",
     settings: hasPlannerState ? settings : fallback,
+    ...params.get("insets") === "1" && { insets: true },
   };
 }
 
@@ -43,6 +46,7 @@ export function writePlannerUrl(state: PlannerUrlState): URLSearchParams {
   if (state.start) params.set("from", locationParam(state.start));
   if (state.destination) params.set("to", locationParam(state.destination));
   if (state.accountId !== "mid") params.set("account", state.accountId);
+  if (state.insets) params.set("insets", "1");
   Object.keys(state.settings).sort().forEach(key => params.set(key, String(state.settings[key])));
   return params;
 }

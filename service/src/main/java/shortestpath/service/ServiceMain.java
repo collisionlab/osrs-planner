@@ -10,6 +10,7 @@ import io.javalin.http.Context;
 import io.javalin.http.staticfiles.Location;
 import io.javalin.json.JavalinJackson;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
@@ -24,6 +25,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.slf4j.LoggerFactory;
 import shortestpath.accounts.canonical.CanonicalAccounts;
 import shortestpath.routeapi.AccountJson;
 import shortestpath.routeapi.Catalog;
@@ -54,9 +56,8 @@ public final class ServiceMain {
     static Javalin app(ObjectMapper mapper, RoutingEngine engine) {
         SchemaValidator validator = new SchemaValidator();
         PrometheusMeterRegistry metrics = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
-        Counter requests = Counter.builder("route_requests_total").register(metrics);
         Counter rejected = Counter.builder("route_requests_rejected_total").register(metrics);
-        Timer duration = Timer.builder("route_duration").publishPercentileHistogram().register(metrics);
+        RouteLog routeLog = new RouteLog(mapper, PRESETS);
         int workers = Math.max(2, Math.min(8, Runtime.getRuntime().availableProcessors()));
         ThreadPoolExecutor executor = new ThreadPoolExecutor(workers, workers, 0, TimeUnit.MILLISECONDS,
             new ArrayBlockingQueue<>(32), new ThreadPoolExecutor.AbortPolicy());
@@ -103,41 +104,76 @@ public final class ServiceMain {
         Catalog catalog = new Catalog();
         app.get("/v1/catalog", ctx -> ctx.json(catalog));
         app.get("/v1/presets", ctx -> ctx.json(PRESETS));
+        app.get("/v1/plane-links", ctx -> ctx.header("Cache-Control", "public, max-age=3600").json(PlaneLinks.LINKS));
         app.post("/v1/route", ctx -> {
             JsonNode body = mapper.readTree(ctx.body());
             validator.validate(body);
             RouteApi.RouteRequest request = mapper.treeToValue(body, RouteApi.RouteRequest.class);
-            requests.increment();
-            Timer.Sample sample = Timer.start(metrics);
+            long received = System.nanoTime();
+            long[] started = {-1};
             try {
-                CompletableFuture<Void> future = CompletableFuture.supplyAsync(() -> engine.route(request), executor)
+                CompletableFuture<Void> future = CompletableFuture.supplyAsync(() -> {
+                    started[0] = System.nanoTime();
+                    return engine.routeWithStats(request);
+                }, executor)
                     .orTimeout(30, TimeUnit.SECONDS)
-                    .handle((plan, error) -> {
-                        sample.stop(duration);
+                    .handle((routed, error) -> {
+                        String outcome;
                         if (error == null) {
-                            ctx.json(plan);
+                            ctx.json(routed.plan);
+                            outcome = routed.plan.reachable ? "reachable" : "unreachable";
+                            record(metrics, routed);
                         } else if (cause(error) instanceof TimeoutException) {
                             error(ctx, 504, "route calculation timed out");
+                            outcome = "timeout";
                         } else if (cause(error) instanceof IllegalArgumentException) {
                             error(ctx, 400, cause(error).getMessage());
+                            outcome = "invalid";
                         } else {
+                            LoggerFactory.getLogger(ServiceMain.class).error("route {} failed", ctx.attribute("requestId"), cause(error));
                             error(ctx, 500, "route calculation failed");
+                            outcome = "error";
                         }
+                        finish(metrics, routeLog, ctx, request, outcome, routed, received, started[0]);
                         return null;
                     });
                 ctx.future(() -> future);
             } catch (RejectedExecutionException busy) {
-                sample.stop(duration);
                 rejected.increment();
                 error(ctx, 503, "route service is busy");
+                finish(metrics, routeLog, ctx, request, "busy", null, received, -1);
             }
         });
         app.exception(IllegalArgumentException.class, (error, ctx) -> error(ctx, 400, error.getMessage()));
         app.exception(InvalidFormatException.class, (error, ctx) -> error(ctx, 400,
             "invalid value " + error.getValue() + " at " + path(error)));
         app.exception(JsonProcessingException.class, (error, ctx) -> error(ctx, 400, "request body is not valid JSON"));
-        app.exception(Exception.class, (error, ctx) -> error(ctx, 500, "internal server error"));
+        app.exception(Exception.class, (error, ctx) -> {
+            LoggerFactory.getLogger(ServiceMain.class).error("request {} failed", ctx.attribute("requestId"), error);
+            error(ctx, 500, "internal server error");
+        });
         return app;
+    }
+
+    /** Counts and times a finished route request by outcome, and logs it. */
+    private static void finish(PrometheusMeterRegistry metrics, RouteLog routeLog, Context ctx, RouteApi.RouteRequest request,
+            String outcome, RoutingEngine.Routed routed, long received, long started) {
+        long total = System.nanoTime() - received;
+        Counter.builder("route_requests_total").tag("outcome", outcome).register(metrics).increment();
+        Timer.builder("route_duration").tag("outcome", outcome).publishPercentileHistogram().register(metrics)
+            .record(total, TimeUnit.NANOSECONDS);
+        routeLog.log(ctx, request, outcome, ctx.statusCode(), routed, total, started < 0 ? -1 : started - received);
+    }
+
+    /** Search effort, for spotting the routes that cost most. */
+    private static void record(PrometheusMeterRegistry metrics, RoutingEngine.Routed routed) {
+        Map<String, Object> stats = routed.stats;
+        Counter.builder("route_cache_lookups_total").tag("cache", "route")
+            .tag("result", Boolean.TRUE.equals(stats.get("routeCacheHit")) ? "hit" : "miss").register(metrics).increment();
+        if (stats.get("nodesChecked") instanceof Integer) {
+            DistributionSummary.builder("route_search_nodes").publishPercentileHistogram().register(metrics)
+                .record((Integer) stats.get("nodesChecked"));
+        }
     }
 
     private static String path(InvalidFormatException error) {

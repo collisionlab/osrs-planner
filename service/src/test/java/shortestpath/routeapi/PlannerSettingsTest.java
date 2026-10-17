@@ -18,11 +18,25 @@ public class PlannerSettingsTest {
     public void everyRoutingConfigItemIsASettingAndDisplayAndHouseItemsAreNot() {
         Set<String> keys = PlannerSettings.catalog().stream().map(setting -> setting.key).collect(Collectors.toSet());
         assertTrue(keys.containsAll(Set.of("useFairyRings", "costBoats", "useTeleportationItems", "currencyThreshold",
-            "pathfinderBackend", "exactHeuristicWeight", "unlockCanoeAxe", "costBankVisit")));
+            "pathfinderBackend", "exactHeuristicWeight", "costBankVisit")));
+        // Unlocks the game doesn't report are account facts, not route settings.
+        assertFalse(keys.contains("unlockCanoeAxe"));
+        assertFalse(keys.contains("respawnPrifddinas"));
         assertFalse(keys.contains("drawMap"));
         assertFalse(keys.contains("usePohFairyRing"));
         assertFalse(keys.contains("pohJewelleryBoxTier"));
         assertFalse(keys.contains("useSeasonalTransports"));
+    }
+
+    @Test
+    public void everySettingHasAGroupAndUnplacedOnesAreRefused() {
+        Map<String, PlannerSettings.Group> groups = PlannerSettings.catalog().stream()
+            .collect(Collectors.toMap(setting -> setting.key, setting -> setting.group));
+        assertEquals(PlannerSettings.Group.EVERYDAY, groups.get("avoidWilderness"));
+        assertEquals(PlannerSettings.Group.TRANSPORT, groups.get("useFairyRings"));
+        assertEquals(PlannerSettings.Group.THRESHOLD, groups.get("costBoats"));
+        assertEquals(PlannerSettings.Group.ADVANCED, groups.get("pathfinderBackend"));
+        assertThrows(IllegalStateException.class, () -> PlannerSettings.group("drawNewThing", "Settings", boolean.class));
     }
 
     @Test

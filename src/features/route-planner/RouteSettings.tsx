@@ -2,52 +2,58 @@ import { useEffect, useState } from "react";
 import type { Setting } from "../../domain/contracts";
 import { changeSetting, settingValue, type ChangedSettings } from "../../domain/settings";
 
-/** Shown above the groups: the settings most routes are planned around. */
-const everyday = ["avoidWilderness", "includeBankPath", "useTeleportationItems"];
-
 /**
- * The plugin's own settings, as the route service's catalog lists them, in four groups: transport
- * toggles (`use…`), unlocks the game doesn't report (`unlock…`, `respawn…`), transport thresholds,
- * and everything else as advanced.
+ * The plugin's travel settings in the groups the route service gives them: everyday ones first,
+ * then transport toggles, transport thresholds and advanced tuning. `label` shortens a name where
+ * the group title already says it.
  */
-function groups(settings: Setting[]): { title: string; settings: Setting[] }[] {
-  const rest = settings.filter(setting => !everyday.includes(setting.key));
-  const transports = rest.filter(setting => setting.section === "Settings" && setting.type === "boolean" && setting.key.startsWith("use"));
-  const unlocks = rest.filter(setting => /^(unlock|respawn)/.test(setting.key));
-  const thresholds = rest.filter(setting => setting.section === "Transport Thresholds");
-  const grouped = new Set([...transports, ...unlocks, ...thresholds]);
+function groups(settings: Setting[]): { title: string; note?: string; settings: Setting[]; label?(name: string): string }[] {
+  const inGroup = (group: Setting["group"]) => settings.filter(setting => setting.group === group);
   return [
-    { title: "Transports", settings: transports },
-    { title: "Unlocks the game doesn't report", settings: unlocks },
-    { title: "Transport thresholds (ticks a transport must save)", settings: thresholds },
-    { title: "Advanced", settings: rest.filter(setting => !grouped.has(setting)) },
+    { title: "Transports", settings: inGroup("TRANSPORT"), label: name => capitalise(name.replace(/^Use /, "")) },
+    { title: "Transport thresholds", note: "Extra tiles a transport must save before it is preferred.", settings: inGroup("THRESHOLD"),
+      label: name => name.replace(/ threshold$/, "") },
+    { title: "Advanced", settings: inGroup("ADVANCED") },
   ];
 }
 
-/** A whole-number input that only reports valid values. */
+const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+const MAX_INT = 2_147_483_647;
+
+/** A whole-number input that only reports valid values; the largest int reads as "No limit" and an empty field sets it. */
 function NumberField({ setting, value, onChange }: { setting: Setting; value: number; onChange(value: number): void }) {
-  const [text, setText] = useState(String(value));
-  useEffect(() => setText(String(value)), [value]);
-  const valid = /^\d+$/.test(text) && Number(text) <= 2_147_483_647;
+  const unlimited = setting.defaultValue === MAX_INT;
+  const shown = (number: number) => unlimited && number === MAX_INT ? "" : String(number);
+  const [text, setText] = useState(shown(value));
+  useEffect(() => setText(shown(value)), [value]);
+  const parse = (input: string) => unlimited && input === "" ? MAX_INT : /^\d+$/.test(input) && Number(input) <= MAX_INT ? Number(input) : undefined;
+  const valid = parse(text) !== undefined;
   return <input type="number" inputMode="numeric" min={0} step={1} aria-label={setting.name} aria-invalid={!valid}
-    value={text} onChange={event => {
+    placeholder={unlimited ? "No limit" : undefined} value={text} onChange={event => {
       setText(event.target.value);
-      if (/^\d+$/.test(event.target.value) && Number(event.target.value) <= 2_147_483_647) onChange(Number(event.target.value));
+      const next = parse(event.target.value);
+      if (next !== undefined) onChange(next);
     }}
-    onBlur={() => { if (!valid) setText(String(value)); }} />;
+    onBlur={() => { if (!valid) setText(shown(value)); }} />;
 }
 
-function SettingField({ setting, changed, onChange }: { setting: Setting; changed: ChangedSettings; onChange(changed: ChangedSettings): void }) {
+function SettingField({ setting, changed, label = setting.name, onChange }: {
+  setting: Setting; changed: ChangedSettings; label?: string; onChange(changed: ChangedSettings): void;
+}) {
   const value = settingValue(setting, changed);
   const set = (next: boolean | number | string) => onChange(changeSetting(changed, setting, next));
+  const className = setting.key in changed ? "option-row changed" : "option-row";
+  const name = <span className="option-name">{label}</span>;
   if (setting.type === "boolean") {
-    return <label title={setting.description}><input type="checkbox" checked={value === true}
-      onChange={event => set(event.target.checked)} /> {setting.name}</label>;
+    return <label className={className} title={setting.description}>{name}<input type="checkbox" className="option-switch"
+      aria-label={setting.name} checked={value === true} onChange={event => set(event.target.checked)} /></label>;
   }
   if (setting.type === "integer") {
-    return <label title={setting.description}>{setting.name} <NumberField setting={setting} value={value as number} onChange={set} /></label>;
+    return <label className={className} title={setting.description}>{name}<NumberField setting={setting} value={value as number} onChange={set} /></label>;
   }
-  return <label title={setting.description}>{setting.name} <select value={value as string} onChange={event => set(event.target.value)}>
+  return <label className={className} title={setting.description}>{name}<select aria-label={setting.name} value={value as string}
+    onChange={event => set(event.target.value)}>
     {setting.choices?.map(choice => <option key={choice.id} value={choice.id}>{choice.name}</option>)}
   </select></label>;
 }
@@ -57,15 +63,21 @@ export function RouteSettings({ settings, changed, onChange }: {
   changed: ChangedSettings;
   onChange(changed: ChangedSettings): void;
 }) {
-  const pinned = everyday.map(key => settings.find(setting => setting.key === key)).filter((setting): setting is Setting => Boolean(setting));
+  const pinned = settings.filter(setting => setting.group === "EVERYDAY");
   return <div className="route-options">
-    {pinned.map(setting => <SettingField key={setting.key} setting={setting} changed={changed} onChange={onChange} />)}
+    <div className="option-rows">
+      {pinned.map(setting => <SettingField key={setting.key} setting={setting} changed={changed}
+      label={setting.key === "useTeleportationItems" ? "Teleport items" : undefined} onChange={onChange} />)}
+    </div>
     {groups(settings).filter(group => group.settings.length).map(group => {
       const count = group.settings.filter(setting => setting.key in changed).length;
       return <details className="more-options" key={group.title}>
-        <summary>{group.title}{count > 0 && <span className="option-count">{count} changed</span>}</summary>
-        <div className="more-options-body">
-          {group.settings.map(setting => <SettingField key={setting.key} setting={setting} changed={changed} onChange={onChange} />)}
+        <summary><span className="option-group-title">{group.title}</span>
+          <span className={count ? "option-count changed" : "option-count"}>{count > 0 ? `${count} changed` : group.settings.length}</span></summary>
+        {group.note && <p className="option-note">{group.note}</p>}
+        <div className="option-rows">
+          {group.settings.map(setting => <SettingField key={setting.key} setting={setting} changed={changed}
+            label={group.label?.(setting.name)} onChange={onChange} />)}
         </div>
       </details>;
     })}

@@ -17,3 +17,7 @@ public/map-assets.json
 
 __pycache__/
 *.pyc
+
+# Playwright
+test-results/
+playwright-report/

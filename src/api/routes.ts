@@ -7,10 +7,11 @@ export class RouteApiError extends Error {
   }
 }
 
-export async function calculateRoute(request: RouteRequest, signal?: AbortSignal): Promise<RoutePlan> {
+/** `trigger` tells the service's route log why the route was asked for (`drag`: a provisional route mid-drag). */
+export async function calculateRoute(request: RouteRequest, signal?: AbortSignal, trigger?: "drag"): Promise<RoutePlan> {
   const response = await fetch("/api/v1/route", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...trigger && { "X-Route-Trigger": trigger } },
     body: JSON.stringify(request),
     signal,
   });

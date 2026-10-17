@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkCatalogue, loadInsetAssets, sha256 } from "./assets";
+import { checkCatalogue, loadInsetAssets, loadInsetEntrances, sha256, upperFloorDoors } from "./assets";
 import { requiredAssets } from "./testAssets";
 import { nativeTileUrl } from "./tactical";
 import { pickWorld } from "./composition";
@@ -43,6 +43,52 @@ describe("inset asset boundary", () => {
     files["regions.json"] += " ";
     await expect(loadInsetAssets("https://tiles/insets/i", "v", signal)).rejects.toThrow("hash mismatch");
   });
+});
+
+describe("named areas and their entrances", () => {
+  it("lists named areas with where their entrances lead, and marks each entrance once", async () => {
+    const other: Region = { ...room, id: "nameless", bounds: [2900, 10000, 2905, 10005], mask: [[2900, 10000, 5, 5]] };
+    const base = requiredAssets([room, other]);
+    const hop = (connectionId: string, point: number[]) => ({ hops: 1, point, path: [{ connectionId, reversed: false }] });
+    const anchors = JSON.stringify({
+      connections: {
+        ladder: { source: { point: [2884, 3397, 0], regionId: "main" }, target: { point: [2805, 10005, 2], regionId: "cave" } },
+        stairs: { source: { point: [2805, 10001, 2], regionId: "cave" }, target: { point: [2950, 3300, 0], regionId: "main" } },
+      },
+      regions: { cave: { defaultAnchor: 1, anchors: [hop("ladder", [2884, 3397, 0]), hop("ladder", [2885, 3398, 0]),
+        { hops: 1, point: [2950, 3300, 0], path: [{ connectionId: "stairs", reversed: true }] }] } },
+    });
+    const assets = { ...base, base: "https://tiles/insets/i",
+      labels: { cave: { name: "Cave", plane: 2, status: "named" }, nameless: { name: "Unidentified", plane: 2, status: "unresolved" } },
+      manifest: { ...base.manifest, files: { ...base.manifest.files, "anchors.json": await sha256(anchors) } } };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(anchors)));
+    const { areas, doors } = await loadInsetEntrances(assets);
+    expect(areas).toEqual([{ regionId: "cave", name: "Cave", tileCount: 100,
+      entrance: { surface: { x: 2885, y: 3398, plane: 0 }, inside: { x: 2805, y: 10005, plane: 2 } } }]);
+    // The neighbouring ladder tile is the same entrance; the reversed stairs lead in from their target.
+    expect(doors.map(door => [door.point.x, door.inside.cave])).toEqual([[2884, { x: 2805, y: 10005, plane: 2 }],
+      [2950, { x: 2805, y: 10001, plane: 2 }]]);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(anchors + " ")));
+    await expect(loadInsetEntrances(assets)).rejects.toThrow("hash mismatch");
+  });
+});
+
+it("offers an upper floor only where a ladder or staircase from the ground reaches it", () => {
+  const floor = (id: string, plane: number, x: number, size: number): Region => ({ id, plane, bounds: [x, 3200, x + size, 3200 + size],
+    mask: [[x, 3200, size, size]], classification: "main-world", tileCount: size * size, surfaceTiles: size * size, touchesUnknown: false, examples: [] });
+  const catalogue = { surfaceRects: [[0, 3150, 3150, 300, 300]] as [number, number, number, number, number][], regions: [
+    floor("castle-1", 1, 3200, 14), floor("castle-2", 2, 3202, 10), floor("bridge", 1, 3300, 8),
+  ] };
+  const { floors, doors } = upperFloorDoors(catalogue, [
+    { from: [3205, 3205, 0], to: [3205, 3205, 1], name: "Climb-up Staircase" },
+    { from: [3206, 3205, 0], to: [3205, 3205, 1], name: "Climb-up Staircase" },
+    { from: [3205, 3205, 1], to: [3205, 3205, 2], name: "Climb-up Staircase" },
+    { from: [3205, 3205, 2], to: [3205, 3205, 1], name: "Climb-down Staircase" },
+  ]);
+  // The neighbouring step is the same staircase; the bridge has no way up, so no marker.
+  expect(doors).toEqual([{ point: { x: 3205, y: 3205, plane: 0 }, regionIds: ["castle-1", "castle-2"],
+    inside: { "castle-1": { x: 3205, y: 3205, plane: 1 } }, floors: true, name: "Climb-up Staircase" }]);
+  expect(floors.map(area => area.regionId)).toEqual(["castle-1", "castle-2"]);
 });
 
 it("picks real Cam Torum geometry after automatic layout", async () => {

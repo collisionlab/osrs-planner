@@ -1,8 +1,9 @@
 import type { Account, Catalog, Setting } from "../domain/contracts";
 import type { PlannerAccount } from "../domain/accounts";
 
-const setting = (key: string, name: string, type: Setting["type"], defaultValue: Setting["defaultValue"], section = "Settings",
-  choices?: Setting["choices"]): Setting => ({ key, name, description: name, section, type, defaultValue, ...choices ? { choices } : {} });
+const setting = (key: string, name: string, type: Setting["type"], defaultValue: Setting["defaultValue"], group: Setting["group"],
+  choices?: Setting["choices"]): Setting => ({ key, name, description: name, group, type, defaultValue,
+  section: group === "THRESHOLD" ? "Transport Thresholds" : "Settings", ...choices ? { choices } : {} });
 
 /** A small slice of the route service's catalog. */
 export const catalog: Catalog = {
@@ -12,7 +13,11 @@ export const catalog: Catalog = {
   diaryTiers: ["NONE", "EASY", "MEDIUM", "HARD", "ELITE"].map(id => ({ id, name: id[0] + id.slice(1).toLowerCase() })),
   unlocks: [
     { id: "FAIRY_RINGS", name: "Fairy rings", group: "Transport" },
-    { id: "BALLOON_ENTRANA", name: "Balloon entrana", group: "Hot air balloon" },
+    { id: "BALLOON_ENTRANA", name: "Entrana", group: "Hot air balloons" },
+    { id: "RESPAWN_FALADOR", name: "Falador", group: "Respawn point" },
+    { id: "RESPAWN_EDGEVILLE", name: "Edgeville", group: "Respawn point" },
+    { id: "RESPAWN_PRIFDDINAS", name: "Prifddinas", group: "Respawn point" },
+    { id: "CANOE_AXE_STORED", name: "Axe stored at a canoe station", group: "Transport" },
   ],
   spellbooks: ["STANDARD", "ANCIENT", "LUNAR", "ARCEUUS"].map(id => ({ id, name: id[0] + id.slice(1).toLowerCase() })),
   houseLocations: [{ id: "RIMMINGTON", name: "Rimmington" }, { id: "YANILLE", name: "Yanille" }],
@@ -20,15 +25,15 @@ export const catalog: Catalog = {
   portals: [{ id: "Varrock Portal", name: "Varrock" }],
   plantedSpiritTrees: [{ id: "FARMING_GUILD", name: "Farming Guild" }],
   settings: [
-    setting("avoidWilderness", "Avoid wilderness", "boolean", true),
-    setting("includeBankPath", "Include path to bank", "boolean", true),
-    setting("useTeleportationItems", "Use teleportation items", "choice", "INVENTORY_AND_BANK", "Settings",
+    setting("avoidWilderness", "Avoid wilderness", "boolean", true, "EVERYDAY"),
+    setting("includeBankPath", "Include path to bank", "boolean", true, "EVERYDAY"),
+    setting("useTeleportationItems", "Use teleportation items", "choice", "INVENTORY_AND_BANK", "EVERYDAY",
       [{ id: "NONE", name: "None" }, { id: "INVENTORY_AND_BANK", name: "Inventory and bank" }, { id: "ALL", name: "All" }]),
-    setting("useFairyRings", "Use fairy rings", "boolean", true),
-    setting("unlockCanoeAxe", "Axe stored at a canoe station", "boolean", false),
-    setting("costBoats", "Boat threshold", "integer", 0, "Transport Thresholds"),
-    setting("pathfinderBackend", "Pathfinder backend", "choice", "EXACT", "Settings",
-      [{ id: "LEGACY", name: "Legacy" }, { id: "EXACT", name: "Exact" }]),
+    setting("useFairyRings", "Use fairy rings", "boolean", true, "TRANSPORT"),
+    setting("costBoats", "Boat threshold", "integer", 0, "THRESHOLD"),
+    setting("currencyThreshold", "Currency threshold", "integer", 2147483647, "ADVANCED"),
+    setting("pathfinderBackend", "Pathfinder backend", "choice", "EXACT", "ADVANCED",
+      [{ id: "LEGACY", name: "Legacy" }, { id: "EXACT", name: "A*" }]),
   ],
 };
 

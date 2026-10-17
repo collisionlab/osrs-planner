@@ -1,5 +1,6 @@
 import Ajv from "ajv";
-import type { Catalogue } from "./preview";
+import type { WorldPoint } from "../../domain/contracts";
+import { catalogueClassifier, isDetachedUpperFloor, type Catalogue } from "./preview";
 
 export interface InsetManifest {
   schemaVersion: 1;
@@ -7,13 +8,15 @@ export interface InsetManifest {
   layout: "explv-tms-v1";
   tileVersion: string;
   cacheIdx255Sha256: string;
-  files: Record<"regions.json" | "labels.json", string>;
+  files: Record<"regions.json" | "labels.json", string> & { "anchors.json"?: string };
   planes: number[][];
   supplemental: number[][];
+  /** The directory each style's supplemental tiles are in; absent means tactical, under planes/. */
+  supplementalStyles?: Record<string, string>;
 }
 export interface InsetAssets {
   catalogue: Catalogue;
-  labels: Record<string, { name: string; plane: number }>;
+  labels: Record<string, { name: string; plane: number; status?: string }>;
   manifest: InsetManifest;
   base: string;
 }
@@ -40,6 +43,7 @@ const validateManifest = new Ajv().compile({
   properties: {
     schemaVersion: { const: 1 }, version: { type: "string", minLength: 1 }, layout: { const: "explv-tms-v1" }, tileVersion: { type: "string", minLength: 1 },
     cacheIdx255Sha256: hash, planes: squares, supplemental: squares,
+    supplementalStyles: { type: "object", additionalProperties: { type: "string", pattern: "^[a-z][a-z-]*$" } },
     files: { type: "object", required: ["regions.json", "labels.json"], properties: { "regions.json": hash, "labels.json": hash } },
   },
 });
@@ -91,4 +95,118 @@ export async function loadInsetAssets(base: string, tileVersion: string, signal:
     }
   }
   return { catalogue, labels: naming.regions, manifest: checked, base };
+}
+
+/** A named area's way in from the surface: where to stand outside, and where that puts you. */
+export interface InsetEntrance { surface: WorldPoint; inside: WorldPoint }
+export interface InsetArea { regionId: string; name: string; tileCount: number; entrance?: InsetEntrance }
+export interface InsetDoor {
+  point: WorldPoint; regionIds: string[]; inside: Record<string, WorldPoint>;
+  /** A building's way up rather than an entrance: `regionIds` are its upper floors, lowest first. */
+  floors?: boolean;
+  /** What the way up is ("Climb-up Ladder"). */
+  name?: string;
+}
+export interface InsetEntrances {
+  /** Named areas, largest first: size stands in for how often people go there. */
+  areas: InsetArea[];
+  /** Surface tiles that lead straight into a named area, and where in each area they lead. */
+  doors: InsetDoor[];
+}
+
+/** A ladder, staircase or shortcut that changes plane in place, from the route service. */
+export interface PlaneLink { from: [number, number, number]; to: [number, number, number]; name: string }
+
+const tile = ([x, y, plane]: [number, number, number]): WorldPoint => ({ x, y, plane });
+
+/**
+ * The small upper floors a ladder or staircase from the ground leads to: a marker on each such
+ * ladder, opening the floor it reaches and every floor above it that further links reach, and an
+ * unnamed area per floor. A floor no link reaches is never offered.
+ */
+export function upperFloorDoors(catalogue: Catalogue, links: PlaneLink[]): { floors: InsetArea[]; doors: InsetDoor[] } {
+  const classify = catalogueClassifier(catalogue, { detachUpperFloors: true });
+  const floors = new Map(catalogue.regions.filter(isDetachedUpperFloor).map(region => [region.id, region]));
+  const floorOf = (point: [number, number, number]) => {
+    const id = classify(tile(point));
+    return floors.has(id) ? id : undefined;
+  };
+  // Links between floors, to follow a staircase on up.
+  const above = new Map<string, Set<string>>();
+  for (const link of links) {
+    const from = floorOf(link.from), to = floorOf(link.to);
+    if (from && to && from !== to) above.set(from, (above.get(from) || new Set()).add(to));
+  }
+  const areas = new Map<string, InsetArea>(), doors: InsetDoor[] = [];
+  for (const link of links) {
+    const first = floorOf(link.to);
+    if (link.from[2] !== 0 || !first || classify(tile(link.from)) !== "main-world") continue;
+    const point = tile(link.from);
+    if (doors.some(door => door.regionIds[0] === first
+      && Math.max(Math.abs(door.point.x - point.x), Math.abs(door.point.y - point.y)) <= 3)) continue;
+    const reached = [first];
+    for (let index = 0; index < reached.length; index++) {
+      for (const next of above.get(reached[index]) || []) if (!reached.includes(next)) reached.push(next);
+    }
+    const regionIds = reached.sort((a, b) => floors.get(a)!.plane - floors.get(b)!.plane);
+    const name = `Floors by ${point.x}, ${point.y}`;
+    regionIds.forEach(id => { if (!areas.has(id)) areas.set(id, { regionId: id, name, tileCount: floors.get(id)!.tileCount }); });
+    doors.push({ point, regionIds, inside: { [first]: tile(link.to) }, floors: true, name: link.name });
+  }
+  return { floors: [...areas.values()], doors };
+}
+
+const worldPoint = (value: unknown): WorldPoint | undefined => Array.isArray(value) && value.length === 3
+  && value.every(Number.isInteger) ? { x: value[0], y: value[1], plane: value[2] } : undefined;
+
+/**
+ * The named areas and their surface entrances, from the release's `anchors.json` (fetched only when
+ * first needed). An area's entrance is its default anchor; its inside point is where the anchor's
+ * last connection arrives in it.
+ */
+export async function loadInsetEntrances(assets: InsetAssets, signal?: AbortSignal): Promise<InsetEntrances> {
+  const hash = assets.manifest.files["anchors.json"];
+  if (!hash) throw new Error("This inset release has no entrances");
+  const response = await fetch(`${assets.base}/anchors.json`, { signal });
+  if (!response.ok) throw new Error(`Inset entrances unavailable (${response.status})`);
+  const raw = await response.text();
+  if (await sha256(raw) !== hash) throw new Error("Inset asset hash mismatch");
+  const anchors = JSON.parse(raw) as {
+    connections: Record<string, { source: { point: unknown; regionId: string }; target: { point: unknown; regionId: string } }>;
+    regions: Record<string, { anchors: { hops: number; point: unknown; path: { connectionId: string; reversed: boolean }[] }[]; defaultAnchor: number | null }>;
+  };
+  const regions = new Map(assets.catalogue.regions.map(region => [region.id, region]));
+  const areas: InsetArea[] = [];
+  const doors = new Map<string, InsetDoor>();
+  for (const [regionId, label] of Object.entries(assets.labels)) {
+    const region = regions.get(regionId);
+    if (!region || label.status === "unresolved") continue;
+    const entry = anchors.regions?.[regionId];
+    let entrance: InsetEntrance | undefined;
+    for (const [index, anchor] of (entry?.anchors || []).entries()) {
+      const last = anchor.path.at(-1), connection = last && anchors.connections[last.connectionId];
+      const surface = worldPoint(anchor.point);
+      const inside = connection && worldPoint(last.reversed ? connection.source.point : connection.target.point);
+      if (!surface || !inside) continue;
+      if (index === (entry!.defaultAnchor ?? 0) || !entrance) entrance = { surface, inside };
+      // One entrance often spans neighbouring tiles; mark it once.
+      if (anchor.hops === 1 && ![...doors.values()].some(door => door.regionIds.includes(regionId)
+        && door.point.plane === surface.plane && Math.max(Math.abs(door.point.x - surface.x), Math.abs(door.point.y - surface.y)) <= 3)) {
+        const key = `${surface.x},${surface.y},${surface.plane}`;
+        const door = doors.get(key) || { point: surface, regionIds: [], inside: {} };
+        door.regionIds.push(regionId); door.inside[regionId] = inside;
+        doors.set(key, door);
+      }
+    }
+    areas.push({ regionId, name: label.name, tileCount: region.tileCount, entrance });
+  }
+  areas.sort((a, b) => b.tileCount - a.tileCount || a.name.localeCompare(b.name));
+  return { areas, doors: [...doors.values()] };
+}
+
+/** The route service's plane links (see {@link upperFloorDoors}). */
+export async function loadPlaneLinks(signal?: AbortSignal): Promise<PlaneLink[]> {
+  const response = await fetch("/api/v1/plane-links", { signal });
+  if (!response.ok) throw new Error(`Plane links unavailable (${response.status})`);
+  return response.json() as Promise<PlaneLink[]>;
 }

@@ -34,12 +34,29 @@ describe("route settings", () => {
   it("groups the settings and counts the changed ones", () => {
     renderSettings({ pathfinderBackend: "LEGACY" });
     expect(screen.getByText("Advanced").parentElement?.textContent).toContain("1 changed");
-    expect(screen.getByText("Unlocks the game doesn't report")).toBeTruthy();
+    // Unlocks the game doesn't report belong to the account panel.
+    expect(screen.queryByLabelText("Axe stored at a canoe station")).toBeNull();
   });
 
   it("ignores invalid numbers", () => {
     const onChange = renderSettings();
     fireEvent.change(screen.getByRole("spinbutton", { name: "Boat threshold" }), { target: { value: "-1" } });
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("shows the largest int as no limit, and an empty field sets it", () => {
+    const onChange = renderSettings({ currencyThreshold: 1000 });
+    const field = screen.getByRole("spinbutton", { name: "Currency threshold" }) as HTMLInputElement;
+    expect(field.value).toBe("1000");
+    fireEvent.change(field, { target: { value: "" } });
+    expect(onChange).toHaveBeenLastCalledWith({});
+    cleanup(); renderSettings();
+    const empty = screen.getByRole("spinbutton", { name: "Currency threshold" }) as HTMLInputElement;
+    expect(empty.value).toBe(""); expect(empty.placeholder).toBe("No limit");
+  });
+
+  it("names the pathfinder backends plainly", () => {
+    renderSettings();
+    expect(screen.getByRole("option", { name: "A*" })).toBeTruthy();
   });
 });
