@@ -21,6 +21,7 @@
         packages = [
           pkgs.jdk21_headless
           gradle
+          pkgs.python3
           pkgs.nodejs_24
         ];
       };

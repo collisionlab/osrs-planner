@@ -19,3 +19,7 @@ const types = await compileFromFile(path.join(schemas, "route-api-v1.schema.json
   style: { singleQuote: false },
 });
 await writeFile(path.join(generated, "route-api-v1.d.ts"), types);
+
+// Expose the exact release pin for rollout/uptime checks.
+await mkdir(path.join(root, "public"), { recursive: true });
+await copyFile(path.join(root, "tiles.json"), path.join(root, "public/map-assets.json"));

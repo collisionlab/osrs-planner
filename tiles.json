@@ -4,5 +4,6 @@
   "styles": [
     "standard",
     "tactical"
-  ]
+  ],
+  "insets": null
 }

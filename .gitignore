@@ -11,3 +11,9 @@ build/
 service/build/
 result
 *.log
+
+# Release pin served for deployment checks.
+public/map-assets.json
+
+__pycache__/
+*.pyc

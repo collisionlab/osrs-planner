@@ -1,0 +1,8 @@
+.inset-map { background: #202a24; }
+.inset-label { max-width: min(260px, 75vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; height: 28px; padding: 0 6px; border: 0; background: transparent; color: #f7f1dc; font: 700 .75rem/1 monospace; letter-spacing: .08em; text-transform: uppercase; text-shadow: 1px 0 #262b25, -1px 0 #262b25, 0 1px #262b25, 0 -1px #262b25, 0 2px 3px #000; cursor: grab; user-select: none; touch-action: none; }
+.inset-label:active { cursor: grabbing; }
+.inset-label:focus-visible { outline: 1px solid #f7f1dc; outline-offset: 2px; }
+.inset-actions { position: absolute; top: 12px; left: 48px; display: flex; gap: 6px; z-index: 4; }
+.inset-actions button { background: #283126; color: #e0e5cd; border: 1px solid #48533e; padding: 7px 11px; cursor: pointer; }
+.inset-map .ol-control button { background: #283126; color: #e0e5cd; }
+.inset-map .ol-attribution { max-width: 85%; }

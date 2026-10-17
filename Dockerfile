@@ -9,6 +9,7 @@ COPY tooling/corpus tooling/corpus
 COPY index.html tsconfig*.json vite.config.ts tiles.json ./
 COPY scripts scripts
 COPY src src
+COPY experiments experiments
 # The frontend compares this with /version to notice it is out of date (src/app/UpdatePrompt.tsx).
 ARG RELEASE=dev
 ENV VITE_RELEASE=${RELEASE}
