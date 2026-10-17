@@ -1,9 +1,4 @@
-@font-face {
-  font-family: Silkscreen;
-  src: url('./assets/Silkscreen-Regular.ttf') format('truetype');
-  font-weight: 400;
-  font-display: swap;
-}
+@import "./map/routeMarkers.css";
 :root {
   font-family: 'Courier New', monospace;
   font-synthesis: none;
@@ -54,12 +49,7 @@ input, select, textarea { accent-color: var(--orange); }
 .map-label { position: absolute; top: 12px; left: 50px; z-index: 500; display: flex; align-items: center; gap: 9px; padding: 7px 9px; color: var(--text); background: var(--ink); border: 1px solid var(--line); font: 9px var(--pixel); pointer-events: none; }
 .map-label > span:last-child { color: var(--muted); padding-left: 8px; border-left: 1px solid var(--line); }
 .live-square { display: inline-block; width: 6px; height: 6px; flex-shrink: 0; background: var(--orange); }
-.route-marker, .bank-marker { background: none; border: 0; }
-.route-marker span { position: absolute; inset: 0; display: grid; place-items: center; color: var(--cyan); background: #141914db; border: 2px solid currentColor; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 3px var(--ink); font: 16px/1 var(--pixel); }
-.route-marker.destination span { color: var(--orange); background: #141914db; border: 0; box-shadow: none; }
-.route-marker.destination span::before { content: ''; position: absolute; inset: -4px; background: linear-gradient(currentColor,currentColor) left top / 11px 3px, linear-gradient(currentColor,currentColor) left top / 3px 11px, linear-gradient(currentColor,currentColor) right top / 11px 3px, linear-gradient(currentColor,currentColor) right top / 3px 11px, linear-gradient(currentColor,currentColor) left bottom / 11px 3px, linear-gradient(currentColor,currentColor) left bottom / 3px 11px, linear-gradient(currentColor,currentColor) right bottom / 11px 3px, linear-gradient(currentColor,currentColor) right bottom / 3px 11px; background-repeat: no-repeat; filter: drop-shadow(1px 1px 0 #141914); }
-.bank-marker span { display: grid; place-items: center; width: 24px; height: 24px; color: var(--text); background: var(--ink); border: 2px solid var(--cyan); font: 14px var(--pixel); }
-.route-segment { cursor: pointer; }
+
 .map-controls { position: absolute; z-index: 600; right: 12px; top: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .fit-route-button, .map-style-toggle button { padding: 7px 10px; color: var(--text); background: var(--ink); border: 1px solid var(--line); font: 10px var(--pixel); }
 .fit-route-button:hover, .map-style-toggle button:hover { color: var(--orange); border-color: var(--orange); }
