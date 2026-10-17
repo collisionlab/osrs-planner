@@ -28,6 +28,28 @@ Tests: `gradle :service:test` and `npm test`.
 | `tooling/` | shortest-path-tooling (submodule), with its `corpus/schemas` contracts |
 | `Dockerfile` | The release image |
 
+## Route logs
+
+Every `POST /v1/route` writes one JSON log line from the `route` logger. It records the endpoints, the
+account (a preset id, or `custom` with a short hash of the account), the changed settings, the
+outcome, the legs the route takes, and the search's counters and phase timings. These are under
+`search`: cache hits, `nodesChecked`, the exact search's `phasesMs` and `forward` counters.
+`trigger` is `drag` for the provisional routes the map asks for while an endpoint is being dragged.
+`country` comes from Cloudflare's `CF-IPCountry`. Neither IP addresses nor custom accounts are logged.
+
+On the app host (Tailscale SSH):
+
+```sh
+journalctl -u 'planner-*' -o cat --since today | jq -c 'select(.logger_name == "route")'
+# slowest searches today
+journalctl -u 'planner-*' -o cat --since today | jq -s -c 'map(select(.logger_name == "route" and .search.searchMs))
+  | sort_by(-.search.searchMs) | .[:20][] | {from, to, account, ms: .search.searchMs, nodes: .search.nodesChecked}'
+```
+
+`/metrics` adds `route_requests_total` and `route_duration_seconds` by `outcome`
+(`reachable`, `unreachable`, `invalid`, `timeout`, `busy`, `error`), `route_cache_lookups_total`
+and the `route_search_nodes` histogram.
+
 ## Releases
 
 Every push to `main` builds `ghcr.io/collisionlab/osrs-planner:<commit>` and opens a PR in
