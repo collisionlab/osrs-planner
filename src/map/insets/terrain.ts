@@ -23,14 +23,17 @@ function image(url: string): Promise<HTMLImageElement> {
   return pending;
 }
 
-export function regionTiles(region: Region, assets: InsetAssets, tilesBase: string) {
+/** Where an inset's terrain is cut from: a pinned tile pyramid and its style. */
+export interface TerrainTiles { base: string; style: string }
+
+export function regionTiles(region: Region, assets: InsetAssets, tilesBase: string, style = "tactical") {
   const [x1, y1, x2, y2] = region.bounds;
   const tiles: { url: string | undefined; x: number; y: number }[] = [];
   for (let x = Math.floor(x1 / 64); x < Math.ceil(x2 / 64); x++) {
     for (let y = Math.floor(y1 / 64); y < Math.ceil(y2 / 64); y++) {
       if (!region.mask.some(([rx, ry, width, height]) => x * 64 < rx + width && (x + 1) * 64 > rx
         && y * 64 < ry + height && (y + 1) * 64 > ry)) continue;
-      tiles.push({ url: nativeTileUrl(assets, tilesBase, x, y, region.plane),
+      tiles.push({ url: nativeTileUrl(assets, tilesBase, x, y, region.plane, style),
         x: (x * 64 - x1) * TACTICAL_PIXELS_PER_TILE, y: (y2 - (y + 1) * 64) * TACTICAL_PIXELS_PER_TILE });
     }
   }
@@ -38,7 +41,7 @@ export function regionTiles(region: Region, assets: InsetAssets, tilesBase: stri
 }
 
 /** Assemble the masked native pixels once; the map view handles all subsequent pan and zoom. */
-export function regionTerrain(region: Region, assets: InsetAssets, tilesBase: string, onUpdate: () => void) {
+export function regionTerrain(region: Region, assets: InsetAssets, terrain: TerrainTiles, onUpdate: () => void) {
   const [x1, y1, x2, y2] = region.bounds;
   const scale = TACTICAL_PIXELS_PER_TILE;
   const canvas = document.createElement("canvas");
@@ -50,7 +53,7 @@ export function regionTerrain(region: Region, assets: InsetAssets, tilesBase: st
   const path = new Path2D(maskPath(region, (x, y) => [(x - x1) * scale, (y2 - y) * scale]));
   context.fillStyle = "#262b25";
   context.fill(path);
-  const ready = Promise.all(regionTiles(region, assets, tilesBase).map(async tile => {
+  const ready = Promise.all(regionTiles(region, assets, terrain.base, terrain.style).map(async tile => {
     if (!tile.url) return 1;
     try {
       const img = await image(tile.url);

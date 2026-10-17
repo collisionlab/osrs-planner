@@ -77,12 +77,18 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
   useEffect(() => {
     if (!assets || !target.current) return;
     try {
-      const layer = mapLayers[props.style] || mapLayers.standard!;
+      // Insets are cut from the pinned pyramid of the map's own style, and the surface under them
+      // comes from the same pyramid so the two line up; tactical when the pin lacks the style.
+      const style = tiles.styles.includes(props.style) ? props.style : "tactical";
+      const terrain = { base: `${tiles.base}/${style}/${tiles.version}`, style };
+      const layer = style === props.style
+        ? { url: `${terrain.base}/{z}/{x}/{y}.png`, maxNativeZoom: 8, attribution: mapLayers.tactical?.attribution || "" }
+        : mapLayers[props.style] || mapLayers.standard!;
       const previous = keepView.current || areasChanged.current ? lastView.current : undefined;
       areasChanged.current = false;
       if (keepView.current && routeMatches(props)) keepView.current = false;
       const instance = createComposition(target.current, assets, props, () => callbacks.current, layer,
-        `${tiles.base}/tactical/${tiles.version}`, setStatus, previous,
+        terrain, setStatus, previous,
         { shown, doors, onDoor: door => toggleDoor.current(door) });
       composition.current = instance;
       // End-to-end tests find tiles on the map through this; it isn't in production builds.

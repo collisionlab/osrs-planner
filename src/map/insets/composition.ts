@@ -21,7 +21,7 @@ import { decomposeRoute, type RouteTransition } from "./routeSections";
 import { layoutRegions, regionExtent, type Placement } from "./layout";
 import { worldToMap, mapToWorld, osrsProjection, resolutions, MAX_ZOOM, MIN_ZOOM } from "./projection";
 import { surfaceLayer } from "./tactical";
-import { regionTerrain } from "./terrain";
+import { regionTerrain, type TerrainTiles } from "./terrain";
 import { PastedTerrainSource } from "./PastedTerrainSource";
 import { RegionFeatures } from "./RegionFeatures";
 import { doorStyle, endpointPixels, routeFeatureStyle, routeMarkerOverlay } from "./routeStyles";
@@ -52,7 +52,7 @@ export interface AreaOptions {
 
 export function createComposition(target: HTMLElement, releaseAssets: InsetAssets, props: OsrsMapProps,
   callbacks: () => OsrsMapProps, layer: { url: string; attribution: string; maxNativeZoom?: number },
-  tacticalBase: string, report: (message: string) => void, initialView?: { center: Coordinate; resolution: number },
+  terrainTiles: TerrainTiles, report: (message: string) => void, initialView?: { center: Coordinate; resolution: number },
   areas: AreaOptions = {}) {
   const { route, start, destination } = props;
   const assets = route ? { ...releaseAssets, catalogue: withRouteFloors(releaseAssets.catalogue, route.segments.flatMap(segmentPoints)) }
@@ -188,7 +188,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   const drawShape = (shape: typeof shapes[number], offset: Coordinate, draggable: boolean, index: number) => {
     let source: PastedTerrainSource;
     try {
-      const terrain = regionTerrain(shape, assets, tacticalBase, () => { if (!disposed) source.changed(); });
+      const terrain = regionTerrain(shape, assets, terrainTiles, () => { if (!disposed) source.changed(); });
       source = new PastedTerrainSource(terrain.canvas, regionExtent(shape, offset));
       cleanup.push(() => { source.dispose(); terrain.dispose(); });
       void terrain.ready.then(count => { if (!disposed) { failures += count; status(); } });

@@ -50,6 +50,15 @@ describe("pasted region layout", () => {
     expect(tiles[1]).toEqual({ url: "https://tiles/tactical/v/8/30/140.png", x: 252, y: 0 });
   });
 
+  it("cuts upper floors from the supplemental tiles of the map's style, else tactical", () => {
+    const floor: Region = { ...room("floor", 3200), plane: 1 };
+    const assets = requiredAssets([floor]);
+    expect(regionTiles(floor, assets, "https://tiles/standard/v", "standard")[0].url).toMatch(/^https:\/\/tiles\/insets\/i\/planes\/1\//);
+    assets.manifest.supplementalStyles = { tactical: "planes", standard: "planes-standard" };
+    expect(regionTiles(floor, assets, "https://tiles/standard/v", "standard")[0].url).toMatch(/\/planes-standard\/1\//);
+    expect(regionTiles(floor, assets, "https://tiles/tactical/v")[0].url).toMatch(/\/insets\/i\/planes\/1\//);
+  });
+
   const catalogue = catalogueFixture as Catalogue;
   const classify = catalogueClassifier(catalogue);
   const fixtures = import.meta.glob("./fixtures/routes/*.json", { eager: true, import: "default" }) as Record<string, RoutePlan>;

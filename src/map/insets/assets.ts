@@ -11,6 +11,8 @@ export interface InsetManifest {
   files: Record<"regions.json" | "labels.json", string> & { "anchors.json"?: string };
   planes: number[][];
   supplemental: number[][];
+  /** The directory each style's supplemental tiles are in; absent means tactical, under planes/. */
+  supplementalStyles?: Record<string, string>;
 }
 export interface InsetAssets {
   catalogue: Catalogue;
@@ -41,6 +43,7 @@ const validateManifest = new Ajv().compile({
   properties: {
     schemaVersion: { const: 1 }, version: { type: "string", minLength: 1 }, layout: { const: "explv-tms-v1" }, tileVersion: { type: "string", minLength: 1 },
     cacheIdx255Sha256: hash, planes: squares, supplemental: squares,
+    supplementalStyles: { type: "object", additionalProperties: { type: "string", pattern: "^[a-z][a-z-]*$" } },
     files: { type: "object", required: ["regions.json", "labels.json"], properties: { "regions.json": hash, "labels.json": hash } },
   },
 });

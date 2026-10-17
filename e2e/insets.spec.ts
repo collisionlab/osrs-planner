@@ -70,3 +70,16 @@ test("plans routes while an endpoint is dragged and keeps the view after", async
   const after = await tile(page, point(3222, 3218));
   expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeLessThan(2);
 });
+
+test("cuts insets from the Standard tiles when Standard is chosen", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("osrs-planner.map-style", "standard"));
+  const native: string[] = [];
+  page.on("request", request => { if (/\/8\/\d+\/\d+\.png$/.test(request.url())) native.push(request.url()); });
+  await openInsets(page, "account=mid");
+  const search = page.getByRole("combobox", { name: "Show an underground or instanced area" });
+  await search.fill("Chasm of Fire");
+  await search.press("Enter");
+  await expect(page.locator(".inset-label", { hasText: "Chasm of Fire" }).first()).toBeVisible();
+  await expect.poll(() => native.filter(url => url.includes("/standard/")).length).toBeGreaterThan(0);
+  expect(native.filter(url => url.includes("/tactical/"))).toEqual([]);
+});
