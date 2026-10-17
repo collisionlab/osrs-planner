@@ -2,30 +2,18 @@ import { useEffect, useState } from "react";
 import type { Setting } from "../../domain/contracts";
 import { changeSetting, settingValue, type ChangedSettings } from "../../domain/settings";
 
-/** Shown above the groups: the settings most routes are planned around. */
-const everyday = ["avoidWilderness", "includeBankPath", "useTeleportationItems"];
-
 /**
- * Plugin settings that describe the account rather than how to travel: unlocks the game doesn't
- * report (`unlock…`, `respawn…`). The account panel shows them; they stay route settings.
- */
-export const isAccountSetting = (setting: Setting) => /^(unlock|respawn)/.test(setting.key);
-
-/**
- * The plugin's travel settings, as the route service's catalog lists them, in three groups:
- * transport toggles (`use…`), transport thresholds, and everything else as advanced. `label`
- * shortens a name where the group title already says it.
+ * The plugin's travel settings in the groups the route service gives them: everyday ones first,
+ * then transport toggles, transport thresholds and advanced tuning. `label` shortens a name where
+ * the group title already says it.
  */
 function groups(settings: Setting[]): { title: string; note?: string; settings: Setting[]; label?(name: string): string }[] {
-  const rest = settings.filter(setting => !everyday.includes(setting.key) && !isAccountSetting(setting));
-  const transports = rest.filter(setting => setting.section === "Settings" && setting.type === "boolean" && setting.key.startsWith("use"));
-  const thresholds = rest.filter(setting => setting.section === "Transport Thresholds");
-  const grouped = new Set([...transports, ...thresholds]);
+  const inGroup = (group: Setting["group"]) => settings.filter(setting => setting.group === group);
   return [
-    { title: "Transports", settings: transports, label: name => capitalise(name.replace(/^Use /, "")) },
-    { title: "Transport thresholds", note: "Extra tiles a transport must save before it is preferred.", settings: thresholds,
+    { title: "Transports", settings: inGroup("TRANSPORT"), label: name => capitalise(name.replace(/^Use /, "")) },
+    { title: "Transport thresholds", note: "Extra tiles a transport must save before it is preferred.", settings: inGroup("THRESHOLD"),
       label: name => name.replace(/ threshold$/, "") },
-    { title: "Advanced", settings: rest.filter(setting => !grouped.has(setting)) },
+    { title: "Advanced", settings: inGroup("ADVANCED") },
   ];
 }
 
@@ -50,13 +38,7 @@ function NumberField({ setting, value, onChange }: { setting: Setting; value: nu
     onBlur={() => { if (!valid) setText(shown(value)); }} />;
 }
 
-/** Display names for choices whose ids read as jargon. */
-const choiceNames: Record<string, Record<string, string>> = {
-  pathfinderBackend: { EXACT: "A*", LEGACY: "Legacy" },
-};
-const settingNames: Record<string, string> = { exactHeuristicWeight: "A* heuristic weight" };
-
-export function SettingField({ setting, changed, label = settingNames[setting.key] || setting.name, onChange }: {
+function SettingField({ setting, changed, label = setting.name, onChange }: {
   setting: Setting; changed: ChangedSettings; label?: string; onChange(changed: ChangedSettings): void;
 }) {
   const value = settingValue(setting, changed);
@@ -72,7 +54,7 @@ export function SettingField({ setting, changed, label = settingNames[setting.ke
   }
   return <label className={className} title={setting.description}>{name}<select aria-label={setting.name} value={value as string}
     onChange={event => set(event.target.value)}>
-    {setting.choices?.map(choice => <option key={choice.id} value={choice.id}>{choiceNames[setting.key]?.[choice.id] || choice.name}</option>)}
+    {setting.choices?.map(choice => <option key={choice.id} value={choice.id}>{choice.name}</option>)}
   </select></label>;
 }
 
@@ -81,7 +63,7 @@ export function RouteSettings({ settings, changed, onChange }: {
   changed: ChangedSettings;
   onChange(changed: ChangedSettings): void;
 }) {
-  const pinned = everyday.map(key => settings.find(setting => setting.key === key)).filter((setting): setting is Setting => Boolean(setting));
+  const pinned = settings.filter(setting => setting.group === "EVERYDAY");
   return <div className="route-options">
     <div className="option-rows">
       {pinned.map(setting => <SettingField key={setting.key} setting={setting} changed={changed}

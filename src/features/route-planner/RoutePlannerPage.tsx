@@ -10,7 +10,7 @@ import type { Account, Location, WorldPoint } from "../../domain/contracts";
 import { asSettings, validSettings, type ChangedSettings } from "../../domain/settings";
 import { Itinerary } from "../itinerary/Itinerary";
 import { ShareRoute } from "./ShareRoute";
-import { isAccountSetting, RouteSettings } from "./RouteSettings";
+import { RouteSettings } from "./RouteSettings";
 import { plannerUrlWarnings, profileFromHash, readPlannerUrl, readStoredSettings, SharedProfileError, writePlannerUrl, type PlannerUrlState } from "./plannerState";
 
 const customAccountKey = "osrs-travel.custom-account.v2";
@@ -170,8 +170,7 @@ export function RoutePlannerPage() {
   }, [dragging, preview.isFetching]);
   const previewRoute = dragging && previewRequest ? preview.data : undefined;
 
-  const travelChanges = catalog.data && settings ? catalog.data.settings
-    .filter(setting => setting.key in settings.settings && !isAccountSetting(setting)).length : 0;
+  const travelChanges = settings ? Object.keys(settings.settings).length : 0;
   const chooseStart = (start?: Location) => update({ start });
   const chooseDestination = (destination?: Location) => update({ destination });
   const closeAccountPanel = () => { setAccountPanel("hidden"); accountToggle.current?.focus(); };
@@ -199,8 +198,7 @@ export function RoutePlannerPage() {
     <main className={accountPanel === "open" ? "workspace with-account" : "workspace"}>
       {selected && catalog.data && accountPanel !== "closed" && <Suspense fallback={<aside className="account-panel"><p className="panel-loading">Loading account…</p></aside>}>
         <AccountPanel accounts={accounts} selected={selected} catalog={catalog.data} open={accountPanel === "open"}
-          onSelect={chooseAccount} onClose={closeAccountPanel} onDraft={setDraftAccount}
-          changedSettings={settings?.settings} onSettingsChange={changed => update({ settings: changed })} onSave={value => {
+          onSelect={chooseAccount} onClose={closeAccountPanel} onDraft={setDraftAccount} onSave={value => {
             try { localStorage.setItem(customAccountKey, JSON.stringify(value)); }
             catch { throw new Error("This browser could not save the custom build. Check its storage permissions and try again."); }
             setCustomAccount(value); chooseAccount("custom");

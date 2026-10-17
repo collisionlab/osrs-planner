@@ -96,21 +96,16 @@ describe("account panel", () => {
     expect((onSave.mock.calls[0][0] as Account).levels).toEqual({ AGILITY: 75, ATTACK: 1 });
   });
 
-  it("keeps one respawn point, including the Prifddinas setting", async () => {
-    const onSettingsChange = vi.fn();
-    const { onSave } = renderPanel({ changedSettings: {}, onSettingsChange,
+  it("keeps one respawn point and saves unreported unlocks with the account", async () => {
+    const { onSave } = renderPanel({
       selected: { id: "custom", name: "Mine", account: { ...account, unlocks: ["RESPAWN_FALADOR", "RESPAWN_EDGEVILLE"] } } });
     const respawn = screen.getByLabelText("Respawn point") as HTMLSelectElement;
     expect(respawn.value).toBe("RESPAWN_FALADOR");
-    fireEvent.change(respawn, { target: { value: "RESPAWN_EDGEVILLE" } });
+    fireEvent.change(respawn, { target: { value: "RESPAWN_PRIFDDINAS" } });
+    fireEvent.click(screen.getByLabelText("Axe stored at a canoe station"));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(onSave).toHaveBeenCalled());
-    expect((onSave.mock.calls[0][0] as Account).unlocks).toEqual(["RESPAWN_EDGEVILLE"]);
-    fireEvent.change(respawn, { target: { value: "PRIFDDINAS" } });
-    expect(onSettingsChange).toHaveBeenLastCalledWith({ respawnPrifddinas: true });
-    // The plugin's other unlock settings are edited here too.
-    fireEvent.click(screen.getByLabelText("Axe stored at a canoe station"));
-    expect(onSettingsChange).toHaveBeenLastCalledWith({ unlockCanoeAxe: true });
+    expect((onSave.mock.calls[0][0] as Account).unlocks).toEqual(["CANOE_AXE_STORED", "RESPAWN_PRIFDDINAS"]);
   });
 
   it("reports the edited account as a draft while it differs from the saved one", async () => {

@@ -10,9 +10,7 @@ import { useForm, type FieldErrors } from "react-hook-form";
 import { findItems, lookupItems } from "../api/items";
 import { validateAccount } from "../domain/accountValidation";
 import { orderSkills, totalLevel, type PlannerAccount } from "../domain/accounts";
-import type { Account, Catalog, House, Option, Setting } from "../domain/contracts";
-import { changeSetting, settingValue, type ChangedSettings } from "../domain/settings";
-import { isAccountSetting, SettingField } from "../features/route-planner/RouteSettings";
+import type { Account, Catalog, House, Option } from "../domain/contracts";
 
 const itemFields = ["inventory", "equipment", "runePouch", "bank"] as const;
 const itemTitles = { inventory: "Inventory", equipment: "Equipment", runePouch: "Rune pouch", bank: "Bank" };
@@ -51,6 +49,8 @@ interface AccountForm extends Omit<Account, "inventory" | "runePouch" | "equipme
   allPortals: boolean;
   minigameTeleport: "ready" | "usedAt";
   minigameTeleportUsedAt: number;
+  /** The one respawn unlock, or "" for Lumbridge; kept out of `unlocks`, whose checkboxes would drop it. */
+  respawn: string;
 }
 
 /** A yes/no fact as a named row with a switch, as the travel options show them. */
@@ -59,8 +59,6 @@ function SwitchRow({ label, ...input }: { label: ReactNode } & ComponentProps<"i
     <input type="checkbox" className="option-switch" {...input} /></label>;
 }
 
-/** The respawn point a plugin setting rather than an account unlock records. */
-const PRIFDDINAS = "PRIFDDINAS";
 const isRespawn = (unlock: string) => unlock.startsWith("RESPAWN_");
 
 function Section({ id, title, summary, open, onToggle, children }: {
@@ -152,8 +150,7 @@ function ItemsEditor({ items, names, onChange }: {
   </>;
 }
 
-export function AccountPanel({ accounts, selected, catalog, open, onSelect, onSave, onClose, onDraft,
-  changedSettings = {}, onSettingsChange }: {
+export function AccountPanel({ accounts, selected, catalog, open, onSelect, onSave, onClose, onDraft }: {
   accounts: PlannerAccount[];
   selected: PlannerAccount;
   catalog: Catalog;
@@ -163,9 +160,6 @@ export function AccountPanel({ accounts, selected, catalog, open, onSelect, onSa
   onClose(): void;
   /** The account as edited so far, while it differs from the saved one and is valid; else undefined. */
   onDraft?(account?: Account): void;
-  /** The route settings that describe the account (unlocks the game doesn't report), edited here. */
-  changedSettings?: ChangedSettings;
-  onSettingsChange?(changed: ChangedSettings): void;
 }) {
   const account = selected.account;
   const heading = useRef<HTMLHeadingElement>(null);
@@ -195,19 +189,9 @@ export function AccountPanel({ accounts, selected, catalog, open, onSelect, onSa
   const visiblePortals = catalog.portals.filter(portal => portal.name.toLowerCase().includes(portalFilter.toLowerCase()));
   const unlockGroups = useMemo(() => groupBy(catalog.unlocks.filter(unlock => !isRespawn(unlock.id))), [catalog]);
   const respawns = useMemo(() => catalog.unlocks.filter(unlock => isRespawn(unlock.id)), [catalog]);
-  const accountSettings = useMemo(() => catalog.settings.filter(isAccountSetting), [catalog]);
-  const prifddinas = accountSettings.find(setting => setting.key === "respawnPrifddinas");
   const unlocked = checked(values.unlocks);
-  // The game keeps one respawn point; Lumbridge is the default, and Prifddinas is a plugin setting.
-  const respawn = prifddinas && settingValue(prifddinas, changedSettings) === true ? PRIFDDINAS : unlocked.find(isRespawn) || "";
-  const respawnName = respawn === PRIFDDINAS ? "Prifddinas" : respawns.find(option => option.id === respawn)?.name || "Lumbridge";
-  const chooseRespawn = (choice: string) => {
-    setValue("unlocks", [...unlocked.filter(unlock => !isRespawn(unlock)), ...choice && choice !== PRIFDDINAS ? [choice] : []],
-      { shouldDirty: true });
-    if (prifddinas && (respawn === PRIFDDINAS) !== (choice === PRIFDDINAS)) {
-      onSettingsChange?.(changeSetting(changedSettings, prifddinas, choice === PRIFDDINAS));
-    }
-  };
+  // The game keeps one respawn point; Lumbridge is the default.
+  const respawnName = respawns.find(option => option.id === values.respawn)?.name || "Lumbridge";
   const itemCount = itemFields.reduce((count, field) => count + Object.keys(items[field]).length, 0);
   const nameOf = (options: Option[], id: string) => options.find(option => option.id === id)?.name || id;
 
@@ -233,12 +217,12 @@ export function AccountPanel({ accounts, selected, catalog, open, onSelect, onSa
     return next;
   });
   const build = (form: AccountForm): Account => {
-    const { hasHouse, house, allPortals, minigameTeleport, minigameTeleportUsedAt, ...rest } = form;
+    const { hasHouse, house, allPortals, minigameTeleport, minigameTeleportUsedAt, respawn, ...rest } = form;
     const { portals, ...houseFacts } = house;
     return validateAccount({
       ...rest, ...items, name: form.name.trim(),
       // A checkbox group with one option reports a boolean or a string, not an array.
-      completedQuests: checked(rest.completedQuests), unlocks: checked(rest.unlocks),
+      completedQuests: checked(rest.completedQuests), unlocks: [...checked(rest.unlocks), ...respawn ? [respawn] : []],
       plantedSpiritTrees: checked(rest.plantedSpiritTrees),
       ...hasHouse ? { house: allPortals ? houseFacts : { ...houseFacts, portals: checked(portals) } } : {},
       ...minigameTeleport === "usedAt" ? { minigameTeleportUsedAt: Number(minigameTeleportUsedAt) } : {},
@@ -352,10 +336,9 @@ export function AccountPanel({ accounts, selected, catalog, open, onSelect, onSa
             plural(values.plantedSpiritTrees.length, "spirit tree")].join(" · ")}>
           <div className="option-rows">
             <label className="option-row"><span className="option-name">Respawn point</span>
-              <select aria-label="Respawn point" value={respawn} onChange={event => chooseRespawn(event.target.value)}>
+              <select aria-label="Respawn point" {...register("respawn")}>
                 <option value="">Lumbridge</option>
                 {respawns.map(option => <option key={option.id} value={option.id}>{option.name}</option>)}
-                {prifddinas && <option value={PRIFDDINAS}>Prifddinas</option>}
               </select></label>
           </div>
           {[...unlockGroups].map(([group, unlocks]) => <fieldset className="check-group" key={group}>
@@ -363,12 +346,6 @@ export function AccountPanel({ accounts, selected, catalog, open, onSelect, onSa
             <div className="option-rows">{unlocks.map(unlock =>
               <SwitchRow key={unlock.id} label={unlock.name} value={unlock.id} {...register("unlocks")} />)}</div>
           </fieldset>)}
-          {accountSettings.length > 1 && onSettingsChange && <fieldset className="check-group">
-            <legend>Not reported by the game</legend>
-            <p className="option-note">Route settings: they apply to every account.</p>
-            <div className="option-rows">{accountSettings.filter(setting => setting !== prifddinas).map(setting =>
-              <SettingField key={setting.key} setting={setting} changed={changedSettings} onChange={onSettingsChange} />)}</div>
-          </fieldset>}
           <fieldset className="check-group"><legend>Planted spirit trees</legend>
             <div className="option-rows">{catalog.plantedSpiritTrees.map(tree =>
               <SwitchRow key={tree.id} label={tree.name} value={tree.id} {...register("plantedSpiritTrees")} />)}</div>
@@ -459,6 +436,8 @@ function formDefaults(account: Account, name: string, catalog: Catalog): Account
     allPortals: house !== undefined && house.portals === undefined,
     minigameTeleport: minigameTeleportUsedAt === undefined ? "ready" : "usedAt",
     minigameTeleportUsedAt: minigameTeleportUsedAt ?? 0,
+    unlocks: account.unlocks.filter(unlock => !isRespawn(unlock)),
+    respawn: account.unlocks.find(isRespawn) || "",
   };
 }
 

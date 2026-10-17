@@ -27,6 +27,16 @@ class RouteSchemaTest {
         assertRejected(request, "account", diary);
     }
 
+    @Test
+    void catalogMatchesItsSchema() {
+        var factory = com.networknt.schema.JsonSchemaFactory.getInstance(com.networknt.schema.SpecVersion.VersionFlag.V202012,
+            builder -> builder.schemaMappers(mappers -> mappers.mapPrefix("https://osrs.travel/schemas/", "classpath:/schemas/")));
+        var schema = factory.getSchema(com.networknt.schema.SchemaLocation.of(
+            "https://osrs.travel/schemas/route-api-v1.schema.json#/$defs/catalog"));
+        var errors = schema.validate(Requests.MAPPER.valueToTree(new shortestpath.routeapi.Catalog()));
+        org.junit.jupiter.api.Assertions.assertTrue(errors.isEmpty(), errors.toString());
+    }
+
     private static void assertRejected(ObjectNode request, String field, JsonNode value) {
         ObjectNode copy = request.deepCopy();
         copy.set(field, value);

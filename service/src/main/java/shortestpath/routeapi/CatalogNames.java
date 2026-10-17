@@ -100,6 +100,11 @@ final class CatalogNames {
         names.put(Unlock.RESPAWN_FEROX_ENCLAVE, "Ferox Enclave");
         names.put(Unlock.RESPAWN_KOUREND_CASTLE, "Kourend Castle");
         names.put(Unlock.RESPAWN_CIVITAS_ILLA_FORTIS, "Civitas illa Fortis");
+        names.put(Unlock.RESPAWN_PRIFDDINAS, "Prifddinas");
+        names.put(Unlock.CANOE_AXE_STORED, "Axe stored at a canoe station");
+        names.put(Unlock.XERICS_HONOUR, "Xeric's Honour");
+        names.put(Unlock.DRAGONTOOTH_PASSAGE, "Dragontooth Island free passage");
+        names.put(Unlock.MOR_UL_REK_INNER_CITY, "Mor Ul Rek inner city");
         return names;
     }
 }
