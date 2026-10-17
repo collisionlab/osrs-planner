@@ -8,7 +8,9 @@ import urllib.request
 
 
 def fetch(url):
-    with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "collisionlab-insets/1.0"}), timeout=60) as response:
+    with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "collisionlab-insets/1.0", "Origin": "https://osrs.collisionlab.world"}), timeout=60) as response:
+        if response.headers.get("Access-Control-Allow-Origin") not in ("*", "https://osrs.collisionlab.world"):
+            raise ValueError("Map assets are not accessible to the browser (CORS)")
         return response.read()
 
 
