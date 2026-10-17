@@ -51,7 +51,7 @@ function endpointHit(resolution: number): Style[] {
 export function routeFeatureStyle(feature: FeatureLike, selectedSegment?: number, resolution = 1): Style | Style[] {
   const role = String(feature.get("role"));
   if (role === "start" || role === "destination") return endpointHit(resolution);
-  if (role === "bank") return bankHit;
+  if (role === "bank" || role === "landing") return bankHit;
   const selected = selectedSegment !== undefined && feature.get("segmentIndex") === selectedSegment;
   const key = `${role as RouteLineKind}/${selected}`;
   return (feature.getGeometry()?.getType() === "Point" ? dots : lines).get(key)!;
@@ -62,9 +62,10 @@ export function routeFeatureStyle(feature: FeatureLike, selectedSegment?: number
  * tile (sized by the map's `--endpoint-px`) with an A/B tag beside it; `snap` moves the marker to
  * the tile under a dragged point.
  */
-export function routeMarkerOverlay(feature: Feature<Point>, kind: keyof typeof routeMarkers, title: string,
+export function routeMarkerOverlay(feature: Feature<Point>, kind: keyof typeof routeMarkers | "landing", title: string,
   snap: (coordinate: Coordinate) => Coordinate = coordinate => coordinate) {
-  const look = routeMarkers[kind];
+  // A teleport's landing tile, marked like an endpoint in the teleport colour.
+  const look = kind === "landing" ? { label: "T", className: "", size: 0 } : routeMarkers[kind];
   const element = document.createElement("div");
   element.title = title;
   element.setAttribute("aria-label", title);

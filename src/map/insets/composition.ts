@@ -138,6 +138,14 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   }
   if (start) addPoint(start.coordinate, "start");
   if (destination) addPoint(destination.coordinate, "destination");
+  route?.segments.forEach((segment, segmentIndex) => {
+    if (segment.kind !== "teleport") return;
+    const feature = new Feature(new Point(projected(segment.to)));
+    feature.setProperties({ role: "landing", segmentIndex });
+    routeSource.addFeature(feature); owned.add(classify(segment.to), feature);
+    const marker = routeMarkerOverlay(feature, "landing", `${segment.name}: arrival`);
+    map.addOverlay(marker.overlay); cleanup.push(marker.dispose);
+  });
   const contours = new VectorSource();
   map.addLayer(new VectorLayer({ source: contours, zIndex: 5, updateWhileInteracting: true, updateWhileAnimating: true,
     style: [new Style({ stroke: new Stroke({ color: "#c6b994", width: 8 }) }), new Style({ stroke: new Stroke({ color: "#262b25", width: 6 }) })] }));

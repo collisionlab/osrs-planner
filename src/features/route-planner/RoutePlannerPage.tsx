@@ -25,6 +25,8 @@ async function loadCustomAccount(): Promise<Account | undefined> {
   } catch { return undefined; }
 }
 
+const insetsKey = "osrs-travel.insets.v1";
+
 function loadStoredSettings(): ChangedSettings {
   try { return readStoredSettings(localStorage.getItem(settingsKey)); }
   catch { return {}; }
@@ -84,6 +86,8 @@ export function RoutePlannerPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [customAccount, setCustomAccount] = useState<Account>();
+  // The map mode a link doesn't name is the one last chosen in this browser.
+  const [storedInsets, setStoredInsets] = useState(() => { try { return localStorage.getItem(insetsKey) === "1"; } catch { return false; } });
   // The account as edited in the panel, before it is saved: routes follow the edits.
   const [draftAccount, setDraftAccount] = useState<Account>();
   const [shared, setShared] = useState<{ account?: Account; error?: SharedProfileError; loading?: boolean }>({});
@@ -209,7 +213,11 @@ export function RoutePlannerPage() {
           onSelectSegment={setSelectedSegment} onPick={pickMap} onMoveStart={point => update({ start: customLocation(point) })}
           onMoveDestination={point => update({ destination: customLocation(point) })}
           onDragEndpoint={(role, point) => setDragging(point ? { role, point } : undefined)} previewRoute={previewRoute}
-          insets={urlState.insets ?? false} onInsetsChange={insets => update({ insets: insets || undefined }, true)} /></Suspense>
+          insets={urlState.insets ?? storedInsets} onInsetsChange={insets => {
+            setStoredInsets(insets);
+            try { localStorage.setItem(insetsKey, insets ? "1" : "0"); } catch { /* the URL still carries it */ }
+            update({ insets: insets || undefined }, true);
+          }} /></Suspense>
         {!urlState.start || !urlState.destination ? <p className="map-message"><span aria-hidden="true">{urlState.start ? "B" : "A"}</span>{urlState.start ? "Select destination on map" : "Select origin on map or search above"}</p> : null}
       </section>
       <Itinerary start={urlState.start} destination={urlState.destination} route={route.data} isFetching={route.isFetching}

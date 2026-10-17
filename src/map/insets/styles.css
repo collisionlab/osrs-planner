@@ -11,6 +11,7 @@
 /* Endpoints: the game tile itself, outlined, with its A/B tag up and to the right. */
 .inset-endpoint { position: relative; width: 0; height: 0; color: var(--cyan, #77e2d4); pointer-events: none; }
 .inset-endpoint.destination { color: var(--orange, #ffae47); }
+.inset-endpoint.landing { color: #d7a6ff; }
 .inset-endpoint-tile { position: absolute; left: calc(var(--endpoint-px, 10px) / -2); top: calc(var(--endpoint-px, 10px) / -2); width: var(--endpoint-px, 10px); height: var(--endpoint-px, 10px); box-sizing: border-box; border: 2px solid currentColor; background: color-mix(in srgb, currentColor 22%, transparent); box-shadow: 0 0 0 1px var(--ink, #141914), inset 0 0 0 1px var(--ink, #141914); }
 /* The tag's background is the marker colour (currentColor), so its letter is painted in ink. */
 .inset-endpoint-tag { position: absolute; left: calc(var(--endpoint-px, 10px) / 2 + 3px); bottom: calc(var(--endpoint-px, 10px) / 2 + 3px); display: grid; place-items: center; width: 15px; height: 15px; box-sizing: border-box; background: currentColor; box-shadow: 0 0 0 1px var(--ink, #141914); -webkit-text-fill-color: var(--ink, #141914); font: 9px/1 var(--pixel, Silkscreen, monospace); }
