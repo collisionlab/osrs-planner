@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { RoutePlan, WorldPoint } from "../../domain/contracts";
 import type { Region } from "./geometry";
 import { layoutRegions, regionExtent } from "./layout";
-import { catalogueClassifier, type Catalogue } from "./preview";
+import { catalogueClassifier, withRouteFloors, type Catalogue } from "./preview";
 import { decomposeRoute, type RouteTransition } from "./routeSections";
 import catalogueFixture from "./fixtures/regions.json";
 import { worldToMap } from "./projection";
@@ -113,6 +113,21 @@ describe("upper floors", () => {
     expect(detached({ x: 2465, y: 3495, plane: 0 })).toBe("main-world");
     expect(detached({ x: 3100, y: 3100, plane: 1 })).toBe("main-world");
     expect(catalogueClassifier(catalogue)({ x: 2465, y: 3495, plane: 1 })).toBe("main-world");
+  });
+
+  it("grows a floor over the route's tiles on it that no region holds", () => {
+    const catalogue: Catalogue = { surfaceRects: [...surface, [1, 2400, 3400, 200, 200]], regions: [floor(1)] };
+    // Up the ladder, along a bare branch out of the room, then away by teleport.
+    const branch = [2470, 2471, 2472].map(x => ({ x, y: 3494, plane: 1 }));
+    const route = [{ x: 2467, y: 3494, plane: 0 }, { x: 2467, y: 3495, plane: 1 }, { x: 2469, y: 3494, plane: 1 }, ...branch,
+      { x: 3222, y: 3218, plane: 0 }];
+    const grown = withRouteFloors(catalogue, route);
+    const classify = catalogueClassifier(grown, { detachUpperFloors: true });
+    for (const tile of branch) expect(classify(tile)).toBe("p1");
+    expect(grown.regions[0].bounds).toEqual([2462, 3492, 2473, 3500]);
+    // A run far beyond the inset size limit stays where it is.
+    const far = [{ x: 2467, y: 3495, plane: 1 }, ...Array.from({ length: 100 }, (_, i) => ({ x: 2470 + i, y: 3494, plane: 1 }))];
+    expect(withRouteFloors(catalogue, far)).toBe(catalogue);
   });
 
   it("stacks a building's floors beside it, on one side, wherever the route arrived from", () => {

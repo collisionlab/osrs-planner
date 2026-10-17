@@ -16,7 +16,7 @@ import type { OsrsMapProps } from "../OsrsMap";
 import type { WorldPoint } from "../../domain/contracts";
 import type { InsetArea, InsetAssets, InsetDoor } from "./assets";
 import { contains } from "./geometry";
-import { catalogueClassifier, isDetachedUpperFloor } from "./preview";
+import { catalogueClassifier, isDetachedUpperFloor, withRouteFloors } from "./preview";
 import { decomposeRoute, type RouteTransition } from "./routeSections";
 import { layoutRegions, regionExtent, type Placement } from "./layout";
 import { worldToMap, mapToWorld, osrsProjection, resolutions, MAX_ZOOM, MIN_ZOOM } from "./projection";
@@ -50,11 +50,13 @@ export interface AreaOptions {
   onDoor?(door: InsetDoor): void;
 }
 
-export function createComposition(target: HTMLElement, assets: InsetAssets, props: OsrsMapProps,
+export function createComposition(target: HTMLElement, releaseAssets: InsetAssets, props: OsrsMapProps,
   callbacks: () => OsrsMapProps, layer: { url: string; attribution: string; maxNativeZoom?: number },
   tacticalBase: string, report: (message: string) => void, initialView?: { center: Coordinate; resolution: number },
   areas: AreaOptions = {}) {
   const { route, start, destination } = props;
+  const assets = route ? { ...releaseAssets, catalogue: withRouteFloors(releaseAssets.catalogue, route.segments.flatMap(segmentPoints)) }
+    : releaseAssets;
   const classify = catalogueClassifier(assets.catalogue, { detachUpperFloors: true });
   const points = [start?.coordinate, destination?.coordinate, ...(route?.segments.flatMap(segmentPoints) || [])]
     .filter((point): point is WorldPoint => !!point);
