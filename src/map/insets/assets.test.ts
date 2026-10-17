@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkCatalogue, loadInsetAssets, loadInsetEntrances, sha256, upperFloorBuildings } from "./assets";
+import { checkCatalogue, loadInsetAssets, loadInsetEntrances, sha256, upperFloorDoors } from "./assets";
 import { requiredAssets } from "./testAssets";
 import { nativeTileUrl } from "./tactical";
 import { pickWorld } from "./composition";
@@ -73,18 +73,22 @@ describe("named areas and their entrances", () => {
   });
 });
 
-it("groups overlapping upper floors into buildings, ignoring scraps", () => {
+it("offers an upper floor only where a ladder or staircase from the ground reaches it", () => {
   const floor = (id: string, plane: number, x: number, size: number): Region => ({ id, plane, bounds: [x, 3200, x + size, 3200 + size],
     mask: [[x, 3200, size, size]], classification: "main-world", tileCount: size * size, surfaceTiles: size * size, touchesUnknown: false, examples: [] });
-  const { floors, doors } = upperFloorBuildings({ surfaceRects: [], regions: [
-    floor("castle-2", 2, 3204, 10), floor("castle-1", 1, 3200, 14), floor("ledge", 1, 3260, 3), floor("hut", 1, 3300, 6), floor("ground", 0, 3200, 20),
-  ] });
-  expect(doors).toEqual([
-    { point: { x: 3207, y: 3207, plane: 0 }, regionIds: ["castle-1", "castle-2"], inside: {}, floors: true },
-    { point: { x: 3303, y: 3203, plane: 0 }, regionIds: ["hut"], inside: {}, floors: true },
+  const catalogue = { surfaceRects: [[0, 3150, 3150, 300, 300]] as [number, number, number, number, number][], regions: [
+    floor("castle-1", 1, 3200, 14), floor("castle-2", 2, 3202, 10), floor("bridge", 1, 3300, 8),
+  ] };
+  const { floors, doors } = upperFloorDoors(catalogue, [
+    { from: [3205, 3205, 0], to: [3205, 3205, 1], name: "Climb-up Staircase" },
+    { from: [3206, 3205, 0], to: [3205, 3205, 1], name: "Climb-up Staircase" },
+    { from: [3205, 3205, 1], to: [3205, 3205, 2], name: "Climb-up Staircase" },
+    { from: [3205, 3205, 2], to: [3205, 3205, 1], name: "Climb-down Staircase" },
   ]);
-  expect(floors.map(area => [area.regionId, area.name])).toEqual([["castle-1", "Floors at 3207, 3207"], ["castle-2", "Floors at 3207, 3207"],
-    ["hut", "Floors at 3303, 3203"]]);
+  // The neighbouring step is the same staircase; the bridge has no way up, so no marker.
+  expect(doors).toEqual([{ point: { x: 3205, y: 3205, plane: 0 }, regionIds: ["castle-1", "castle-2"],
+    inside: { "castle-1": { x: 3205, y: 3205, plane: 1 } }, floors: true, name: "Climb-up Staircase" }]);
+  expect(floors.map(area => area.regionId)).toEqual(["castle-1", "castle-2"]);
 });
 
 it("picks real Cam Torum geometry after automatic layout", async () => {

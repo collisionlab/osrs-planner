@@ -81,8 +81,10 @@ release's `anchors.json`, which is fetched only once the inset map is open. Smal
 96 tiles across) a route climbs to are drawn as insets beside their building, stacked in plane
 order, so a route that only changes plane is not drawn on top of the ground floor. A floor grows
 to cover the route's tiles on it that its visible terrain misses (the Grand Tree's branches). To
-pick a point upstairs without a route, click a building's up-arrow marker (zoom 8 or closer): its
-floors open beside it.
+pick a point upstairs without a route, click an up-arrow marker on a ladder or staircase (zoom 8 or
+closer): the floor it leads to, and the floors above that further links reach, open beside it.
+The markers come from the route service's `GET /v1/plane-links` (the plugin's physical transports
+that change plane in place), so a floor no transport reaches is never offered.
 
 All imagery uses Explv's tile layout. Base plane-0 tiles are reused; missing
 coverage and higher floors come from the sidecar's supplemental tiles. Runtime

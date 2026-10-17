@@ -19,6 +19,13 @@ class ServiceMainTest {
             assertEquals("mid", presets.get(1).get("id").asText());
             JsonNode catalog = Requests.MAPPER.readTree(client.get("/v1/catalog").body().string());
             assertTrue(catalog.get("settings").size() > 50);
+            // Lumbridge Castle's staircase up from the ground floor.
+            JsonNode links = Requests.MAPPER.readTree(client.get("/v1/plane-links").body().string());
+            boolean castle = false;
+            for (JsonNode link : links) {
+                castle |= link.get("from").toString().equals("[3205,3209,0]") && link.get("to").get(2).asInt() == 1;
+            }
+            assertTrue(castle);
 
             ObjectNode request = Requests.MAPPER.valueToTree(Requests.route("mid", 3222, 3218, 3210, 3424));
             assertEquals(200, client.post("/v1/route", request.toString()).code());

@@ -3,7 +3,7 @@ import type { OsrsMapProps } from "../OsrsMap";
 import type { WorldPoint } from "../../domain/contracts";
 import { mapLayers, insetPin, type MapStyle } from "../layers";
 import tiles from "../../../tiles.json";
-import { loadInsetAssets, loadInsetEntrances, type InsetArea, type InsetAssets, type InsetDoor, type InsetEntrances } from "./assets";
+import { loadInsetAssets, loadInsetEntrances, loadPlaneLinks, upperFloorDoors, type PlaneLink, type InsetArea, type InsetAssets, type InsetDoor, type InsetEntrances } from "./assets";
 import { AreaPicker } from "./AreaPicker";
 import { createComposition } from "./composition";
 import "ol/ol.css";
@@ -36,8 +36,12 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
   // Each shown area, entered from the door clicked, or else its default entrance.
   const [shownAreas, setShownAreas] = useState<{ regionId: string; entrance?: InsetArea["entrance"] }[]>([]);
   const focus = useRef<string>(undefined);
-  const areasById = useMemo(() => new Map([...entrances?.areas || [], ...entrances?.floors || []].map(area => [area.regionId, area])),
-    [entrances]);
+  // Ladders and staircases from the ground, which open the upper floors they lead to.
+  const [links, setLinks] = useState<PlaneLink[]>();
+  const floors = useMemo(() => assets && links ? upperFloorDoors(assets.catalogue, links) : undefined, [assets, links]);
+  const doors = useMemo(() => [...entrances?.doors || [], ...floors?.doors || []], [entrances, floors]);
+  const areasById = useMemo(() => new Map([...entrances?.areas || [], ...floors?.floors || []].map(area => [area.regionId, area])),
+    [entrances, floors]);
   const shown = useMemo(() => shownAreas.flatMap(({ regionId, entrance }) => {
     const area = areasById.get(regionId);
     return area ? [{ ...area, entrance: entrance || area.entrance }] : [];
@@ -50,7 +54,7 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
   const toggleDoor = useRef((_: InsetDoor) => {});
   // A building's floors open beside it, where the view already is.
   toggleDoor.current = door => door.regionIds.every(id => shownAreas.some(area => area.regionId === id)) ? hide(door.regionIds)
-    : door.regionIds.forEach(id => show(id, door.floors ? undefined : { surface: door.point, inside: door.inside[id] }, !door.floors));
+    : door.regionIds.forEach(id => show(id, door.inside[id] && { surface: door.point, inside: door.inside[id] }, !door.floors));
   useEffect(() => {
     const abort = new AbortController();
     if (!insetPin || insetPin.tileVersion !== tiles.version) { setError("Insets are not available for these map tiles."); return; }
@@ -64,11 +68,12 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
     const abort = new AbortController();
     // Without entrances the map still works; there is just no area search.
     void loadInsetEntrances(assets, abort.signal).then(value => { if (!abort.signal.aborted) setEntrances(value); }, () => {});
+    void loadPlaneLinks(abort.signal).then(value => { if (!abort.signal.aborted) setLinks(value); }, () => {});
     return () => abort.abort();
   }, [assets]);
   // Showing or hiding an area keeps the view (or moves to the new area) instead of fitting the route.
   const areasChanged = useRef(false);
-  useEffect(() => { areasChanged.current = true; }, [shown, entrances]);
+  useEffect(() => { areasChanged.current = true; }, [shown, doors]);
   useEffect(() => {
     if (!assets || !target.current) return;
     try {
@@ -78,13 +83,13 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
       if (keepView.current && routeMatches(props)) keepView.current = false;
       const instance = createComposition(target.current, assets, props, () => callbacks.current, layer,
         `${tiles.base}/tactical/${tiles.version}`, setStatus, previous,
-        { shown, doors: entrances?.doors, onDoor: door => toggleDoor.current(door) });
+        { shown, doors, onDoor: door => toggleDoor.current(door) });
       composition.current = instance;
       if (focus.current) { instance.fitRegion(focus.current); focus.current = undefined; }
       instance.select(callbacks.current.selectedSegment);
       return () => { lastView.current = instance.view(); composition.current = undefined; instance.dispose(); };
     } catch (error) { setError(String(error)); }
-  }, [assets, props.route, props.start, props.destination, props.style, shown, entrances]);
+  }, [assets, props.route, props.start, props.destination, props.style, shown, doors]);
   useEffect(() => { composition.current?.select(props.selectedSegment); }, [props.selectedSegment]);
   useEffect(() => { composition.current?.preview(props.previewRoute); }, [props.previewRoute]);
   return <>

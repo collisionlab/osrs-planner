@@ -104,6 +104,7 @@ public final class ServiceMain {
         Catalog catalog = new Catalog();
         app.get("/v1/catalog", ctx -> ctx.json(catalog));
         app.get("/v1/presets", ctx -> ctx.json(PRESETS));
+        app.get("/v1/plane-links", ctx -> ctx.header("Cache-Control", "public, max-age=3600").json(PlaneLinks.LINKS));
         app.post("/v1/route", ctx -> {
             JsonNode body = mapper.readTree(ctx.body());
             validator.validate(body);

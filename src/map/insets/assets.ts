@@ -1,7 +1,6 @@
 import Ajv from "ajv";
 import type { WorldPoint } from "../../domain/contracts";
-import type { Region } from "./geometry";
-import { isDetachedUpperFloor, type Catalogue } from "./preview";
+import { catalogueClassifier, isDetachedUpperFloor, type Catalogue } from "./preview";
 
 export interface InsetManifest {
   schemaVersion: 1;
@@ -102,55 +101,56 @@ export interface InsetDoor {
   point: WorldPoint; regionIds: string[]; inside: Record<string, WorldPoint>;
   /** A building's way up rather than an entrance: `regionIds` are its upper floors, lowest first. */
   floors?: boolean;
+  /** What the way up is ("Climb-up Ladder"). */
+  name?: string;
 }
 export interface InsetEntrances {
   /** Named areas, largest first: size stands in for how often people go there. */
   areas: InsetArea[];
-  /** Small upper floors, named for the building they are in (see {@link upperFloorBuildings}). */
-  floors: InsetArea[];
   /** Surface tiles that lead straight into a named area, and where in each area they lead. */
   doors: InsetDoor[];
 }
 
-/** Upper-floor scraps smaller than this (a roof ledge, a tower top) don't make a building. */
-const MIN_FLOOR_TILES = 12;
+/** A ladder, staircase or shortcut that changes plane in place, from the route service. */
+export interface PlaneLink { from: [number, number, number]; to: [number, number, number]; name: string }
+
+const tile = ([x, y, plane]: [number, number, number]): WorldPoint => ({ x, y, plane });
 
 /**
- * Buildings with upper floors small enough to show as insets: each a marker at the middle of its
- * lowest floor, opening the floors whose footprints overlap it, and an unnamed area per floor.
+ * The small upper floors a ladder or staircase from the ground leads to: a marker on each such
+ * ladder, opening the floor it reaches and every floor above it that further links reach, and an
+ * unnamed area per floor. A floor no link reaches is never offered.
  */
-export function upperFloorBuildings(catalogue: Catalogue): { floors: InsetArea[]; doors: InsetDoor[] } {
-  const floors = catalogue.regions.filter(region => isDetachedUpperFloor(region) && region.tileCount >= MIN_FLOOR_TILES)
-    .sort((a, b) => a.plane - b.plane);
-  const parent = floors.map((_, index) => index);
-  const root = (index: number): number => parent[index] === index ? index : parent[index] = root(parent[index]);
-  const squares = new Map<string, number[]>();
-  floors.forEach((floor, index) => {
-    const [x1, y1, x2, y2] = floor.bounds;
-    for (let x = x1 >> 6; x <= (x2 - 1) >> 6; x++) for (let y = y1 >> 6; y <= (y2 - 1) >> 6; y++) {
-      const key = `${x},${y}`, others = squares.get(key) || [];
-      for (const other of others) {
-        const [a1, b1, a2, b2] = floors[other].bounds;
-        if (a1 < x2 && x1 < a2 && b1 < y2 && y1 < b2) parent[root(index)] = root(other);
-      }
-      others.push(index); squares.set(key, others);
-    }
-  });
-  const buildings = new Map<number, Region[]>();
-  floors.forEach((floor, index) => {
-    const members = buildings.get(root(index)) || [];
-    if (!members.includes(floor)) members.push(floor);
-    buildings.set(root(index), members);
-  });
-  const areas: InsetArea[] = [], doors: InsetDoor[] = [];
-  for (const members of buildings.values()) {
-    const [x1, y1, x2, y2] = members[0].bounds;
-    const point = { x: Math.floor((x1 + x2) / 2), y: Math.floor((y1 + y2) / 2), plane: 0 };
-    const name = `Floors at ${point.x}, ${point.y}`;
-    members.forEach(floor => areas.push({ regionId: floor.id, name, tileCount: floor.tileCount }));
-    doors.push({ point, regionIds: members.map(floor => floor.id), inside: {}, floors: true });
+export function upperFloorDoors(catalogue: Catalogue, links: PlaneLink[]): { floors: InsetArea[]; doors: InsetDoor[] } {
+  const classify = catalogueClassifier(catalogue, { detachUpperFloors: true });
+  const floors = new Map(catalogue.regions.filter(isDetachedUpperFloor).map(region => [region.id, region]));
+  const floorOf = (point: [number, number, number]) => {
+    const id = classify(tile(point));
+    return floors.has(id) ? id : undefined;
+  };
+  // Links between floors, to follow a staircase on up.
+  const above = new Map<string, Set<string>>();
+  for (const link of links) {
+    const from = floorOf(link.from), to = floorOf(link.to);
+    if (from && to && from !== to) above.set(from, (above.get(from) || new Set()).add(to));
   }
-  return { floors: areas, doors };
+  const areas = new Map<string, InsetArea>(), doors: InsetDoor[] = [];
+  for (const link of links) {
+    const first = floorOf(link.to);
+    if (link.from[2] !== 0 || !first || classify(tile(link.from)) !== "main-world") continue;
+    const point = tile(link.from);
+    if (doors.some(door => door.regionIds[0] === first
+      && Math.max(Math.abs(door.point.x - point.x), Math.abs(door.point.y - point.y)) <= 3)) continue;
+    const reached = [first];
+    for (let index = 0; index < reached.length; index++) {
+      for (const next of above.get(reached[index]) || []) if (!reached.includes(next)) reached.push(next);
+    }
+    const regionIds = reached.sort((a, b) => floors.get(a)!.plane - floors.get(b)!.plane);
+    const name = `Floors by ${point.x}, ${point.y}`;
+    regionIds.forEach(id => { if (!areas.has(id)) areas.set(id, { regionId: id, name, tileCount: floors.get(id)!.tileCount }); });
+    doors.push({ point, regionIds, inside: { [first]: tile(link.to) }, floors: true, name: link.name });
+  }
+  return { floors: [...areas.values()], doors };
 }
 
 const worldPoint = (value: unknown): WorldPoint | undefined => Array.isArray(value) && value.length === 3
@@ -198,6 +198,12 @@ export async function loadInsetEntrances(assets: InsetAssets, signal?: AbortSign
     areas.push({ regionId, name: label.name, tileCount: region.tileCount, entrance });
   }
   areas.sort((a, b) => b.tileCount - a.tileCount || a.name.localeCompare(b.name));
-  const buildings = upperFloorBuildings(assets.catalogue);
-  return { areas, floors: buildings.floors, doors: [...doors.values(), ...buildings.doors] };
+  return { areas, doors: [...doors.values()] };
+}
+
+/** The route service's plane links (see {@link upperFloorDoors}). */
+export async function loadPlaneLinks(signal?: AbortSignal): Promise<PlaneLink[]> {
+  const response = await fetch("/api/v1/plane-links", { signal });
+  if (!response.ok) throw new Error(`Plane links unavailable (${response.status})`);
+  return response.json() as Promise<PlaneLink[]>;
 }
