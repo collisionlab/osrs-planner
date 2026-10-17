@@ -44,7 +44,7 @@ export function pickWorld(coordinate: Coordinate, assets: InsetAssets, placement
 
 export function createComposition(target: HTMLElement, assets: InsetAssets, props: OsrsMapProps,
   callbacks: () => OsrsMapProps, layer: { url: string; attribution: string; maxNativeZoom?: number },
-  tacticalBase: string, report: (message: string) => void) {
+  tacticalBase: string, report: (message: string) => void, initialView?: { center: Coordinate; resolution: number }) {
   const { route, start, destination } = props;
   const classify = catalogueClassifier(assets.catalogue);
   const points = [start?.coordinate, destination?.coordinate, ...(route?.segments.flatMap(segmentPoints) || [])]
@@ -79,6 +79,10 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
   const routes = new VectorLayer({ source: routeSource, zIndex: 100, updateWhileInteracting: true, updateWhileAnimating: true,
     style: (feature, resolution) => routeFeatureStyle(feature, selected, resolution),
   });
+  // A provisional route, drawn over the dimmed current one while an endpoint is dragged.
+  const previewSource = new VectorSource();
+  map.addLayer(new VectorLayer({ source: previewSource, zIndex: 101, updateWhileInteracting: true, updateWhileAnimating: true,
+    style: (feature, resolution) => routeFeatureStyle(feature, undefined, resolution) }));
   const sizeEndpoints = () => target.style.setProperty("--endpoint-px", `${endpointPixels(view.getResolution() ?? 1)}px`);
   view.on("change:resolution", sizeEndpoints); sizeEndpoints();
   // Filled in once every region is placed; until then markers sit where they were put.
@@ -193,12 +197,20 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
     if (!isEmpty(extent)) view.fit(extent, { padding: [70, 70, 70, 70], maxZoom: 9 });
   };
   let draggingEndpoint = false;
+  let dragged: WorldPoint | undefined;
   const translate = new Translate({ layers: [routes], filter: feature => ["start", "destination"].includes(feature.get("role")) });
   map.addInteraction(translate);
-  translate.on("translatestart", () => { draggingEndpoint = true; });
+  translate.on("translatestart", () => { draggingEndpoint = true; dragged = undefined; });
+  translate.on("translating", event => {
+    const point = pickWorld(event.coordinate, assets, picked);
+    if (dragged && dragged.x === point.x && dragged.y === point.y && dragged.plane === point.plane) return;
+    dragged = point;
+    callbacks().onDragEndpoint?.(event.features.item(0).get("role"), point);
+  });
   translate.on("translateend", event => {
     const feature = event.features.item(0);
     const point = pickWorld(event.coordinate, assets, picked);
+    callbacks().onDragEndpoint?.(feature.get("role"), undefined);
     if (feature.get("role") === "start") callbacks().onMoveStart?.(point);
     else callbacks().onMoveDestination?.(point);
     // OL emits click events separately; singleclick must not turn a drag into a pick.
@@ -220,10 +232,31 @@ export function createComposition(target: HTMLElement, assets: InsetAssets, prop
     target.style.cursor = hit ? "pointer" : "";
   });
   const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => map.updateSize()) : undefined;
-  observer?.observe(target); fit();
+  observer?.observe(target);
+  if (initialView) { view.setCenter(initialView.center); view.setResolution(initialView.resolution); }
+  else fit();
   return {
     fit,
+    /** Where the view is, to restore it in a rebuilt composition. */
+    view: () => ({ center: view.getCenter()!, resolution: view.getResolution()! }),
     reset() { resets.forEach(reset => reset()); fit(); },
+    /**
+     * Draw a provisional route over the current one, with the current placements, or clear it.
+     * Only steps whose points all lie on visible terrain are drawn: the layout is not rebuilt.
+     */
+    preview(next?: OsrsMapProps["route"]) {
+      previewSource.clear();
+      routes.setOpacity(next ? .35 : 1);
+      if (!next) return;
+      const visible = (point: WorldPoint) => placements.has(classify(point)) || picked.has(classify(point));
+      next.segments.forEach((segment, segmentIndex) => {
+        const coordinates = segmentPoints(segment);
+        if (segment.kind === "bank" || !coordinates.every(visible)) return;
+        const feature = new Feature(new LineString(coordinates.map(projected)));
+        feature.setProperties({ role: segment.kind, segmentIndex });
+        previewSource.addFeature(feature);
+      });
+    },
     select(index?: number) {
       selected = index; routes.changed();
       if (index !== undefined && route?.segments[index]) fitPoints(segmentPoints(route.segments[index]).map(projected), 10);

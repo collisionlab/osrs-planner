@@ -44,6 +44,17 @@ function PlaceInput({ label, location, onSelect }: { label: string; location?: L
     onBlur={() => { if (!places.some(place => place.name?.toLowerCase() === text.toLowerCase())) setText(location?.name || ""); }} /></label>;
 }
 
+/** `value`, once it has stopped changing for `delay` ms; `undefined` passes through at once. */
+function useDebounced<T>(value: T | undefined, delay: number): T | undefined {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    if (value === undefined) { setSettled(undefined); return; }
+    const timer = setTimeout(() => setSettled(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return settled;
+}
+
 function customLocation(point: WorldPoint): Location {
   return { name: `${point.x}, ${point.y}${point.plane ? `, plane ${point.plane}` : ""}`, coordinate: point };
 }
@@ -114,6 +125,19 @@ export function RoutePlannerPage() {
   });
   useEffect(() => { if (route.data && !route.isFetching) setMobileItineraryOpen(true); }, [route.data, route.isFetching]);
 
+  // While an endpoint is dragged on the inset map, plan provisional routes for where it is, once it
+  // has rested on a tile briefly. They share the route cache, so releasing usually shows the route at once.
+  const [dragging, setDragging] = useState<{ role: "start" | "destination"; point?: WorldPoint }>();
+  const dragTarget = useDebounced(dragging?.point && dragging, 200);
+  const previewRequest = useMemo(() => request && dragTarget?.point
+    ? { ...request, [dragTarget.role]: customLocation(dragTarget.point) } : undefined, [request, dragTarget]);
+  const preview = useQuery({
+    queryKey: ["route", previewRequest],
+    queryFn: ({ signal }) => calculateRoute(previewRequest!, signal, "drag"), enabled: Boolean(previewRequest), retry: false,
+    placeholderData: previous => previous,
+  });
+  const previewRoute = dragging && previewRequest ? preview.data : undefined;
+
   const chooseStart = (start?: Location) => update({ start });
   const chooseDestination = (destination?: Location) => update({ destination });
   const closeAccountPanel = () => { setAccountPanel("hidden"); accountToggle.current?.focus(); };
@@ -154,6 +178,7 @@ export function RoutePlannerPage() {
           destination={urlState.destination} route={route.data} selectedSegment={selectedSegment}
           onSelectSegment={setSelectedSegment} onPick={pickMap} onMoveStart={point => update({ start: customLocation(point) })}
           onMoveDestination={point => update({ destination: customLocation(point) })}
+          onDragEndpoint={(role, point) => setDragging(point ? { role, point } : undefined)} previewRoute={previewRoute}
           insets={urlState.insets ?? false} onInsetsChange={insets => update({ insets: insets || undefined }, true)} /></Suspense>
         {!urlState.start || !urlState.destination ? <p className="map-message"><span aria-hidden="true">{urlState.start ? "B" : "A"}</span>{urlState.start ? "Select destination on map" : "Select origin on map or search above"}</p> : null}
       </section>
@@ -172,7 +197,7 @@ export function RoutePlannerPage() {
             disabled={!urlState.start || !urlState.destination || route.isFetching} />}</>} />
     </main>
     <footer className="terminal-footer">
-      <span className="terminal-state"><span className="live-square" /> {route.isFetching ? "PLOTTING ROUTE" : route.isError ? "ROUTE ERROR" : route.data ? route.data.reachable ? "ROUTE READY" : "NO ROUTE FOUND" : "AWAITING COORDINATES"}</span>
+      <span className="terminal-state"><span className="live-square" /> {route.isFetching || preview.isFetching ? "PLOTTING ROUTE" : route.isError ? "ROUTE ERROR" : route.data ? route.data.reachable ? "ROUTE READY" : "NO ROUTE FOUND" : "AWAITING COORDINATES"}</span>
       <span>ACCOUNT / {selected?.name ?? "LOADING"}</span>
       <span className="footer-coordinate">A {urlState.start ? `${urlState.start.coordinate.x}, ${urlState.start.coordinate.y}` : "—, —"} <b>→</b> B {urlState.destination ? `${urlState.destination.coordinate.x}, ${urlState.destination.coordinate.y}` : "—, —"}</span>
       <span className="footer-hint">CLICK TO PLACE / DRAG TO REFINE</span>

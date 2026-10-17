@@ -102,6 +102,10 @@ export interface OsrsMapProps {
   onMoveStart?(point: WorldPoint): void;
   onMoveDestination?(point: WorldPoint): void;
   onSelectSegment?(index?: number): void;
+  /** The inset map reports an endpoint's tile while it is dragged, and `undefined` when the drag ends. */
+  onDragEndpoint?(role: "start" | "destination", point?: WorldPoint): void;
+  /** A provisional route for the endpoint being dragged, drawn without rebuilding the inset map. */
+  previewRoute?: RoutePlan;
   /** Whether the inset map is shown; without it, the map keeps its own choice. */
   insets?: boolean;
   onInsetsChange?(insets: boolean): void;

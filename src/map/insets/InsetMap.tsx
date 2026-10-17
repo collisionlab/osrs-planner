@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { OsrsMapProps } from "../OsrsMap";
+import type { WorldPoint } from "../../domain/contracts";
 import { mapLayers, insetPin, type MapStyle } from "../layers";
 import tiles from "../../../tiles.json";
 import { loadInsetAssets, type InsetAssets } from "./assets";
@@ -9,9 +10,22 @@ import "../routeMarkers.css";
 import "./styles.css";
 
 
+const samePoint = (a?: WorldPoint, b?: WorldPoint) => a?.x === b?.x && a?.y === b?.y && a?.plane === b?.plane;
+/** Whether the route shown is the one for the current endpoints. */
+const routeMatches = ({ route, start, destination }: OsrsMapProps) =>
+  !route || (samePoint(route.start.coordinate, start?.coordinate) && samePoint(route.destination.coordinate, destination?.coordinate));
+
 export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): void }) {
   const target = useRef<HTMLDivElement>(null);
-  const callbacks = useRef(props); callbacks.current = props;
+  // After an endpoint drag the map is rebuilt for the new route; keep the view where the user left
+  // it until the route for the new endpoints is shown, instead of fitting the whole route again.
+  const keepView = useRef(false);
+  const lastView = useRef<ReturnType<ReturnType<typeof createComposition>["view"]>>(undefined);
+  const callbacks = useRef(props);
+  callbacks.current = { ...props, onDragEndpoint: (role, point) => {
+    if (!point) keepView.current = true;
+    props.onDragEndpoint?.(role, point);
+  } };
   const composition = useRef<ReturnType<typeof createComposition> | undefined>(undefined);
   const [assets, setAssets] = useState<InsetAssets>();
   const [error, setError] = useState("");
@@ -28,14 +42,17 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
     if (!assets || !target.current) return;
     try {
       const layer = mapLayers[props.style] || mapLayers.standard!;
+      const previous = keepView.current ? lastView.current : undefined;
+      if (keepView.current && routeMatches(props)) keepView.current = false;
       const instance = createComposition(target.current, assets, props, () => callbacks.current, layer,
-        `${tiles.base}/tactical/${tiles.version}`, setStatus);
+        `${tiles.base}/tactical/${tiles.version}`, setStatus, previous);
       composition.current = instance;
       instance.select(callbacks.current.selectedSegment);
-      return () => { composition.current = undefined; instance.dispose(); };
+      return () => { lastView.current = instance.view(); composition.current = undefined; instance.dispose(); };
     } catch (error) { setError(String(error)); }
   }, [assets, props.route, props.start, props.destination, props.style]);
   useEffect(() => { composition.current?.select(props.selectedSegment); }, [props.selectedSegment]);
+  useEffect(() => { composition.current?.preview(props.previewRoute); }, [props.previewRoute]);
   return <>
     <div ref={target} className="route-map inset-map" tabIndex={0} aria-label="Route map with movable insets" />
     <div className="inset-actions">
