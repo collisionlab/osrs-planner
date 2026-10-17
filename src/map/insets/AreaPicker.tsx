@@ -1,7 +1,7 @@
 import { useId, useMemo, useState } from "react";
 import type { InsetArea } from "./assets";
 
-/** One entry per name: the largest area with it (areas arrive largest first). */
+/** One entry per name: the first area with it (areas arrive largest first; a building's floors share a name). */
 function byName(areas: InsetArea[]) {
   const seen = new Set<string>();
   return areas.filter(area => !seen.has(area.name) && Boolean(seen.add(area.name)));
@@ -50,7 +50,7 @@ export function AreaPicker({ areas, shown, onShow, onHide }: {
       </li>)}
     </ul>}
     {shown.length > 0 && <ul className="area-chips" aria-label="Shown areas">
-      {shown.map(area => <li key={area.regionId}><span>{area.name}</span>
+      {byName(shown).map(area => <li key={area.regionId}><span>{area.name}</span>
         <button type="button" aria-label={`Hide ${area.name}`} onClick={() => onHide(area)}>×</button></li>)}
     </ul>}
   </div>;

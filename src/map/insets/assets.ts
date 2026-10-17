@@ -1,6 +1,7 @@
 import Ajv from "ajv";
 import type { WorldPoint } from "../../domain/contracts";
-import type { Catalogue } from "./preview";
+import type { Region } from "./geometry";
+import { isDetachedUpperFloor, type Catalogue } from "./preview";
 
 export interface InsetManifest {
   schemaVersion: 1;
@@ -97,12 +98,59 @@ export async function loadInsetAssets(base: string, tileVersion: string, signal:
 /** A named area's way in from the surface: where to stand outside, and where that puts you. */
 export interface InsetEntrance { surface: WorldPoint; inside: WorldPoint }
 export interface InsetArea { regionId: string; name: string; tileCount: number; entrance?: InsetEntrance }
-export interface InsetDoor { point: WorldPoint; regionIds: string[]; inside: Record<string, WorldPoint> }
+export interface InsetDoor {
+  point: WorldPoint; regionIds: string[]; inside: Record<string, WorldPoint>;
+  /** A building's way up rather than an entrance: `regionIds` are its upper floors, lowest first. */
+  floors?: boolean;
+}
 export interface InsetEntrances {
   /** Named areas, largest first: size stands in for how often people go there. */
   areas: InsetArea[];
+  /** Small upper floors, named for the building they are in (see {@link upperFloorBuildings}). */
+  floors: InsetArea[];
   /** Surface tiles that lead straight into a named area, and where in each area they lead. */
   doors: InsetDoor[];
+}
+
+/** Upper-floor scraps smaller than this (a roof ledge, a tower top) don't make a building. */
+const MIN_FLOOR_TILES = 12;
+
+/**
+ * Buildings with upper floors small enough to show as insets: each a marker at the middle of its
+ * lowest floor, opening the floors whose footprints overlap it, and an unnamed area per floor.
+ */
+export function upperFloorBuildings(catalogue: Catalogue): { floors: InsetArea[]; doors: InsetDoor[] } {
+  const floors = catalogue.regions.filter(region => isDetachedUpperFloor(region) && region.tileCount >= MIN_FLOOR_TILES)
+    .sort((a, b) => a.plane - b.plane);
+  const parent = floors.map((_, index) => index);
+  const root = (index: number): number => parent[index] === index ? index : parent[index] = root(parent[index]);
+  const squares = new Map<string, number[]>();
+  floors.forEach((floor, index) => {
+    const [x1, y1, x2, y2] = floor.bounds;
+    for (let x = x1 >> 6; x <= (x2 - 1) >> 6; x++) for (let y = y1 >> 6; y <= (y2 - 1) >> 6; y++) {
+      const key = `${x},${y}`, others = squares.get(key) || [];
+      for (const other of others) {
+        const [a1, b1, a2, b2] = floors[other].bounds;
+        if (a1 < x2 && x1 < a2 && b1 < y2 && y1 < b2) parent[root(index)] = root(other);
+      }
+      others.push(index); squares.set(key, others);
+    }
+  });
+  const buildings = new Map<number, Region[]>();
+  floors.forEach((floor, index) => {
+    const members = buildings.get(root(index)) || [];
+    if (!members.includes(floor)) members.push(floor);
+    buildings.set(root(index), members);
+  });
+  const areas: InsetArea[] = [], doors: InsetDoor[] = [];
+  for (const members of buildings.values()) {
+    const [x1, y1, x2, y2] = members[0].bounds;
+    const point = { x: Math.floor((x1 + x2) / 2), y: Math.floor((y1 + y2) / 2), plane: 0 };
+    const name = `Floors at ${point.x}, ${point.y}`;
+    members.forEach(floor => areas.push({ regionId: floor.id, name, tileCount: floor.tileCount }));
+    doors.push({ point, regionIds: members.map(floor => floor.id), inside: {}, floors: true });
+  }
+  return { floors: areas, doors };
 }
 
 const worldPoint = (value: unknown): WorldPoint | undefined => Array.isArray(value) && value.length === 3
@@ -150,5 +198,6 @@ export async function loadInsetEntrances(assets: InsetAssets, signal?: AbortSign
     areas.push({ regionId, name: label.name, tileCount: region.tileCount, entrance });
   }
   areas.sort((a, b) => b.tileCount - a.tileCount || a.name.localeCompare(b.name));
-  return { areas, doors: [...doors.values()] };
+  const buildings = upperFloorBuildings(assets.catalogue);
+  return { areas, floors: buildings.floors, doors: [...doors.values(), ...buildings.doors] };
 }

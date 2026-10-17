@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkCatalogue, loadInsetAssets, loadInsetEntrances, sha256 } from "./assets";
+import { checkCatalogue, loadInsetAssets, loadInsetEntrances, sha256, upperFloorBuildings } from "./assets";
 import { requiredAssets } from "./testAssets";
 import { nativeTileUrl } from "./tactical";
 import { pickWorld } from "./composition";
@@ -71,6 +71,20 @@ describe("named areas and their entrances", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(anchors + " ")));
     await expect(loadInsetEntrances(assets)).rejects.toThrow("hash mismatch");
   });
+});
+
+it("groups overlapping upper floors into buildings, ignoring scraps", () => {
+  const floor = (id: string, plane: number, x: number, size: number): Region => ({ id, plane, bounds: [x, 3200, x + size, 3200 + size],
+    mask: [[x, 3200, size, size]], classification: "main-world", tileCount: size * size, surfaceTiles: size * size, touchesUnknown: false, examples: [] });
+  const { floors, doors } = upperFloorBuildings({ surfaceRects: [], regions: [
+    floor("castle-2", 2, 3204, 10), floor("castle-1", 1, 3200, 14), floor("ledge", 1, 3260, 3), floor("hut", 1, 3300, 6), floor("ground", 0, 3200, 20),
+  ] });
+  expect(doors).toEqual([
+    { point: { x: 3207, y: 3207, plane: 0 }, regionIds: ["castle-1", "castle-2"], inside: {}, floors: true },
+    { point: { x: 3303, y: 3203, plane: 0 }, regionIds: ["hut"], inside: {}, floors: true },
+  ]);
+  expect(floors.map(area => [area.regionId, area.name])).toEqual([["castle-1", "Floors at 3207, 3207"], ["castle-2", "Floors at 3207, 3207"],
+    ["hut", "Floors at 3303, 3203"]]);
 });
 
 it("picks real Cam Torum geometry after automatic layout", async () => {

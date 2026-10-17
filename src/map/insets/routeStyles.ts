@@ -86,12 +86,15 @@ export function routeMarkerOverlay(feature: Feature<Point>, kind: keyof typeof r
 }
 
 const ink = "#141914";
-const doorLooks = [false, true].map(open => [
+const doorLooks = [false, true].flatMap(up => [false, true].map(open => [
   new Style({ image: new RegularShape({ points: 4, radius: 8, angle: Math.PI / 4,
     fill: new Fill({ color: open ? "#ffae47" : ink }), stroke: new Stroke({ color: open ? ink : "#f7f1dc", width: 1.5 }) }) }),
-  new Style({ image: new RegularShape({ points: 3, radius: 3.5, rotation: Math.PI, fill: new Fill({ color: open ? ink : "#f7f1dc" }) }) }),
-]);
-/** An entrance to a named area, as a small square with a down arrow; filled once the area is shown. */
+  new Style({ image: new RegularShape({ points: 3, radius: 3.5, rotation: up ? 0 : Math.PI, fill: new Fill({ color: open ? ink : "#f7f1dc" }) }) }),
+]));
+/**
+ * A small square with a down arrow for an entrance to a named area, or an up arrow for a building's
+ * upper floors; filled once they are shown.
+ */
 export function doorStyle(feature: FeatureLike): Style[] {
-  return doorLooks[feature.get("open") ? 1 : 0];
+  return doorLooks[(feature.get("floors") ? 2 : 0) + (feature.get("open") ? 1 : 0)];
 }

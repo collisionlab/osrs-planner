@@ -36,19 +36,21 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
   // Each shown area, entered from the door clicked, or else its default entrance.
   const [shownAreas, setShownAreas] = useState<{ regionId: string; entrance?: InsetArea["entrance"] }[]>([]);
   const focus = useRef<string>(undefined);
-  const areasById = useMemo(() => new Map(entrances?.areas.map(area => [area.regionId, area])), [entrances]);
+  const areasById = useMemo(() => new Map([...entrances?.areas || [], ...entrances?.floors || []].map(area => [area.regionId, area])),
+    [entrances]);
   const shown = useMemo(() => shownAreas.flatMap(({ regionId, entrance }) => {
     const area = areasById.get(regionId);
     return area ? [{ ...area, entrance: entrance || area.entrance }] : [];
   }), [shownAreas, areasById]);
-  const show = (regionId: string, entrance?: InsetArea["entrance"]) => {
-    focus.current = regionId;
+  const show = (regionId: string, entrance?: InsetArea["entrance"], move = true) => {
+    if (move) focus.current = regionId;
     setShownAreas(current => [...current.filter(area => area.regionId !== regionId), { regionId, entrance }]);
   };
   const hide = (regionIds: string[]) => setShownAreas(current => current.filter(area => !regionIds.includes(area.regionId)));
   const toggleDoor = useRef((_: InsetDoor) => {});
+  // A building's floors open beside it, where the view already is.
   toggleDoor.current = door => door.regionIds.every(id => shownAreas.some(area => area.regionId === id)) ? hide(door.regionIds)
-    : door.regionIds.forEach(id => show(id, { surface: door.point, inside: door.inside[id] }));
+    : door.regionIds.forEach(id => show(id, door.floors ? undefined : { surface: door.point, inside: door.inside[id] }, !door.floors));
   useEffect(() => {
     const abort = new AbortController();
     if (!insetPin || insetPin.tileVersion !== tiles.version) { setError("Insets are not available for these map tiles."); return; }
@@ -91,7 +93,7 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
       <button type="button" onClick={() => composition.current?.fit()}>Fit route</button>
       <button type="button" onClick={() => composition.current?.reset()}>Reset insets</button>
     </div>
-    {assets && <AreaPicker areas={entrances?.areas} shown={shown} onShow={area => show(area.regionId)} onHide={area => hide([area.regionId])} />}
+    {assets && <AreaPicker areas={entrances?.areas} shown={shown} onShow={area => show(area.regionId)} onHide={area => hide(shown.filter(other => other.name === area.name).map(other => other.regionId))} />}
     {(error || status || !assets) && <div className="map-message" role="status">
       {error || status || "Loading inset terrain…"}
       {error && <button type="button" onClick={props.onFallback}>Use standard map</button>}

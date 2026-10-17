@@ -223,8 +223,8 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     const at = projected(door.point), under = pickWorld(at, assets, picked);
     if (classify(door.point) !== "main-world" || classify(under) !== "main-world") continue;
     const feature = new Feature(new Point(at));
-    feature.setProperties({ door, open: door.regionIds.some(id => placements.has(id)),
-      name: [...new Set(door.regionIds.map(id => assets.labels[id]?.name).filter(Boolean))].join(" / ") });
+    feature.setProperties({ door, floors: door.floors, open: door.regionIds.some(id => placements.has(id)),
+      name: door.floors ? "Upper floors" : [...new Set(door.regionIds.map(id => assets.labels[id]?.name).filter(Boolean))].join(" / ") });
     doorSource.addFeature(feature);
   }
   const fitPoints = (coordinates: Coordinate[], maxZoom = 9) => {
