@@ -18,10 +18,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import shortestpath.ItemVariations;
-import shortestpath.pathfinder.PathfinderConfig;
+import shortestpath.items.OwnedItems;
+import shortestpath.requirement.model.TransportItems;
 import shortestpath.pathfinder.PluginResources;
 import shortestpath.transport.Transport;
-import shortestpath.transport.requirement.ItemRequirement;
+import shortestpath.requirement.model.ItemRequirement;
 
 /**
  * Writes the item name table served by {@link ItemCatalog}: every item the current transport data can
@@ -72,8 +73,8 @@ public final class RouteItemNames {
         }
         // Fairy rings need a staff, pouch runes need a pouch, and currencies pay for fares.
         add(result, ItemVariations.DRAMEN_STAFF.getIds());
-        result.addAll(PathfinderConfig.RUNE_POUCHES);
-        result.addAll(PathfinderConfig.CURRENCIES);
+        result.addAll(OwnedItems.RUNE_POUCHES);
+        result.addAll(TransportItems.CURRENCIES);
         return result;
     }
 

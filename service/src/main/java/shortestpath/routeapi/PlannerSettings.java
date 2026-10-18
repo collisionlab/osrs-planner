@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 import shortestpath.ShortestPathConfig;
-import shortestpath.TeleportationItem;
+import shortestpath.settings.TeleportationItem;
 import shortestpath.accounts.Unlock;
 import shortestpath.pathfinder.PathfinderBackend;
 import shortestpath.profiles.PluginSettings;
@@ -28,7 +28,7 @@ import shortestpath.profiles.PluginSettings;
  *
  * <p>Left out: display, colour and hotkey items, which never affect a route; the house items, which
  * come from the account's {@code Poh}; the unlocks the game doesn't report, which are account facts
- * ({@link Unlock.Kind#SETTING}); hidden items (no section); and seasonal transports, which need a
+ * ({@link Unlock.Kind#SETTING}); and seasonal transports, which need a
  * league world and league area picks that a planner account does not have.
  *
  * <p>Every setting is put in a {@link Group} here, and the planner shows it by that group. A plugin
@@ -36,9 +36,10 @@ import shortestpath.profiles.PluginSettings;
  * reaches the planner only once someone has decided where it belongs.
  */
 public final class PlannerSettings {
-    private static final Set<String> NOT_ROUTING_SECTIONS = Set.of("",
-        ShortestPathConfig.sectionDisplay, ShortestPathConfig.sectionColours, ShortestPathConfig.sectionHotkeys,
-        ShortestPathConfig.sectionPoh);
+    private static final Set<String> NOT_ROUTING_SECTIONS = Set.of(
+        ShortestPathConfig.sectionDisplay, ShortestPathConfig.sectionColours, ShortestPathConfig.sectionHotkeys);
+    private static final Set<String> HOUSE = Set.of("usePoh", "usePohFairyRing", "usePohSpiritTree",
+        "useTeleportationPortalsPoh", "pohNexusPortals", "pohJewelleryBoxTier", "pohMountedItems", "usePohObelisk");
     private static final Set<String> SEASONAL = Set.of("useSeasonalTransports", "costSeasonalTransports");
 
     /** Where the planner shows a setting. */
@@ -68,10 +69,10 @@ public final class PlannerSettings {
         if (ADVANCED.contains(key)) {
             return Group.ADVANCED;
         }
-        if (section.equals("Transport Thresholds") && key.startsWith("cost") && type == int.class) {
+        if (key.startsWith("cost") && type == int.class) {
             return Group.THRESHOLD;
         }
-        if (section.equals("Settings") && key.startsWith("use") && type == boolean.class) {
+        if (key.startsWith("use") && type == boolean.class) {
             return Group.TRANSPORT;
         }
         throw new IllegalStateException("plugin setting " + key + " has no planner group; place it in PlannerSettings "
@@ -206,6 +207,7 @@ public final class PlannerSettings {
             Class<?> type = method.getReturnType();
             if (item == null || method.getParameterCount() != 0 || NOT_ROUTING_SECTIONS.contains(item.section())
                 || SEASONAL.contains(method.getName()) || ACCOUNT.contains(method.getName())
+                || HOUSE.contains(method.getName())
                 || !(type == boolean.class || type == int.class || type.isEnum())) {
                 continue;
             }
@@ -227,7 +229,8 @@ public final class PlannerSettings {
                 continue;
             }
             result.put(key, new Setting(key, item.name(), item.description().replace("<br>", " "),
-                sectionNames.getOrDefault(item.section(), ""), method.getReturnType(), setter,
+                sectionNames.getOrDefault(item.section(), key.startsWith("cost") ? "Transport Thresholds" : "Settings"),
+                method.getReturnType(), setter,
                 json(invoke(method, defaults))));
         }
         return result;

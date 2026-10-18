@@ -32,6 +32,7 @@ final class CatalogNames {
 
     private static Map<Unlock, String> unlocks() {
         Map<Unlock, String> names = new EnumMap<>(Unlock.class);
+        names.put(Unlock.BALLOON_LOG_BASKET_STOCKED, "Logs stocked in all balloon baskets");
         names.put(Unlock.FAIRY_RINGS, "Fairy rings");
         names.put(Unlock.RAIDS_MOUNTAIN_GUIDE_TRAVEL, "Mountain guide to the Chambers of Xeric");
         names.put(Unlock.MET_AUBURN_MOUNTAIN_GUIDE, "Met the Auburnvale mountain guide");

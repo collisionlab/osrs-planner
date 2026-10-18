@@ -13,7 +13,7 @@ import shortestpath.accounts.PlantedSpiritTree;
 import shortestpath.accounts.Poh;
 import shortestpath.accounts.Spellbook;
 import shortestpath.accounts.Unlock;
-import shortestpath.transport.PohNexusPortal;
+import shortestpath.poh.PohNexusPortal;
 
 /**
  * Everything the web planner's editors offer, as {@code GET /v1/catalog} returns it: every account

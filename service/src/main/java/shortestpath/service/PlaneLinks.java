@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import shortestpath.WorldPointUtil;
 import shortestpath.transport.Transport;
-import shortestpath.transport.TransportLoader;
+import shortestpath.transport.ResourceLoader;
 import shortestpath.transport.TransportType;
 
 /**
@@ -34,7 +34,7 @@ final class PlaneLinks {
         }
     }
 
-    static final List<Link> LINKS = load(TransportLoader.loadAllFromResources().values());
+    static final List<Link> LINKS = load(ResourceLoader.transports().values());
 
     private PlaneLinks() { }
 
