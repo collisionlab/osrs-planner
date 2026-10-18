@@ -9,12 +9,13 @@ import net.runelite.api.Quest;
 import net.runelite.api.Skill;
 import shortestpath.WorldPointUtil;
 import shortestpath.pathfinder.PathStep;
+import shortestpath.pathfinder.BankVisitState;
 import shortestpath.pathfinder.PathfinderBackend;
 import shortestpath.pathfinder.PathfinderConfig;
 import shortestpath.pathfinder.PathfinderResult;
 import shortestpath.pathfinder.TransportAvailability;
 import shortestpath.transport.Transport;
-import shortestpath.transport.requirement.ItemRequirement;
+import shortestpath.requirement.model.ItemRequirement;
 
 /**
  * Turns a pathfinder result into a {@code route-api-v1} plan: consecutive walking steps become a
@@ -63,7 +64,8 @@ public final class RoutePlans {
         for (int i = 1; i < path.size(); i++) {
             PathStep from = path.get(i - 1);
             PathStep to = path.get(i);
-            if (!from.isBankVisited() && to.isBankVisited()) {
+            if (from.getBankVisitState() == BankVisitState.CARRIED
+                    && to.getBankVisitState() == BankVisitState.BANKED) {
                 flushWalk(segments, walking);
                 RouteApi.BankSegment bank = new RouteApi.BankSegment();
                 bank.location = point(to.getPackedPosition());
@@ -104,7 +106,7 @@ public final class RoutePlans {
         List<RouteApi.Capability> result = new ArrayList<>();
         transport.getQuests().stream().sorted(Comparator.comparing(Quest::getName))
             .forEach(quest -> result.add(capability("quest", quest.getName())));
-        int[] levels = transport.getSkillLevels();
+        int[] levels = transport.getSkillLevels().toArray();
         Skill[] skills = Skill.values();
         for (int i = 0; i < skills.length && i < levels.length; i++) {
             if (levels[i] > 0) {
@@ -153,8 +155,11 @@ public final class RoutePlans {
 
     /** The transport a step took: one leaving {@code from} for {@code to}, else a teleport to {@code to}. */
     private static Transport transportFor(PathStep from, PathStep to, PathfinderConfig config) {
+        if (to.getTransport() != null) {
+            return to.getTransport();
+        }
         List<Transport> candidates = new ArrayList<>();
-        for (Transport transport : config.getTransportsPacked(to.isBankVisited())
+        for (Transport transport : config.getTransportsPacked(to.getBankVisitState())
                 .getOrDefault(from.getPackedPosition(), TransportAvailability.EMPTY_TRANSPORTS)) {
             if (transport.getDestination() == to.getPackedPosition()) {
                 candidates.add(transport);
@@ -168,7 +173,7 @@ public final class RoutePlans {
             == WorldPointUtil.unpackWorldPlane(to.getPackedPosition())
             && WorldPointUtil.distanceBetween2D(from.getPackedPosition(), to.getPackedPosition()) <= 1;
         if (!walking) {
-            for (Transport transport : config.getUsableTeleports(to.isBankVisited())) {
+            for (Transport transport : config.getUsableTeleports(to.getBankVisitState())) {
                 if (transport.getDestination() == to.getPackedPosition()) {
                     candidates.add(transport);
                 }

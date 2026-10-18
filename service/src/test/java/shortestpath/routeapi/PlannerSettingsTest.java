@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.Test;
-import shortestpath.TeleportationItem;
+import shortestpath.settings.TeleportationItem;
 import shortestpath.pathfinder.PathfinderBackend;
 import shortestpath.profiles.PluginSettings;
 

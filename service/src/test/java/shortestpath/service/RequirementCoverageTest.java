@@ -14,8 +14,8 @@ import shortestpath.accounts.ClientState;
 import shortestpath.accounts.Unlock;
 import shortestpath.accounts.canonical.CanonicalAccounts;
 import shortestpath.transport.Transport;
-import shortestpath.transport.TransportLoader;
-import shortestpath.transport.parser.VarRequirement;
+import shortestpath.transport.ResourceLoader;
+import shortestpath.requirement.model.VarRequirement;
 
 /**
  * Every game variable a transport requires is one a planner account can set: through a quest,
@@ -72,7 +72,7 @@ class RequirementCoverageTest {
         Field id = VarRequirement.class.getDeclaredField("id");
         id.setAccessible(true);
         Map<String, Set<String>> missing = new TreeMap<>();
-        for (Set<Transport> transports : TransportLoader.loadAllFromResources().values()) {
+        for (Set<Transport> transports : ResourceLoader.transports().values()) {
             for (Transport transport : transports) {
                 for (VarRequirement requirement : transport.getVarRequirements()) {
                     int variable = id.getInt(requirement);
