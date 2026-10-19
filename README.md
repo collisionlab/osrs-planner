@@ -25,7 +25,8 @@ Tests: `gradle :service:test` and `npm test`.
 | `src/` | Frontend (React, TypeScript, Vite) |
 | `service/` | Route service (Javalin): `/v1` API, `/live`, `/ready`, `/metrics`, `/version`; serves the built frontend when `FRONTEND_DIR` is set |
 | `service/src/main/java/shortestpath/routeapi/` | Route API contract (moved from tooling's `:routing`) |
-| `tooling/` | shortest-path-tooling (submodule), with its `corpus/schemas` contracts |
+| `schemas/` | The route API and account contracts (`route-api-v1`, `account-v1`) |
+| `tooling/` | shortest-path-tooling (submodule), pinned to upstream `master` |
 | `Dockerfile` | The release image |
 
 ## End-to-end tests
@@ -95,7 +96,13 @@ Every push to `main` builds `ghcr.io/collisionlab/osrs-planner:<commit>` and ope
 `app` host blue/green: the new release starts beside the old one and takes traffic only after it is
 ready and passes smoke checks.
 
-Tooling updates arrive as submodule bumps.
+`tooling` follows upstream shortest-path-tooling's `master`. Each day `bump-tooling.yml` runs
+`scripts/bump-tooling`, which opens (or refreshes) a collisionlab-bot `pin/tooling` PR moving the submodule
+to master's head; it merges itself once CI passes, and so releases. When the guards above fail, push the
+planner fixes to `pin/tooling`; the job leaves a branch with other people's commits alone. Run it early
+with `gh workflow run bump-tooling -R collisionlab/osrs-planner`.
+
+The planner owns its contracts in `schemas/`: `route-api-v1` and the `account-v1` it references.
 
 ## Route insets
 

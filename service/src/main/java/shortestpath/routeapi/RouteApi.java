@@ -7,7 +7,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 /**
- * The route API contract ({@code corpus/schemas/route-api-v1}) as Jackson-bindable classes: a
+ * The route API contract ({@code schemas/route-api-v1}) as Jackson-bindable classes: a
  * request names an account ({@link AccountJson}), the settings that differ from the planner's
  * defaults, and two locations; a plan is a list of walk, travel and bank segments.
  */

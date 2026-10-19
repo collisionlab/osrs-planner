@@ -8,7 +8,7 @@ import com.networknt.schema.SpecVersion;
 import com.networknt.schema.ValidationMessage;
 import java.util.Set;
 
-/** Validates route requests against {@code route-api-v1}'s {@code routeRequest}, copied from {@code corpus/schemas}. */
+/** Validates route requests against {@code route-api-v1}'s {@code routeRequest} in {@code schemas/}. */
 final class SchemaValidator {
     private final JsonSchema request;
 

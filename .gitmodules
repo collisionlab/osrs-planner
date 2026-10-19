@@ -1,4 +1,4 @@
 [submodule "tooling"]
 	path = tooling
-	url = https://github.com/mpickering/shortest-path-tooling.git
-	branch = planner-account-settings
+	url = https://github.com/osrs-pathfinding/shortest-path-tooling.git
+	branch = master

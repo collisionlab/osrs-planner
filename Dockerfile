@@ -5,7 +5,7 @@ FROM node:24-alpine AS frontend
 WORKDIR /src
 COPY package.json package-lock.json ./
 RUN npm ci
-COPY tooling/corpus tooling/corpus
+COPY schemas schemas
 COPY index.html tsconfig*.json vite.config.ts tiles.json ./
 COPY scripts scripts
 COPY src src

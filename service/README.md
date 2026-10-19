@@ -5,11 +5,11 @@ directly; it does not depend on the GPS plugin.
 
 The service is the Gradle project `:service` in the repository's root build, so it compiles against
 the pinned `shortest-path` submodule like the rest of the tooling. Route planning itself lives in
-[`accounts/`](../../accounts) and [`routing/`](../../routing): `AccountJson` reads the request's
+[`accounts/`](../tooling/accounts) and [`routing/`](../tooling/routing): `AccountJson` reads the request's
 account into an `Account`, which `AccountCompiler` compiles like every other account;
 `PlannerSettings` applies the request's changed plugin settings to the planner's defaults; and
 `RoutePlans` turns the pathfinder result into a route plan. The settings choose the legacy or exact
-backend. This project adds request validation (against `corpus/schemas`),
+backend. This project adds request validation (against the repository's `schemas/`),
 caching, metrics and the item catalog.
 
 From the repository root:

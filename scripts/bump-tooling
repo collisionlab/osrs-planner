@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Opens, or refreshes, a PR moving the tooling submodule to the head of upstream
+# shortest-path-tooling's master. CI merges collisionlab-bot's pin/* PRs once the tests pass. A PR
+# someone has pushed fixes to is left alone until it is merged or closed.
+#
+#   scripts/bump-tooling      (from a full checkout of main; GH_TOKEN: collisionlab-bot, osrs-planner)
+set -euo pipefail
+
+repo=collisionlab/osrs-planner
+branch=pin/tooling
+upstream=https://github.com/osrs-pathfinding/shortest-path-tooling.git
+bot=collisionlab-bot
+
+current=$(git rev-parse HEAD:tooling)
+latest=$(git ls-remote "$upstream" refs/heads/master | cut -f1)
+if [ "$current" = "$latest" ]; then
+  echo "tooling is already at upstream master ${latest:0:12}"
+  exit 0
+fi
+
+if git fetch -q origin "$branch" 2>/dev/null; then
+  if git log --format=%an "HEAD..FETCH_HEAD" | grep -qv "^$bot\$"; then
+    echo "$branch has commits from someone other than $bot; leaving it alone"
+    exit 0
+  fi
+fi
+
+work=$(mktemp -d)
+git clone -q --bare --filter=blob:none "$upstream" "$work"
+log=$(git -C "$work" log --oneline --no-merges "$current..$latest" 2>/dev/null | head -50 || true)
+plugin_old=$(git -C "$work" rev-parse "$current:shortest-path" 2>/dev/null || echo unknown)
+plugin_new=$(git -C "$work" rev-parse "$latest:shortest-path")
+
+git switch -q -C "$branch"
+git update-index --cacheinfo "160000,$latest,tooling"
+git -c user.name="$bot" -c user.email="$bot@users.noreply.github.com" \
+  commit -q -m "Update tooling to ${latest:0:12}" -m "$log"
+git push -q -f origin "$branch"
+
+title="Update tooling to ${latest:0:12}"
+body=$(cat <<EOF
+Moves \`tooling\` to the head of [shortest-path-tooling](https://github.com/osrs-pathfinding/shortest-path-tooling) master.
+
+- Tooling: https://github.com/osrs-pathfinding/shortest-path-tooling/compare/$current...$latest
+- Plugin pin: \`${plugin_old:0:12}\` → \`${plugin_new:0:12}\`
+
+\`\`\`
+$log
+\`\`\`
+
+Merges itself once CI passes. If it fails, push fixes to \`$branch\`; this job won't overwrite them.
+EOF
+)
+pr=$(gh pr list --repo "$repo" --head "$branch" --state open --json number --jq '.[0].number // empty')
+if [ -n "$pr" ]; then
+  gh pr edit "$pr" --repo "$repo" --title "$title" --body "$body"
+else
+  gh pr create --repo "$repo" --base main --head "$branch" --title "$title" --body "$body"
+fi

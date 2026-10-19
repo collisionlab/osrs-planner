@@ -1,0 +1,36 @@
+name: bump-tooling
+
+# Daily: move the tooling submodule to upstream shortest-path-tooling's master in a collisionlab-bot
+# pin/tooling PR, which ci.yml merges once the tests pass.
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bump-tooling
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+          owner: collisionlab
+          repositories: osrs-planner
+      # The bot's token, so its push and PR start CI (pushes with GITHUB_TOKEN don't).
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ steps.bot.outputs.token }}
+      - name: Bump
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+        run: scripts/bump-tooling

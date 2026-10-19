@@ -19,7 +19,7 @@ import shortestpath.accounts.Spellbook;
 import shortestpath.accounts.Unlock;
 
 /**
- * An {@link Account} as JSON ({@code corpus/schemas/account-v1}): the web planner edits these and
+ * An {@link Account} as JSON ({@code schemas/account-v1}): the web planner edits these and
  * sends them with each route request. Values are the Java enum constant names, so Jackson rejects
  * anything the account model does not know.
  */
