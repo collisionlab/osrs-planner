@@ -39,6 +39,7 @@ flowchart LR
 - **Tooling bumps can move the insets.** The inset version hashes the transports in this repository's
   pinned plugin (`tooling/shortest-path/.../transports`). A tooling bump that changes transport data
   therefore produces a new `pin/map-assets` PR at the next 07:30 run, even when the tiles are unchanged.
+  If it makes a new area reachable, that PR waits as a draft until the area has a name (below).
 - **The plugin lags by up to two hops.** Skretzo's master moves first. Upstream tooling's bot pins it,
   and our 05:17 job picks that up. Being a commit or two behind Skretzo's master is normal and clean.
 - **osrs-coord-preview receives the same `pin/map-assets` PRs.** Its release goes through infra's
@@ -54,51 +55,51 @@ different reasons:
 1. **Regions** (`regions.json`). The connected areas off the main map. They are discovered from the
    game cache's topology, so they change only with a new cache (the Thursday tiles) or a change to
    osrs-tiles' `InsetTopology`. Transports never create or remove regions.
-2. **Anchors** (`anchors.json`). These are built from the transport rows in this repository's pinned
-   plugin. A connection is `local` only when its file is `transports.tsv` or `agility_shortcuts.tsv`
-   and its action starts with a known physical verb (`PHYSICAL_ACTIONS`). Teleports, travel networks
-   and portals are `non-local`, and unknown verbs are `review`. A region is **required** when a chain of
-   `local` connections reaches it from the surface.
+2. **Reachability** (`anchors.json` `reachableRegionIds`). This is built from the transport rows in
+   this repository's pinned plugin. A region is **reachable** when some chain of rows leads there, from
+   the main world or from a row with no source (a spell, for example). Chains follow each row's own
+   direction, ignore account requirements, and count every file: teleports, fairy rings, portals,
+   levers and unusual actions ("Attract Light creature") all count. An area you can only leave is not
+   reachable. The older surface-entrance anchors in the same file still drive inset placement.
 3. **Labels** (`labels.json`, `review.json`). Labels are authored in osrs-tiles
    `data/inset-labels/annotations.json` (an interior seed tile and evidence per region) and
-   `sources.json`. A required region with no annotation gets the fallback name
-   "Unidentified terrain at x, y". That is a `required-component-unnamed` issue in `review.json`.
+   `sources.json`. **Every reachable region needs one**, because the planner's area search
+   (`AreaPicker`) lists only named regions (`src/map/insets/assets.ts`). A reachable region without an
+   annotation gets the fallback name "Unidentified terrain at x, y" and a `required-component-unnamed`
+   issue in `review.json`. Regions inside the main world don't need names.
 
 The inset version hashes the transports (`transportsSha256`), so any transport edit triggers a rebuild:
-the tooling bump at 05:17 is followed by a new bundle at 07:30 and a refreshed `pin/map-assets` PR.
+the tooling bump at 05:17 is followed by a new bundle at 07:30 and a refreshed `pin/map-assets` PR. A
+plugin change that adds a way into a new area therefore shows up the next morning as an unnamed
+reachable region.
 
-**Naming issues never block or draft that PR.** They show up in these places:
+**A bundle with unnamed reachable regions opens its pin PR as a draft**, so it waits for you. You can
+see them in these places:
 
-- `scripts/pin-status` lists the unlabelled required regions for the pinned bundle and for an open
-  `pin/map-assets` PR. It also says when a bundle was built from transports other than the pinned
-  plugin's, which means a rebuild is due;
-- the `pin/map-assets` PR body ("N naming issues use fallback labels");
+- `scripts/pin-status` lists them for the pinned bundle and for an open `pin/map-assets` PR. It also
+  says when a bundle was built from transports other than the pinned plugin's, which means a rebuild
+  is due;
+- the `pin/map-assets` PR body;
 - the osrs-tiles `insets` run summary (`namingReviewCount`) and its `inset-review` artifact;
 - `https://tiles.collisionlab.world/insets/<version>/review.json`.
 
-**`pin-status` can't see regions reached only through a `review` connection.** Those regions are
-never required, so they raise no issue, but a route through them still shows the fallback name. The
-Ancient Guthixian Temple (plugin `e3a9745`) is like this: its only entrance, "Attract Light creature",
-is not a recognised verb.
+To name a region:
 
-To label a region:
+1. Add an area to `annotations.json` with its `componentId`, an interior `seed` (a landing tile works),
+   `evidence` (the `c-…` ids of the rows landing there, plus any `s-…` source places inside it) and a
+   `reason`. `scripts/label_inset_regions.py --worklist <file>` suggests evidence for each region.
+2. Push it to osrs-tiles `main`. Changes under `data/inset-labels/` rerun `insets.yml`, which refreshes
+   the pin PR. Once nothing is unnamed, mark it ready.
 
-1. Add an area to `annotations.json` with its `componentId`, an interior `seed`, `evidence` and a
-   `reason`. `scripts/label_inset_regions.py --worklist <file>` suggests nearby evidence for each
-   region.
-2. Push it to osrs-tiles `main`. Changes under `data/inset-labels/` rerun `insets.yml`, which pins
-   the new bundle here.
-
-If a verb is missing from `PHYSICAL_ACTIONS`, add it there first. Its regions then become required and
-show up as issues.
+Alternatively, mark the draft ready to publish with the fallback label.
 
 ## When automation stops and waits for you
 
 | Symptom | Why | What to do |
 |---|---|---|
 | `pin/tooling` open with red CI | the new tooling or plugin broke a guard (for example `RequirementCoverageTest`, `CatalogTest`, `RouteSchemaTest`) or a build | push the planner fixes to `pin/tooling`; the daily job won't overwrite a branch that has commits from anyone other than collisionlab-bot. CI passing then merges it |
-| `pin/map-assets` open as a **draft** | first insets, more than 10% of tiles or inset regions changed (`compare-version`, `compare-insets`) | check the PR, then mark it ready; `ready_for_review` reruns CI, which merges it. A draft stays a draft when later runs refresh it |
-| `pin-status` shows "needs a label" | a transport change made a region required that has no annotation | add the label in osrs-tiles (above); the pin merges anyway, with fallback names |
+| `pin/map-assets` open as a **draft** | first insets, more than 10% of tiles or inset regions changed (`compare-version`, `compare-insets`), or unnamed reachable regions | check the PR, then mark it ready; `ready_for_review` reruns CI, which merges it. A draft stays a draft when later runs refresh it |
+| `pin/map-assets` draft and `pin-status` shows "needs a label" | a transport change made a new region reachable, and it has no name | name it in osrs-tiles (above), then mark the PR ready |
 | infra `pin/osrs-planner-…` open | infra's plan or checks failed | fix in infra; nothing reaches production until it merges |
 | live `/version` differs from the infra pin | deploy in progress, or the smoke checks refused the new release (blue/green keeps the old one) | check infra's `tofu` run on `main` |
 
