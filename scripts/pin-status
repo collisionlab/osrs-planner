@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+"""Report every pin the planner release depends on, whether each is current, and unlabelled insets. Read-only.
+
+Run from a checkout of osrs-planner (gh must be logged in). See docs/deployment.md for what moves
+each pin. Exits 1 when a pin is dirty: not on its upstream's main line, or a local checkout that
+differs from what is committed.
+"""
+import base64
+import hashlib
+import json
+import subprocess
+import urllib.request
+
+PLANNER = "collisionlab/osrs-planner"
+INFRA = "collisionlab/infra"
+TOOLING = "osrs-pathfinding/shortest-path-tooling"
+PLUGIN = "Skretzo/shortest-path"
+SITE = "https://osrs.collisionlab.world"
+
+dirty = False
+
+
+def run(*command):
+    return subprocess.run(command, check=True, text=True, capture_output=True).stdout.strip()
+
+
+def gh(path, jq):
+    return run("gh", "api", path, "--jq", jq)
+
+
+def compare(repo, branch, sha):
+    """Where sha stands against repo's branch: current, behind N (clean), or not on it (dirty)."""
+    global dirty
+    data = json.loads(gh(f"repos/{repo}/compare/{branch}...{sha}", "{status, ahead_by, behind_by}"))
+    if data["status"] == "identical":
+        return f"current with {repo} {branch}"
+    if data["status"] == "behind":
+        return f"clean, {data['behind_by']} commits behind {repo} {branch}"
+    dirty = True
+    return f"DIRTY: not on {repo} {branch} ({data['ahead_by']} ahead, {data['behind_by']} behind)"
+
+
+def line(label, sha, note):
+    print(f"  {label:<14} {sha[:12]:<13} {note}")
+
+
+def open_prs(repo, prefix):
+    prs = json.loads(run("gh", "pr", "list", "--repo", repo, "--state", "open",
+                         "--json", "number,headRefName,isDraft,title,url"))
+    return [pr for pr in prs if pr["headRefName"].startswith(prefix)]
+
+
+def fetch(url):
+    # Cloudflare refuses urllib's default User-Agent.
+    request = urllib.request.Request(url, headers={"User-Agent": "collisionlab-pin-status/1.0"})
+    with urllib.request.urlopen(request, timeout=60) as response:
+        return json.load(response)
+
+
+def transports_hash(plugin):
+    """osrs-tiles' transportsSha256 (anchor_inset_regions.read_transports) of the plugin's transports."""
+    directory = "src/main/resources/transports"
+    names = run("git", "-C", "tooling/shortest-path", "ls-tree", "--name-only", f"{plugin}:{directory}").split()
+    digest = hashlib.sha256()
+    for name in sorted(n for n in names if n.endswith(".tsv") and n != "teleport_restrictions.tsv"):
+        raw = subprocess.run(["git", "-C", "tooling/shortest-path", "show", f"{plugin}:{directory}/{name}"],
+                             check=True, capture_output=True).stdout
+        digest.update(name.encode() + b"\0" + raw + b"\0")
+    return digest.hexdigest()
+
+
+def naming(tiles, label):
+    """The inset regions a transport reaches that have no authored label (osrs-tiles review.json)."""
+    insets = tiles.get("insets")
+    if not insets:
+        print(f"  {label:<14} no insets")
+        return
+    base = f"{tiles['base']}/insets/{insets['version']}"
+    manifest, review = fetch(f"{base}/manifest.json"), fetch(f"{base}/review.json")
+    print(f"  {label:<14} insets {insets['version']} on tiles {insets['tileVersion']} "
+          f"(transports {manifest['inputs']['transportsSha256'][:12]}): "
+          f"{review['requiredNamed'] + review['requiredDescriptive']}/{review['required']} required regions labelled")
+    if manifest["inputs"]["transportsSha256"] != pinned_transports:
+        print(f"    built from other transports than the pinned plugin's ({pinned_transports[:12]}): "
+              "the next osrs-tiles insets run (daily 07:30 UTC) replaces them")
+    for issue in review["issues"]:
+        print(f"    needs a label: {issue['componentId']} ({issue['reason']})")
+
+
+print("Release")
+main = gh(f"repos/{PLANNER}/commits/main", ".sha")
+released = json.loads(base64.b64decode(gh(f"repos/{INFRA}/contents/releases/osrs-planner.json", ".content")))
+live = fetch(f"{SITE}/version")["release"]
+line("main", main, "")
+line("infra pin", released["commit"], "same as main" if released["commit"] == main
+     else "behind main: release CI or its infra pin PR is in flight")
+line("live", live, "same as infra pin" if live == released["commit"]
+     else "differs from infra pin: deploy in flight or failed")
+
+print("\nCode pins (this checkout's HEAD)")
+url = run("git", "config", "-f", ".gitmodules", "submodule.tooling.url")
+if TOOLING not in url:
+    dirty = True
+    print(f"  DIRTY: .gitmodules points tooling at {url}, not {TOOLING}")
+tooling = run("git", "rev-parse", "HEAD:tooling")
+line("tooling", tooling, compare(TOOLING, "master", tooling))
+plugin = gh(f"repos/{TOOLING}/contents/shortest-path?ref={tooling}", ".sha")
+line("plugin", plugin, compare(PLUGIN, "master", plugin))
+
+checkout = run("git", "submodule", "status", "--recursive")
+moved = [row for row in checkout.splitlines() if row[:1] in "+-U"]
+if moved or run("git", "-C", "tooling", "status", "--porcelain", "--ignore-submodules=none"):
+    dirty = True
+    print("  DIRTY: the local tooling checkout differs from the commit "
+          "(git submodule update --init --recursive)")
+    for row in moved:
+        print(f"    {row}")
+
+print("\nMap assets (tiles.json)")
+pinned_transports = transports_hash(plugin)
+with open("tiles.json") as f:
+    tiles = json.load(f)
+insets = tiles.get("insets") or {}
+print(f"  tiles          {tiles['version']}")
+if insets and insets.get("tileVersion") != tiles["version"]:
+    dirty = True
+    print("  DIRTY: the insets were built for other tiles")
+naming(tiles, "pinned")
+for pr in open_prs(PLANNER, "pin/map-assets"):
+    pending = json.loads(base64.b64decode(gh(f"repos/{PLANNER}/contents/tiles.json?ref={pr['headRefName']}", ".content")))
+    naming(pending, f"PR #{pr['number']}")
+
+print("\nOpen bot PRs")
+pending = open_prs(PLANNER, "pin/") + open_prs(INFRA, "pin/osrs-planner-")
+for pr in pending:
+    state = "draft, waiting for review (mark ready to merge)" if pr["isDraft"] else "waiting for CI"
+    print(f"  {pr['headRefName']:<28} {state}: {pr['title']}\n    {pr['url']}")
+if not pending:
+    print("  none")
+
+raise SystemExit(1 if dirty else 0)

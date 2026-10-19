@@ -1,0 +1,130 @@
+# Deployment flows
+
+Production runs one image: the planner frontend and route service, built from a commit on `main`. Only
+infra's `releases/osrs-planner.json` chooses which image runs. Everything else reaches production by
+changing a pin in this repository. That makes a new commit on `main`, which builds a new image.
+
+To see where every pin stands, run `scripts/pin-status`. It exits 1 when a pin is dirty.
+
+## The pins
+
+| Pin | Lives in | Moved by | When | Merges |
+|---|---|---|---|---|
+| Release image | infra `releases/osrs-planner.json` | `ci.yml` `release` job → `scripts/pin-release` → infra PR `pin/osrs-planner-<sha>` | every push to `main` | itself, once infra's tofu plan and checks pass; the merge applies and deploys |
+| shortest-path-tooling | `tooling` submodule (`.gitmodules`: upstream `master`) | `bump-tooling.yml` → `scripts/bump-tooling` → PR `pin/tooling` | daily 05:17 UTC, or `gh workflow run bump-tooling -R collisionlab/osrs-planner` | itself, once CI passes |
+| Shortest Path plugin | `tooling/shortest-path`, the commit tooling pins | upstream tooling's own bot (`chore: update shortest-path submodule to …`), then our tooling bump | when upstream tooling bumps it; ours follows the next day | with the tooling bump |
+| Tiles | `tiles.json` `version` | osrs-tiles `publish.yml` renders and uploads; its `insets.yml` opens the PR `pin/map-assets` | Thursdays 06:00 UTC (game cache), a renderer push to osrs-tiles `main`, or a manual run | with the insets, below |
+| Insets | `tiles.json` `insets` | osrs-tiles `insets.yml` → `scripts/pin-insets` → PR `pin/map-assets` here and in osrs-coord-preview | after each publish, an inset-code push to osrs-tiles `main`, daily 07:30 UTC | itself once CI passes, unless opened as a **draft** for review |
+
+Nothing updates `flake.lock`, `package-lock.json` or the Gradle dependencies. Those change only through
+hand-written PRs.
+
+```mermaid
+flowchart LR
+  upPlugin[Skretzo/shortest-path master] -->|upstream tooling bot| upTooling[shortest-path-tooling master]
+  upTooling -->|bump-tooling, daily 05:17| pinTooling[PR pin/tooling]
+  tilesRepo[osrs-tiles publish, Thursdays] -->|tile candidate| insets[osrs-tiles insets, daily 07:30]
+  main -->|its transports| insets
+  insets -->|validated pair| pinAssets[PR pin/map-assets]
+  pinTooling -->|CI green: merge-pin| main[osrs-planner main]
+  pinAssets -->|CI green, not draft: merge-pin| main
+  human[hand-written PRs] --> main
+  main -->|release job: image + scripts/pin-release| pinRelease[infra PR pin/osrs-planner-sha]
+  pinRelease -->|plan green: merge-pin| infraMain[infra main]
+  infraMain -->|tofu apply, deploy app + ops| live[osrs.collisionlab.world]
+```
+
+### Couplings to know
+
+- **Tooling bumps can move the insets.** The inset version hashes the transports in this repository's
+  pinned plugin (`tooling/shortest-path/.../transports`). A tooling bump that changes transport data
+  therefore produces a new `pin/map-assets` PR at the next 07:30 run, even when the tiles are unchanged.
+- **The plugin lags by up to two hops.** Skretzo's master moves first. Upstream tooling's bot pins it,
+  and our 05:17 job picks that up. Being a commit or two behind Skretzo's master is normal and clean.
+- **osrs-coord-preview receives the same `pin/map-assets` PRs.** Its release goes through infra's
+  `releases/osrs-coord-preview.json` separately.
+- **A merge to `main` deploys.** Every merge, whether it's a bot pin or a hand-written PR, releases
+  without anyone stepping in. The tests in `ci.yml` are the only gate.
+
+## How transport changes reach the insets and their labels
+
+An inset bundle (osrs-tiles `scripts/build-insets`) is built in three layers, and each layer changes for
+different reasons:
+
+1. **Regions** (`regions.json`). The connected areas off the main map. They are discovered from the
+   game cache's topology, so they change only with a new cache (the Thursday tiles) or a change to
+   osrs-tiles' `InsetTopology`. Transports never create or remove regions.
+2. **Anchors** (`anchors.json`). These are built from the transport rows in this repository's pinned
+   plugin. A connection is `local` only when its file is `transports.tsv` or `agility_shortcuts.tsv`
+   and its action starts with a known physical verb (`PHYSICAL_ACTIONS`). Teleports, travel networks
+   and portals are `non-local`, and unknown verbs are `review`. A region is **required** when a chain of
+   `local` connections reaches it from the surface.
+3. **Labels** (`labels.json`, `review.json`). Labels are authored in osrs-tiles
+   `data/inset-labels/annotations.json` (an interior seed tile and evidence per region) and
+   `sources.json`. A required region with no annotation gets the fallback name
+   "Unidentified terrain at x, y". That is a `required-component-unnamed` issue in `review.json`.
+
+The inset version hashes the transports (`transportsSha256`), so any transport edit triggers a rebuild:
+the tooling bump at 05:17 is followed by a new bundle at 07:30 and a refreshed `pin/map-assets` PR.
+
+**Naming issues never block or draft that PR.** They show up in these places:
+
+- `scripts/pin-status` lists the unlabelled required regions for the pinned bundle and for an open
+  `pin/map-assets` PR. It also says when a bundle was built from transports other than the pinned
+  plugin's, which means a rebuild is due;
+- the `pin/map-assets` PR body ("N naming issues use fallback labels");
+- the osrs-tiles `insets` run summary (`namingReviewCount`) and its `inset-review` artifact;
+- `https://tiles.collisionlab.world/insets/<version>/review.json`.
+
+**`pin-status` can't see regions reached only through a `review` connection.** Those regions are
+never required, so they raise no issue, but a route through them still shows the fallback name. The
+Ancient Guthixian Temple (plugin `e3a9745`) is like this: its only entrance, "Attract Light creature",
+is not a recognised verb.
+
+To label a region:
+
+1. Add an area to `annotations.json` with its `componentId`, an interior `seed`, `evidence` and a
+   `reason`. `scripts/label_inset_regions.py --worklist <file>` suggests nearby evidence for each
+   region.
+2. Push it to osrs-tiles `main`. Changes under `data/inset-labels/` rerun `insets.yml`, which pins
+   the new bundle here.
+
+If a verb is missing from `PHYSICAL_ACTIONS`, add it there first. Its regions then become required and
+show up as issues.
+
+## When automation stops and waits for you
+
+| Symptom | Why | What to do |
+|---|---|---|
+| `pin/tooling` open with red CI | the new tooling or plugin broke a guard (for example `RequirementCoverageTest`, `CatalogTest`, `RouteSchemaTest`) or a build | push the planner fixes to `pin/tooling`; the daily job won't overwrite a branch that has commits from anyone other than collisionlab-bot. CI passing then merges it |
+| `pin/map-assets` open as a **draft** | first insets, more than 10% of tiles or inset regions changed (`compare-version`, `compare-insets`) | check the PR, then mark it ready; `ready_for_review` reruns CI, which merges it. A draft stays a draft when later runs refresh it |
+| `pin-status` shows "needs a label" | a transport change made a region required that has no annotation | add the label in osrs-tiles (above); the pin merges anyway, with fallback names |
+| infra `pin/osrs-planner-…` open | infra's plan or checks failed | fix in infra; nothing reaches production until it merges |
+| live `/version` differs from the infra pin | deploy in progress, or the smoke checks refused the new release (blue/green keeps the old one) | check infra's `tofu` run on `main` |
+
+`pin/tooling` and `pin/map-assets` are fixed branch names that are refreshed in place, so at most one of
+each is open. Infra opens one pin PR per planner commit.
+
+## Clean, current and dirty
+
+`scripts/pin-status` checks the commit you have checked out (run it on `main` to see production's
+inputs):
+
+- **current**: at the head of the upstream branch it follows;
+- **clean**: on that branch, maybe some commits behind; a scheduled job will catch it up;
+- **dirty**: not on the upstream branch (a fork or rewritten commit), `.gitmodules` pointing at a fork, a
+  local submodule checkout that differs from the commit (`git submodule update --init --recursive`), or
+  insets built for other tiles.
+
+It also shows whether `main`, infra's release pin and the live `/version` agree, and lists the open bot
+PRs.
+
+## Daily clock (UTC)
+
+| Time | Job |
+|---|---|
+| hourly :17 | infra `uptime` |
+| 03:17 | infra `tofu` drift check |
+| 05:17 | `bump-tooling` (this repository) |
+| Thu 06:00 | osrs-tiles `publish` |
+| 07:30 | osrs-tiles `insets` |
