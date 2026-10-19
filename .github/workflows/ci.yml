@@ -40,8 +40,9 @@ jobs:
             test-results
           retention-days: 14
 
-  # collisionlab-bot's tiles pins (from collisionlab/osrs-tiles) merge themselves once the tests
-  # pass, unless they were opened as drafts for review. Merging releases the new tiles.
+  # collisionlab-bot's pins merge themselves once the tests pass, unless they were opened as drafts for
+  # review: tiles pins from collisionlab/osrs-tiles, and tooling bumps from bump-tooling.yml. Merging
+  # releases them.
   merge-pin:
     needs: test
     if: >-

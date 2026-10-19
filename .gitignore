@@ -2,7 +2,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 
-# Generated from tooling/corpus by `npm run contracts` (run automatically before dev, build and test).
+# Generated from schemas/ by `npm run contracts` (run automatically before dev, build and test).
 src/generated/
 
 # Gradle
