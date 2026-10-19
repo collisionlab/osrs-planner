@@ -46,12 +46,59 @@ flowchart LR
 - **A merge to `main` deploys.** Every merge, whether it's a bot pin or a hand-written PR, releases
   without anyone stepping in. The tests in `ci.yml` are the only gate.
 
+## How transport changes reach the insets and their labels
+
+An inset bundle (osrs-tiles `scripts/build-insets`) is built in three layers, and each layer changes for
+different reasons:
+
+1. **Regions** (`regions.json`). The connected areas off the main map. They are discovered from the
+   game cache's topology, so they change only with a new cache (the Thursday tiles) or a change to
+   osrs-tiles' `InsetTopology`. Transports never create or remove regions.
+2. **Anchors** (`anchors.json`). These are built from the transport rows in this repository's pinned
+   plugin. A connection is `local` only when its file is `transports.tsv` or `agility_shortcuts.tsv`
+   and its action starts with a known physical verb (`PHYSICAL_ACTIONS`). Teleports, travel networks
+   and portals are `non-local`, and unknown verbs are `review`. A region is **required** when a chain of
+   `local` connections reaches it from the surface.
+3. **Labels** (`labels.json`, `review.json`). Labels are authored in osrs-tiles
+   `data/inset-labels/annotations.json` (an interior seed tile and evidence per region) and
+   `sources.json`. A required region with no annotation gets the fallback name
+   "Unidentified terrain at x, y". That is a `required-component-unnamed` issue in `review.json`.
+
+The inset version hashes the transports (`transportsSha256`), so any transport edit triggers a rebuild:
+the tooling bump at 05:17 is followed by a new bundle at 07:30 and a refreshed `pin/map-assets` PR.
+
+**Naming issues never block or draft that PR.** They show up in these places:
+
+- `scripts/pin-status` lists the unlabelled required regions for the pinned bundle and for an open
+  `pin/map-assets` PR. It also says when a bundle was built from transports other than the pinned
+  plugin's, which means a rebuild is due;
+- the `pin/map-assets` PR body ("N naming issues use fallback labels");
+- the osrs-tiles `insets` run summary (`namingReviewCount`) and its `inset-review` artifact;
+- `https://tiles.collisionlab.world/insets/<version>/review.json`.
+
+**`pin-status` can't see regions reached only through a `review` connection.** Those regions are
+never required, so they raise no issue, but a route through them still shows the fallback name. The
+Ancient Guthixian Temple (plugin `e3a9745`) is like this: its only entrance, "Attract Light creature",
+is not a recognised verb.
+
+To label a region:
+
+1. Add an area to `annotations.json` with its `componentId`, an interior `seed`, `evidence` and a
+   `reason`. `scripts/label_inset_regions.py --worklist <file>` suggests nearby evidence for each
+   region.
+2. Push it to osrs-tiles `main`. Changes under `data/inset-labels/` rerun `insets.yml`, which pins
+   the new bundle here.
+
+If a verb is missing from `PHYSICAL_ACTIONS`, add it there first. Its regions then become required and
+show up as issues.
+
 ## When automation stops and waits for you
 
 | Symptom | Why | What to do |
 |---|---|---|
 | `pin/tooling` open with red CI | the new tooling or plugin broke a guard (for example `RequirementCoverageTest`, `CatalogTest`, `RouteSchemaTest`) or a build | push the planner fixes to `pin/tooling`; the daily job won't overwrite a branch that has commits from anyone other than collisionlab-bot. CI passing then merges it |
-| `pin/map-assets` open as a **draft** | first insets, more than the review threshold of tiles changed, or the inset geometry needs review | check the PR, then mark it ready; `ready_for_review` reruns CI, which merges it |
+| `pin/map-assets` open as a **draft** | first insets, more than 10% of tiles or inset regions changed (`compare-version`, `compare-insets`) | check the PR, then mark it ready; `ready_for_review` reruns CI, which merges it. A draft stays a draft when later runs refresh it |
+| `pin-status` shows "needs a label" | a transport change made a region required that has no annotation | add the label in osrs-tiles (above); the pin merges anyway, with fallback names |
 | infra `pin/osrs-planner-…` open | infra's plan or checks failed | fix in infra; nothing reaches production until it merges |
 | live `/version` differs from the infra pin | deploy in progress, or the smoke checks refused the new release (blue/green keeps the old one) | check infra's `tofu` run on `main` |
 
