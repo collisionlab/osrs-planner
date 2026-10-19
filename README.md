@@ -91,6 +91,9 @@ and the `route_search_nodes` histogram.
 
 ## Releases
 
+[docs/deployment.md](docs/deployment.md) maps every flow that changes production: which pin each job
+moves, when, and what merges without review. `scripts/pin-status` shows whether each pin is current.
+
 Every push to `main` builds `ghcr.io/collisionlab/osrs-planner:<commit>` and opens a PR in
 `collisionlab/infra` pinning its digest (`scripts/pin-release`). Merging that PR deploys it to the
 `app` host blue/green: the new release starts beside the old one and takes traffic only after it is
