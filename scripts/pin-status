@@ -46,7 +46,7 @@ def line(label, sha, note):
 
 def open_prs(repo, prefix):
     prs = json.loads(run("gh", "pr", "list", "--repo", repo, "--state", "open",
-                         "--json", "number,headRefName,isDraft,title,url"))
+                         "--json", "number,headRefName,isDraft,title,url,body"))
     return [pr for pr in prs if pr["headRefName"].startswith(prefix)]
 
 
@@ -133,8 +133,13 @@ for pr in open_prs(PLANNER, "pin/map-assets"):
 print("\nOpen bot PRs")
 pending = open_prs(PLANNER, "pin/") + open_prs(INFRA, "pin/osrs-planner-")
 for pr in pending:
-    state = "draft, waiting for review (mark ready to merge)" if pr["isDraft"] else "waiting for CI"
+    state = "DRAFT, needs you" if pr["isDraft"] else "waiting for CI, merges itself"
     print(f"  {pr['headRefName']:<28} {state}: {pr['title']}\n    {pr['url']}")
+    if pr["isDraft"]:
+        # osrs-tiles' pin-insets lists what to do as "- [ ] **title** action".
+        actions = [line[6:] for line in (pr.get("body") or "").splitlines() if line.startswith("- [ ] ")]
+        for action in actions or ["The PR body doesn't say why; read it, then mark it ready."]:
+            print(f"    - {action.replace('**', '')}")
 if not pending:
     print("  none")
 

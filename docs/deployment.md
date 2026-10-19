@@ -14,7 +14,7 @@ To see where every pin stands, run `scripts/pin-status`. It exits 1 when a pin i
 | shortest-path-tooling | `tooling` submodule (`.gitmodules`: upstream `master`) | `bump-tooling.yml` → `scripts/bump-tooling` → PR `pin/tooling` | daily 05:17 UTC, or `gh workflow run bump-tooling -R collisionlab/osrs-planner` | itself, once CI passes |
 | Shortest Path plugin | `tooling/shortest-path`, the commit tooling pins | upstream tooling's own bot (`chore: update shortest-path submodule to …`), then our tooling bump | when upstream tooling bumps it; ours follows the next day | with the tooling bump |
 | Tiles | `tiles.json` `version` | osrs-tiles `publish.yml` renders and uploads; its `insets.yml` opens the PR `pin/map-assets` | Thursdays 06:00 UTC (game cache), a renderer push to osrs-tiles `main`, or a manual run | with the insets, below |
-| Insets | `tiles.json` `insets` | osrs-tiles `insets.yml` → `scripts/pin-insets` → PR `pin/map-assets` here and in osrs-coord-preview | after each publish, an inset-code push to osrs-tiles `main`, daily 07:30 UTC | itself once CI passes, unless opened as a **draft** for review |
+| Insets | `tiles.json` `insets` | osrs-tiles `insets.yml` → `scripts/pin-insets` → PR `pin/map-assets` here and in osrs-coord-preview | after each publish, an inset-code push to osrs-tiles `main`, daily 07:30 UTC | itself once CI passes, unless it is a **draft** waiting for you (the PR body says why) |
 
 Nothing updates `flake.lock`, `package-lock.json` or the Gradle dependencies. Those change only through
 hand-written PRs.
@@ -89,7 +89,8 @@ To name a region:
    `evidence` (the `c-…` ids of the rows landing there, plus any `s-…` source places inside it) and a
    `reason`. `scripts/label_inset_regions.py --worklist <file>` suggests evidence for each region.
 2. Push it to osrs-tiles `main`. Changes under `data/inset-labels/` rerun `insets.yml`, which refreshes
-   the pin PR. Once nothing is unnamed, mark it ready.
+   the pin PR. With nothing left unnamed (and nothing else to check), the PR leaves draft and merges by
+   itself.
 
 Alternatively, mark the draft ready to publish with the fallback label.
 
@@ -98,8 +99,13 @@ Alternatively, mark the draft ready to publish with the fallback label.
 | Symptom | Why | What to do |
 |---|---|---|
 | `pin/tooling` open with red CI | the new tooling or plugin broke a guard (for example `RequirementCoverageTest`, `CatalogTest`, `RouteSchemaTest`) or a build | push the planner fixes to `pin/tooling`; the daily job won't overwrite a branch that has commits from anyone other than collisionlab-bot. CI passing then merges it |
-| `pin/map-assets` open as a **draft** | first insets, more than 10% of tiles or inset regions changed (`compare-version`, `compare-insets`), or unnamed reachable regions | check the PR, then mark it ready; `ready_for_review` reruns CI, which merges it. A draft stays a draft when later runs refresh it |
-| `pin/map-assets` draft and `pin-status` shows "needs a label" | a transport change made a new region reachable, and it has no name | name it in osrs-tiles (above), then mark the PR ready |
+| `pin/map-assets` open as a **draft** | something needs a person: the first insets, more than 10% of a style's tiles changed (`tile-review`), more than 10% of inset areas changed (`compare-insets`), or unnamed reachable regions | follow the PR's **Action needed** list. Check and mark it ready (CI then merges it), or for names, add them in osrs-tiles: the rebuild refreshes the PR and marks it ready when nothing else is left |
+
+A pin PR is a draft exactly while one of those reasons applies, and every refresh rewrites its "Action
+needed" list. A refresh with nothing left marks it ready by itself. After you mark a PR ready, it stays
+ready through refreshes that only repeat what it already listed, and goes back to draft if something new
+appears. While a pin PR is open, the osrs-tiles runs build for its tiles, so a daily run never reverts a
+tile update.
 | infra `pin/osrs-planner-…` open | infra's plan or checks failed | fix in infra; nothing reaches production until it merges |
 | live `/version` differs from the infra pin | deploy in progress, or the smoke checks refused the new release (blue/green keeps the old one) | check infra's `tofu` run on `main` |
 
