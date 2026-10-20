@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Report every pin the planner release depends on, whether each is current, and unlabelled insets. Read-only.
+"""Report every pin the planner release depends on, whether each is current, and insets needing review. Read-only.
 
 Run from a checkout of osrs-planner (gh must be logged in). See docs/deployment.md for what moves
 each pin. Exits 1 when a pin is dirty: not on its upstream's main line, or a local checkout that
@@ -70,7 +70,7 @@ def transports_hash(plugin):
 
 
 def naming(tiles, label):
-    """The inset regions a transport reaches that have no authored label (osrs-tiles review.json)."""
+    """The inset regions a transport reaches that lack a name or an anchor (osrs-tiles review.json)."""
     insets = tiles.get("insets")
     if not insets:
         print(f"  {label:<14} no insets")
@@ -79,12 +79,14 @@ def naming(tiles, label):
     manifest, review = fetch(f"{base}/manifest.json"), fetch(f"{base}/review.json")
     print(f"  {label:<14} insets {insets['version']} on tiles {insets['tileVersion']} "
           f"(transports {manifest['inputs']['transportsSha256'][:12]}): "
-          f"{review['requiredNamed'] + review['requiredDescriptive']}/{review['required']} required regions labelled")
+          f"{review['requiredNamed'] + review['requiredDescriptive']}/{review['required']} required regions labelled"
+          + (f", {review['requiredAnchored']} anchored" if 'requiredAnchored' in review else ""))
     if manifest["inputs"]["transportsSha256"] != pinned_transports:
         print(f"    built from other transports than the pinned plugin's ({pinned_transports[:12]}): "
               "the next osrs-tiles insets run (daily 07:30 UTC) replaces them")
     for issue in review["issues"]:
-        print(f"    needs a label: {issue['componentId']} ({issue['reason']})")
+        need = "an anchor" if "anchor" in issue["reason"] else "a label"
+        print(f"    needs {need}: {issue['componentId']} ({issue['reason']})")
 
 
 print("Release")

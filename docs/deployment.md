@@ -51,7 +51,7 @@ flowchart LR
 - **A merge to `main` deploys.** Every merge, whether it's a bot pin or a hand-written PR, releases
   without anyone stepping in. The tests in `ci.yml` are the only gate.
 
-## How transport changes reach the insets and their labels
+## How transport changes reach the insets, their labels and anchors
 
 An inset bundle (osrs-tiles `scripts/build-insets`) is built in three layers, and each layer changes for
 different reasons:
@@ -64,7 +64,12 @@ different reasons:
    the main world or from a row with no source (a spell, for example). Chains follow each row's own
    direction, ignore account requirements, and count every file: teleports, fairy rings, portals,
    levers and unusual actions ("Attract Light creature") all count. An area you can only leave is not
-   reachable. The older surface-entrance anchors in the same file still drive inset placement.
+   reachable.
+   **Anchors** (`anchors.json` `regions[id].anchors`) say where the planner places each area: beside a
+   point on the main map, reached through physical connections where there are any, else through
+   curated anchors or other transports. **Every reachable region needs one**; one without gets a
+   `required-component-unanchored` issue in `review.json` and would show above the map. The rules are in
+   osrs-tiles [`docs/tiles.md`](https://github.com/collisionlab/osrs-tiles/blob/main/docs/tiles.md#names-and-anchors).
 3. **Labels** (`labels.json`, `review.json`). Labels are authored in osrs-tiles
    `data/inset-labels/annotations.json` (an interior seed tile and evidence per region) and
    `sources.json`. **Every reachable region needs one**, because the planner's area search
@@ -75,16 +80,16 @@ different reasons:
 The inset version hashes the transports (`transportsSha256`), so any transport edit triggers a rebuild:
 the tooling bump at 05:17 is followed by a new bundle at 07:30 and a refreshed `pin/map-assets` PR. A
 plugin change that adds a way into a new area therefore shows up the next morning as an unnamed
-reachable region.
+reachable region, and one reached only by teleport also as an unanchored one.
 
-**A bundle with unnamed reachable regions opens its pin PR as a draft**, so it waits for you. You can
-see them in these places:
+**A bundle with unnamed or unanchored reachable regions opens its pin PR as a draft**, so it waits for
+you. You can see them in these places:
 
 - `scripts/pin-status` lists them for the pinned bundle and for an open `pin/map-assets` PR. It also
   says when a bundle was built from transports other than the pinned plugin's, which means a rebuild
   is due;
 - the `pin/map-assets` PR body;
-- the osrs-tiles `insets` run summary (`namingReviewCount`) and its `inset-review` artifact;
+- the osrs-tiles `insets` run summary (`reviewCount`) and its `inset-review` artifact;
 - `https://tiles.collisionlab.world/insets/<version>/review.json`.
 
 To name a region:
@@ -93,17 +98,21 @@ To name a region:
    `evidence` (the `c-…` ids of the rows landing there, plus any `s-…` source places inside it) and a
    `reason`. `scripts/label_inset_regions.py --worklist <file>` suggests evidence for each region.
 2. Push it to osrs-tiles `main`. Changes under `data/inset-labels/` rerun `insets.yml`, which refreshes
-   the pin PR. With nothing left unnamed (and nothing else to check), the PR leaves draft and merges by
-   itself.
+   the pin PR. With nothing left unnamed or unanchored (and nothing else to check), the PR leaves draft
+   and merges by itself.
 
-Alternatively, mark the draft ready to publish with the fallback label.
+To anchor a region, give its annotation an `anchor`: a point on the main map, or inside an area that
+has an anchor, and a `reason` (osrs-tiles `docs/tiles.md`). Push it the same way.
+
+Alternatively, mark the draft ready to publish with the fallback label, or with the area shown above
+the map.
 
 ## When automation stops and waits for you
 
 | Symptom | Why | What to do |
 |---|---|---|
 | `pin/tooling` open with red CI | the new tooling or plugin broke a guard (for example `RequirementCoverageTest`, `CatalogTest`, `RouteSchemaTest`) or a build | push the planner fixes to `pin/tooling`; the daily job won't overwrite a branch that has commits from anyone other than collisionlab-bot. CI passing then merges it |
-| `pin/map-assets` open as a **draft** | something needs a person: the first insets, more than 10% of a style's tiles changed (`tile-review`), more than 10% of inset areas changed (`compare-insets`), or unnamed reachable regions | follow the PR's **Action needed** list. Check and mark it ready (CI then merges it), or for names, add them in osrs-tiles: the rebuild refreshes the PR and marks it ready when nothing else is left |
+| `pin/map-assets` open as a **draft** | something needs a person: the first insets, more than 10% of a style's tiles changed (`tile-review`), more than 10% of inset areas changed (`compare-insets`), or unnamed or unanchored reachable regions | follow the PR's **Action needed** list. Check and mark it ready (CI then merges it), or for names and anchors, add them in osrs-tiles: the rebuild refreshes the PR and marks it ready when nothing else is left |
 | `pin/map-assets` open with red CI | `scripts/check-map-assets` found the tiles and insets incompatible, or a style's tiles missing a square an inset covers | fix in osrs-tiles; the next build refreshes the PR |
 | infra `pin/osrs-planner-…` open | infra's plan or checks failed | fix in infra; nothing reaches production until it merges |
 | live `/version` differs from the infra pin | deploy in progress, or the smoke checks refused the new release (blue/green keeps the old one) | check infra's `tofu` run on `main` |
