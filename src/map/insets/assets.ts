@@ -2,17 +2,14 @@ import Ajv from "ajv";
 import type { WorldPoint } from "../../domain/contracts";
 import { catalogueClassifier, isDetachedUpperFloor, type Catalogue } from "./preview";
 
+/** An inset bundle's manifest: metadata only, cut from the tiles at `tileVersion` (osrs-tiles docs/tiles.md). */
 export interface InsetManifest {
-  schemaVersion: 1;
+  schemaVersion: 2;
   version: string;
   layout: "explv-tms-v1";
   tileVersion: string;
   cacheIdx255Sha256: string;
   files: Record<"regions.json" | "labels.json", string> & { "anchors.json"?: string };
-  planes: number[][];
-  supplemental: number[][];
-  /** The directory each style's supplemental tiles are in; absent means tactical, under planes/. */
-  supplementalStyles?: Record<string, string>;
 }
 export interface InsetAssets {
   catalogue: Catalogue;
@@ -35,15 +32,11 @@ const validateCatalogue = new Ajv().compile({
   },
 });
 const hash = { type: "string", pattern: "^[a-f0-9]{64}$" };
-const squares = { type: "array", minItems: 4, maxItems: 4, items: {
-  type: "array", uniqueItems: true, items: { type: "integer", minimum: 0, maximum: 65535 },
-} };
 const validateManifest = new Ajv().compile({
-  type: "object", required: ["schemaVersion", "version", "layout", "tileVersion", "cacheIdx255Sha256", "files", "planes", "supplemental"],
+  type: "object", required: ["schemaVersion", "version", "layout", "tileVersion", "cacheIdx255Sha256", "files"],
   properties: {
-    schemaVersion: { const: 1 }, version: { type: "string", minLength: 1 }, layout: { const: "explv-tms-v1" }, tileVersion: { type: "string", minLength: 1 },
-    cacheIdx255Sha256: hash, planes: squares, supplemental: squares,
-    supplementalStyles: { type: "object", additionalProperties: { type: "string", pattern: "^[a-z][a-z-]*$" } },
+    schemaVersion: { const: 2 }, version: { type: "string", minLength: 1 }, layout: { const: "explv-tms-v1" }, tileVersion: { type: "string", minLength: 1 },
+    cacheIdx255Sha256: hash,
     files: { type: "object", required: ["regions.json", "labels.json"], properties: { "regions.json": hash, "labels.json": hash } },
   },
 });

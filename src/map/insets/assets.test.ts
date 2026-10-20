@@ -15,11 +15,9 @@ describe("inset asset boundary", () => {
     expect(() => checkCatalogue({ ...catalogue, schemaVersion: 1, regions: [room, room] })).toThrow();
     expect(() => checkCatalogue({ ...catalogue, schemaVersion: 1, regions: [{ ...room, mask: [[2800, 10000, -1, 2]] }] })).toThrow();
   });
-  it("uses Explv addresses for hosted tiles and the same addresses for supplemental floors", () => {
-    const assets = requiredAssets([{ ...room, plane: 0 }, room]);
-    expect(nativeTileUrl(assets, "https://tiles/tactical/v", 43, 156, 0)).toBe("https://tiles/tactical/v/8/28/137.png");
-    expect(nativeTileUrl(assets, "https://tiles/tactical/v", 43, 156, 2)).toBe("https://tiles/insets/i/planes/2/8/28/137.png");
-    expect(nativeTileUrl(assets, "https://tiles/tactical/v", 0, 0, 2)).toBeUndefined();
+  it("uses Explv addresses for plane 0 and the same addresses under p<plane>/ for upper floors", () => {
+    expect(nativeTileUrl("https://tiles/tactical/v", 43, 156, 0)).toBe("https://tiles/tactical/v/8/28/137.png");
+    expect(nativeTileUrl("https://tiles/tactical/v", 43, 156, 2)).toBe("https://tiles/tactical/v/p2/8/28/137.png");
   });
   it("undoes translations and restores the inset plane when picking", () => {
     const assets = requiredAssets([room]);

@@ -8,7 +8,6 @@ import { decomposeRoute, type RouteTransition } from "./routeSections";
 import catalogueFixture from "./fixtures/regions.json";
 import { worldToMap } from "./projection";
 import { regionTiles } from "./terrain";
-import { requiredAssets } from "./testAssets";
 
 const room = (id: string, x: number): Region => ({ id, plane: 0, bounds: [x, 10000, x + 10, 10010],
   mask: [[x, 10000, 10, 10]], classification: "inset", tileCount: 100, surfaceTiles: 0, touchesUnknown: false, examples: [] });
@@ -44,19 +43,15 @@ describe("pasted region layout", () => {
   it("clips native tiles at tile edges and skips empty map squares inside the bounds", () => {
     const shape: Region = { ...room("edge", 2816), bounds: [2817, 10115, 2944, 10240],
       mask: [[2817, 10115, 1, 1], [2943, 10239, 1, 1]] };
-    const tiles = regionTiles(shape, requiredAssets([shape]), "https://tiles/tactical/v");
+    const tiles = regionTiles(shape, "https://tiles/tactical/v");
     expect(tiles).toHaveLength(2);
     expect(tiles[0]).toEqual({ url: "https://tiles/tactical/v/8/29/139.png", x: -4, y: 256 });
     expect(tiles[1]).toEqual({ url: "https://tiles/tactical/v/8/30/140.png", x: 252, y: 0 });
   });
 
-  it("cuts upper floors from the supplemental tiles of the map's style, else tactical", () => {
+  it("cuts upper floors from the same style's tiles for that plane", () => {
     const floor: Region = { ...room("floor", 3200), plane: 1 };
-    const assets = requiredAssets([floor]);
-    expect(regionTiles(floor, assets, "https://tiles/standard/v", "standard")[0].url).toMatch(/^https:\/\/tiles\/insets\/i\/planes\/1\//);
-    assets.manifest.supplementalStyles = { tactical: "planes", standard: "planes-standard" };
-    expect(regionTiles(floor, assets, "https://tiles/standard/v", "standard")[0].url).toMatch(/\/planes-standard\/1\//);
-    expect(regionTiles(floor, assets, "https://tiles/tactical/v")[0].url).toMatch(/\/insets\/i\/planes\/1\//);
+    expect(regionTiles(floor, "https://tiles/standard/v")[0].url).toMatch(/^https:\/\/tiles\/standard\/v\/p1\/8\//);
   });
 
   const catalogue = catalogueFixture as Catalogue;
@@ -79,7 +74,7 @@ describe("pasted region layout", () => {
       if (plan.reachable) expect(placement.anchored).toBe(true);
       if (placement.segmentIndex !== undefined) expect(transitions.some(transition => transition.segmentIndex === placement.segmentIndex
         && [transition.fromRegion, transition.toRegion].includes(shape.id) && [transition.fromRegion, transition.toRegion].includes(placement.parent!))).toBe(true);
-      expect(regionTiles(shape, requiredAssets([shape]), "https://tiles/tactical/v").every(tile => tile.url?.includes("/8/"))).toBe(true);
+      expect(regionTiles(shape, "https://tiles/tactical/v").every(tile => tile.url.includes("/8/"))).toBe(true);
     }
     for (let index = 0; index < shapes.length; index++) {
       const a = regionExtent(shapes[index], placements.get(shapes[index].id)!.offset);

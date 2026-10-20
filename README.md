@@ -135,14 +135,11 @@ The markers come from the route service's `GET /v1/plane-links` (the plugin's ph
 that change plane in place), so a floor no transport reaches is never offered.
 
 Insets are cut from the pinned pyramid of the selected style (standard or tactical), and the
-inset map's surface comes from that same pyramid so the two line up. Squares the pyramid lacks
-(upper floors, some instances) come from the inset release's supplemental tiles, per style as
-its manifest's `supplementalStyles` lists them; a release without a style's tiles falls back to
-tactical ones.
+inset map's surface comes from that same pyramid so the two line up. The pyramid has every plane:
+plane 0 at Explv's addresses and upper floors under `p1/`–`p3/`. The inset bundle is metadata only.
+Both are described in osrs-tiles' `docs/tiles.md`.
 
-All imagery uses Explv's tile layout. Base plane-0 tiles are reused; missing
-coverage and higher floors come from the sidecar's supplemental tiles. Runtime
-checks schemas, release versions, content hashes and label compatibility before
+Runtime checks schemas, release versions, content hashes and label compatibility before
 rendering. Unknown terrain and unavailable assets are reported without changing
 routing coordinates; an asset error offers the existing map as a fallback.
 Dynamic instance remapping is not supported; coordinates remain static world
