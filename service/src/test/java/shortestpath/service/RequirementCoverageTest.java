@@ -28,8 +28,8 @@ class RequirementCoverageTest {
      * Variables no account fact set on 2026-10-17, not yet reviewed: some are real gaps (diary item
      * teleports, Pendant of Ates sites), some are state the plugin reads another way (minigame
      * teleport timers). Remove an entry once the account model covers it; the test says when.
-     * Added 2026-10-19 with the Chasm of Tears transports: While Guthix Sleeps progress (9653) and its
-     * skull door (10820), quest varbits the account's quest states don't set.
+     * Added 2026-10-19 with the Chasm of Tears transports: the While Guthix Sleeps skull door (10820), a
+     * quest varbit the account's quest states don't set.
      */
     private static final Set<String> KNOWN_GAPS = Set.of(
         "varbit 571",
@@ -53,7 +53,6 @@ class RequirementCoverageTest {
         "varbit 7930",
         "varbit 7937",
         "varbit 7938",
-        "varbit 9653",
         "varbit 10150",
         "varbit 10820",
         "varbit 11479",
