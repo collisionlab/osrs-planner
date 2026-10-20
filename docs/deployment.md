@@ -13,8 +13,10 @@ To see where every pin stands, run `scripts/pin-status`. It exits 1 when a pin i
 | Release image | infra `releases/osrs-planner.json` | `ci.yml` `release` job → `scripts/pin-release` → infra PR `pin/osrs-planner-<sha>` | every push to `main` | itself, once infra's tofu plan and checks pass; the merge applies and deploys |
 | shortest-path-tooling | `tooling` submodule (`.gitmodules`: upstream `master`) | `bump-tooling.yml` → `scripts/bump-tooling` → PR `pin/tooling` | daily 05:17 UTC, or `gh workflow run bump-tooling -R collisionlab/osrs-planner` | itself, once CI passes |
 | Shortest Path plugin | `tooling/shortest-path`, the commit tooling pins | upstream tooling's own bot (`chore: update shortest-path submodule to …`), then our tooling bump | when upstream tooling bumps it; ours follows the next day | with the tooling bump |
-| Tiles | `tiles.json` `version` | osrs-tiles `publish.yml` renders and uploads; its `insets.yml` opens the PR `pin/map-assets` | Thursdays 06:00 UTC (game cache), a renderer push to osrs-tiles `main`, or a manual run | with the insets, below |
-| Insets | `tiles.json` `insets` | osrs-tiles `insets.yml` → `scripts/pin-insets` → PR `pin/map-assets` here and in osrs-coord-preview | after each publish, an inset-code push to osrs-tiles `main`, daily 07:30 UTC | itself once CI passes, unless it is a **draft** waiting for you (the PR body says why) |
+| Tiles (every plane, both styles) | `tiles.json` `version` | osrs-tiles `publish.yml` renders and uploads; its `insets.yml` opens the PR `pin/map-assets` | Thursdays 06:00 UTC (game cache), a renderer push to osrs-tiles `main`, or a manual run | with the insets, below |
+| Insets (metadata only) | `tiles.json` `insets` | osrs-tiles `insets.yml` → `scripts/pin-insets` → PR `pin/map-assets` | after each publish, an inset-code push to osrs-tiles `main`, daily 07:30 UTC | itself once CI passes, unless it is a **draft** waiting for you (the PR body says why) |
+
+What tiles and inset bundles contain, and their URL layout, is in osrs-tiles' `docs/tiles.md`.
 
 Nothing updates `flake.lock`, `package-lock.json` or the Gradle dependencies. Those change only through
 hand-written PRs.
@@ -42,8 +44,10 @@ flowchart LR
   If it makes a new area reachable, that PR waits as a draft until the area has a name (below).
 - **The plugin lags by up to two hops.** Skretzo's master moves first. Upstream tooling's bot pins it,
   and our 05:17 job picks that up. Being a commit or two behind Skretzo's master is normal and clean.
-- **osrs-coord-preview receives the same `pin/map-assets` PRs.** Its release goes through infra's
-  `releases/osrs-coord-preview.json` separately.
+- **osrs-coord-preview pins only the tiles.** It reads every plane from the tiles, so its
+  `pin/map-assets` PR (titled "Use tiles …") opens only for a new tile version, and waits as a draft only
+  when the tiles changed a lot. Its release goes through infra's `releases/osrs-coord-preview.json`
+  separately.
 - **A merge to `main` deploys.** Every merge, whether it's a bot pin or a hand-written PR, releases
   without anyone stepping in. The tests in `ci.yml` are the only gate.
 
@@ -100,14 +104,15 @@ Alternatively, mark the draft ready to publish with the fallback label.
 |---|---|---|
 | `pin/tooling` open with red CI | the new tooling or plugin broke a guard (for example `RequirementCoverageTest`, `CatalogTest`, `RouteSchemaTest`) or a build | push the planner fixes to `pin/tooling`; the daily job won't overwrite a branch that has commits from anyone other than collisionlab-bot. CI passing then merges it |
 | `pin/map-assets` open as a **draft** | something needs a person: the first insets, more than 10% of a style's tiles changed (`tile-review`), more than 10% of inset areas changed (`compare-insets`), or unnamed reachable regions | follow the PR's **Action needed** list. Check and mark it ready (CI then merges it), or for names, add them in osrs-tiles: the rebuild refreshes the PR and marks it ready when nothing else is left |
+| `pin/map-assets` open with red CI | `scripts/check-map-assets` found the tiles and insets incompatible, or a style's tiles missing a square an inset covers | fix in osrs-tiles; the next build refreshes the PR |
+| infra `pin/osrs-planner-…` open | infra's plan or checks failed | fix in infra; nothing reaches production until it merges |
+| live `/version` differs from the infra pin | deploy in progress, or the smoke checks refused the new release (blue/green keeps the old one) | check infra's `tofu` run on `main` |
 
 A pin PR is a draft exactly while one of those reasons applies, and every refresh rewrites its "Action
 needed" list. A refresh with nothing left marks it ready by itself. After you mark a PR ready, it stays
 ready through refreshes that only repeat what it already listed, and goes back to draft if something new
 appears. While a pin PR is open, the osrs-tiles runs build for its tiles, so a daily run never reverts a
 tile update.
-| infra `pin/osrs-planner-…` open | infra's plan or checks failed | fix in infra; nothing reaches production until it merges |
-| live `/version` differs from the infra pin | deploy in progress, or the smoke checks refused the new release (blue/green keeps the old one) | check infra's `tofu` run on `main` |
 
 `pin/tooling` and `pin/map-assets` are fixed branch names that are refreshed in place, so at most one of
 each is open. Infra opens one pin PR per planner commit.

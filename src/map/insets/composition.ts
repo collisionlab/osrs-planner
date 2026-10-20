@@ -188,7 +188,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   const drawShape = (shape: typeof shapes[number], offset: Coordinate, draggable: boolean, index: number) => {
     let source: PastedTerrainSource;
     try {
-      const terrain = regionTerrain(shape, assets, terrainTiles, () => { if (!disposed) source.changed(); });
+      const terrain = regionTerrain(shape, terrainTiles, () => { if (!disposed) source.changed(); });
       source = new PastedTerrainSource(terrain.canvas, regionExtent(shape, offset));
       cleanup.push(() => { source.dispose(); terrain.dispose(); });
       void terrain.ready.then(count => { if (!disposed) { failures += count; status(); } });

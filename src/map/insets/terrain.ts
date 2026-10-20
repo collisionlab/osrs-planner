@@ -1,7 +1,6 @@
 import type { Region } from "./geometry";
 import { maskPath } from "./mask";
 import { TACTICAL_PIXELS_PER_TILE, nativeTileUrl } from "./tactical";
-import type { InsetAssets } from "./assets";
 
 const images = new Map<string, Promise<HTMLImageElement>>();
 
@@ -23,17 +22,17 @@ function image(url: string): Promise<HTMLImageElement> {
   return pending;
 }
 
-/** Where an inset's terrain is cut from: a pinned tile pyramid and its style. */
-export interface TerrainTiles { base: string; style: string }
+/** Where an inset's terrain is cut from: one style of the pinned tile pyramid. */
+export interface TerrainTiles { base: string }
 
-export function regionTiles(region: Region, assets: InsetAssets, tilesBase: string, style = "tactical") {
+export function regionTiles(region: Region, tilesBase: string) {
   const [x1, y1, x2, y2] = region.bounds;
-  const tiles: { url: string | undefined; x: number; y: number }[] = [];
+  const tiles: { url: string; x: number; y: number }[] = [];
   for (let x = Math.floor(x1 / 64); x < Math.ceil(x2 / 64); x++) {
     for (let y = Math.floor(y1 / 64); y < Math.ceil(y2 / 64); y++) {
       if (!region.mask.some(([rx, ry, width, height]) => x * 64 < rx + width && (x + 1) * 64 > rx
         && y * 64 < ry + height && (y + 1) * 64 > ry)) continue;
-      tiles.push({ url: nativeTileUrl(assets, tilesBase, x, y, region.plane, style),
+      tiles.push({ url: nativeTileUrl(tilesBase, x, y, region.plane),
         x: (x * 64 - x1) * TACTICAL_PIXELS_PER_TILE, y: (y2 - (y + 1) * 64) * TACTICAL_PIXELS_PER_TILE });
     }
   }
@@ -41,7 +40,7 @@ export function regionTiles(region: Region, assets: InsetAssets, tilesBase: stri
 }
 
 /** Assemble the masked native pixels once; the map view handles all subsequent pan and zoom. */
-export function regionTerrain(region: Region, assets: InsetAssets, terrain: TerrainTiles, onUpdate: () => void) {
+export function regionTerrain(region: Region, terrain: TerrainTiles, onUpdate: () => void) {
   const [x1, y1, x2, y2] = region.bounds;
   const scale = TACTICAL_PIXELS_PER_TILE;
   const canvas = document.createElement("canvas");
@@ -53,8 +52,7 @@ export function regionTerrain(region: Region, assets: InsetAssets, terrain: Terr
   const path = new Path2D(maskPath(region, (x, y) => [(x - x1) * scale, (y2 - y) * scale]));
   context.fillStyle = "#262b25";
   context.fill(path);
-  const ready = Promise.all(regionTiles(region, assets, terrain.base, terrain.style).map(async tile => {
-    if (!tile.url) return 1;
+  const ready = Promise.all(regionTiles(region, terrain.base).map(async tile => {
     try {
       const img = await image(tile.url);
       if (disposed) return 0;

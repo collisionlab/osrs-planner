@@ -22,12 +22,8 @@ def check(pin, get=fetch):
         raise ValueError('Inset pin does not match tile pin')
     base = f"{pin['base']}/insets/{inset['version']}"
     manifest = json.loads(get(f'{base}/manifest.json'))
-    tile_base = f"{pin['base']}/tactical/{pin['version']}"
-    tiles = json.loads(get(f'{tile_base}/manifest.json'))
-    index = json.loads(get(f'{tile_base}/index.json'))
-    if (manifest['schemaVersion'] != 1 or manifest['layout'] != 'explv-tms-v1'
-            or manifest['version'] != inset['version'] or manifest['tileVersion'] != pin['version']
-            or manifest['cacheIdx255Sha256'] != tiles['cacheIdx255Sha256']):
+    if (manifest['schemaVersion'] != 2 or manifest['layout'] != 'explv-tms-v1'
+            or manifest['version'] != inset['version'] or manifest['tileVersion'] != pin['version']):
         raise ValueError('Incompatible map assets')
     for name in ('regions.json', 'labels.json'):
         if name not in manifest['files']:
@@ -48,21 +44,18 @@ def check(pin, get=fetch):
             for sx in range(x // 64, (x + w - 1) // 64 + 1):
                 for sy in range(y // 64, (y + h - 1) // 64 + 1):
                     required[region['plane']].add(sx << 8 | sy)
-    if len(manifest['planes']) != 4 or len(manifest['supplemental']) != 4:
-        raise ValueError('Invalid plane coverage')
-    for plane, squares in enumerate(required):
-        if squares != set(manifest['planes'][plane]):
-            raise ValueError('Catalogue coverage mismatch')
-        supplemental = set(manifest['supplemental'][plane])
-        if not supplemental <= squares:
-            raise ValueError('Invalid supplemental coverage')
-        supplement_index = decoded.get(f'planes/{plane}/index.json', {})
-        for square in squares:
-            native = f'8/{(square >> 8) - 15}/{(square & 255) - 19}.png'
-            source = supplement_index if square in supplemental else index if plane == 0 else {}
-            if native not in source:
-                raise ValueError(f'Missing native tile on plane {plane}: {native}')
-
+    # Insets are cut from the pinned tiles of the map's style, every plane (osrs-tiles docs/tiles.md).
+    for style in pin['styles']:
+        tile_base = f"{pin['base']}/{style}/{pin['version']}"
+        tiles = json.loads(get(f'{tile_base}/manifest.json'))
+        if len(tiles.get('planes', [])) != 4 or tiles['cacheIdx255Sha256'] != manifest['cacheIdx255Sha256']:
+            raise ValueError(f'Incompatible {style} tiles')
+        index = json.loads(get(f'{tile_base}/index.json'))
+        for plane, squares in enumerate(required):
+            for square in squares:
+                native = f"{f'p{plane}/' if plane else ''}8/{(square >> 8) - 15}/{(square & 255) - 19}.png"
+                if native not in index:
+                    raise ValueError(f'Missing {style} tile on plane {plane}: {native}')
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

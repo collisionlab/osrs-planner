@@ -1,24 +1,18 @@
 import TileGrid from "ol/tilegrid/TileGrid";
 import TileLayer from "ol/layer/Tile";
 import XYZ from "ol/source/XYZ";
-import type { InsetAssets } from "./assets";
 import { osrsProjection, osrsTileGrid, resolutions } from "./projection";
 
 export const TACTICAL_NATIVE_ZOOM = 8;
 export const TACTICAL_PIXELS_PER_TILE = 4;
 
 /**
- * A native (zoom 8) tile of `style`: from the pinned pyramid at `tilesBase`, or from the inset
- * release's supplemental tiles for squares the pyramid lacks. A release without that style's
- * supplemental tiles falls back to its tactical ones.
+ * A native (zoom 8) tile of the pinned pyramid at `tilesBase` (a style's directory). Plane 0 is at its
+ * root and planes 1–3 under p1/–p3/ (osrs-tiles docs/tiles.md). The inset build checks the pyramid has a
+ * tile for every map square an inset area covers.
  */
-export function nativeTileUrl(assets: InsetAssets, tilesBase: string, squareX: number, squareY: number, plane: number,
-  style = "tactical") {
-  const square = (squareX << 8) | squareY;
-  if (!assets.manifest.planes[plane]?.includes(square)) return undefined;
-  const path = `8/${squareX - 15}/${squareY - 19}.png`;
-  return assets.manifest.supplemental[plane].includes(square)
-    ? `${assets.base}/${assets.manifest.supplementalStyles?.[style] ?? "planes"}/${plane}/${path}` : `${tilesBase}/${path}`;
+export function nativeTileUrl(tilesBase: string, squareX: number, squareY: number, plane: number) {
+  return `${tilesBase}/${plane ? `p${plane}/` : ""}8/${squareX - 15}/${squareY - 19}.png`;
 }
 
 export function surfaceLayer(url: string, attribution: string, maxNativeZoom = 8, plane = 0) {
