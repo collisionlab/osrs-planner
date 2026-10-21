@@ -2,6 +2,14 @@
 .inset-label { white-space: nowrap; display: block; height: 28px; padding: 0 6px; border: 0; background: transparent; color: #f7f1dc; font: 700 .75rem/1 monospace; letter-spacing: .08em; text-transform: uppercase; text-shadow: 1px 0 #262b25, -1px 0 #262b25, 0 1px #262b25, 0 -1px #262b25, 0 2px 3px #000; cursor: grab; user-select: none; touch-action: none; }
 .inset-label:active { cursor: grabbing; }
 .inset-label:focus-visible { outline: 1px solid #f7f1dc; outline-offset: 2px; }
+/* An inset's header: its label, then a button per plane its area has. */
+.inset-header { display: flex; align-items: center; gap: 2px; }
+.inset-planes { display: flex; gap: 2px; }
+.inset-planes button { min-width: 20px; height: 20px; padding: 0 4px; color: #f7f1dc; background: #262b25; border: 1px solid #6b6a55; font: 700 .7rem/1 monospace; cursor: pointer; }
+.inset-planes button:hover { border-color: #f7f1dc; }
+.inset-planes button[aria-pressed='true'] { color: #262b25; background: #f7f1dc; border-color: #f7f1dc; cursor: default; }
+/* Planes the route uses. */
+.inset-planes button.on-route { box-shadow: inset 0 -2px var(--orange, #ffae47); }
 .inset-actions { position: absolute; top: 46px; left: 50px; display: flex; gap: 6px; z-index: 500; }
 .inset-actions button { padding: 7px 10px; color: var(--text, #e0e5cd); background: var(--ink, #141914); border: 1px solid var(--line, #48533e); font: 10px var(--pixel, monospace); cursor: pointer; }
 .inset-actions button:hover { color: var(--orange, #ffae47); border-color: var(--orange, #ffae47); }

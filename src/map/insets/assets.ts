@@ -13,7 +13,7 @@ export interface InsetManifest {
 }
 export interface InsetAssets {
   catalogue: Catalogue;
-  labels: Record<string, { name: string; plane: number; status?: string }>;
+  labels: Record<string, { name: string; plane: number; status?: string; areas?: { areaKey: string }[] }>;
   manifest: InsetManifest;
   base: string;
 }
@@ -88,6 +88,40 @@ export async function loadInsetAssets(base: string, tileVersion: string, signal:
     }
   }
   return { catalogue, labels: naming.regions, manifest: checked, base };
+}
+
+/** How far apart, in tiles, one area's components can be and still be drawn as one inset. */
+export const FLOOR_REACH = 128;
+const floorIndexes = new WeakMap<InsetAssets["labels"], Map<string, string[]>>();
+
+/**
+ * An inset's floors: for each plane, the components of the same named area (osrs-tiles' `areaKey`)
+ * within {@link FLOOR_REACH} tiles of `regionId`, which are drawn together in one frame. Planes share
+ * game coordinates, so a floor drawn with another's offset sits exactly over it, as in the game.
+ * An unnamed component has only its own floor.
+ */
+export function areaFloors(assets: Pick<InsetAssets, "catalogue" | "labels">, regionId: string): Map<number, string[]> {
+  const regions = new Map(assets.catalogue.regions.map(region => [region.id, region]));
+  const region = regions.get(regionId);
+  if (!region) return new Map();
+  let byKey = floorIndexes.get(assets.labels);
+  if (!byKey) {
+    byKey = new Map();
+    for (const [id, label] of Object.entries(assets.labels)) {
+      for (const { areaKey } of label.areas || []) byKey.set(areaKey, [...byKey.get(areaKey) || [], id]);
+    }
+    floorIndexes.set(assets.labels, byKey);
+  }
+  const [x1, y1, x2, y2] = region.bounds;
+  const near = ({ bounds: [a1, b1, a2, b2] }: { bounds: number[] }) =>
+    a1 < x2 + FLOOR_REACH && x1 < a2 + FLOOR_REACH && b1 < y2 + FLOOR_REACH && y1 < b2 + FLOOR_REACH;
+  const ids = new Set([regionId, ...(assets.labels[regionId]?.areas || []).flatMap(({ areaKey }) => byKey!.get(areaKey) || [])]);
+  const floors = new Map<number, string[]>();
+  for (const id of [...ids].sort()) {
+    const other = regions.get(id);
+    if (other && (id === regionId || near(other))) floors.set(other.plane, [...floors.get(other.plane) || [], id]);
+  }
+  return new Map([...floors].sort(([a], [b]) => a - b));
 }
 
 /**

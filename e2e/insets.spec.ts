@@ -51,6 +51,19 @@ test("shows an underground area picked in the search", async ({ page }) => {
   await expect(page.locator(".inset-label", { hasText: "Chasm of Fire" }).first()).toBeVisible();
 });
 
+test("switches a shown area between its planes", async ({ page }) => {
+  await openInsets(page, "account=mid");
+  const search = page.getByRole("combobox", { name: "Show an underground or instanced area" });
+  await search.fill("Chasm of Fire");
+  await search.press("Enter");
+  const planes = page.getByRole("group", { name: "Chasm of Fire: plane" });
+  await expect(planes.getByRole("button")).toHaveText(["0", "1", "2"]);
+  await expect(planes.getByRole("button", { name: "0" })).toHaveAttribute("aria-pressed", "true");
+  await planes.getByRole("button", { name: "2" }).click();
+  await expect(page.locator(".inset-label", { hasText: "Chasm of Fire · Plane 2" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Chasm of Fire: plane" }).getByRole("button", { name: "2" })).toHaveAttribute("aria-pressed", "true");
+});
+
 test("marks a teleport's landing tile", async ({ page }) => {
   await openInsets(page, "account=early&from=lumbridge&to=3300,3245,0");
   await expect(page.locator(".inset-endpoint.landing")).toHaveCount(1);

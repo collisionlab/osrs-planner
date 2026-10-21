@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkCatalogue, loadInsetAssets, loadInsetEntrances, sha256, upperFloorDoors } from "./assets";
+import { areaFloors, checkCatalogue, loadInsetAssets, loadInsetEntrances, sha256, upperFloorDoors } from "./assets";
 import { requiredAssets } from "./testAssets";
 import { nativeTileUrl } from "./tactical";
 import { pickWorld } from "./composition";
@@ -83,6 +83,20 @@ describe("named areas and their entrances", () => {
     expect(areas[0].entrance).toEqual({ surface: { x: 2412, y: 4434, plane: 0 }, inside: { x: 2805, y: 10005, plane: 2 }, wayIn: false });
     expect(doors).toEqual([]);
   });
+});
+
+it("groups an area's components by plane, near enough to draw in one frame", () => {
+  const part = (id: string, plane: number, x: number): Region => ({ ...room, id, plane, bounds: [x, 10000, x + 10, 10010], mask: [[x, 10000, 10, 10]] });
+  const chasm = { areas: [{ areaKey: "chasm" }] };
+  const base = requiredAssets([part("ground", 0, 1400), part("lift", 1, 1450), part("chain", 1, 1420), part("top", 2, 1430),
+    part("far", 1, 1700), part("other", 2, 1440)]);
+  const assets = { ...base, labels: { ground: { name: "Chasm", plane: 0, ...chasm }, lift: { name: "Chasm", plane: 1, ...chasm },
+    chain: { name: "Chasm", plane: 1, ...chasm }, top: { name: "Chasm", plane: 2, ...chasm }, far: { name: "Chasm", plane: 1, ...chasm },
+    other: { name: "Unidentified", plane: 2 } } };
+  // The far room is over 128 tiles away; the unnamed one isn't part of the area.
+  expect([...areaFloors(assets, "ground")]).toEqual([[0, ["ground"]], [1, ["chain", "lift"]], [2, ["top"]]]);
+  expect([...areaFloors(assets, "other")]).toEqual([[2, ["other"]]]);
+  expect(areaFloors(assets, "missing").size).toBe(0);
 });
 
 it("offers an upper floor only where a ladder or staircase from the ground reaches it", () => {
