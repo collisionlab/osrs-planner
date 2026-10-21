@@ -51,10 +51,14 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
     setShownAreas(current => [...current.filter(area => area.regionId !== regionId), { regionId, entrance }]);
   };
   const hide = (regionIds: string[]) => setShownAreas(current => current.filter(area => !regionIds.includes(area.regionId)));
+  // The plane each inset shows, by the region it was laid out for (see areaFloors).
+  const [planes, setPlanes] = useState<Record<string, number>>({});
+  const choosePlane = useRef((_: string, __: number) => {});
+  choosePlane.current = (regionId, plane) => setPlanes(current => ({ ...current, [regionId]: plane }));
   const toggleDoor = useRef((_: InsetDoor) => {});
   // A building's floors open beside it, where the view already is.
   toggleDoor.current = door => door.regionIds.every(id => shownAreas.some(area => area.regionId === id)) ? hide(door.regionIds)
-    : door.regionIds.forEach(id => show(id, door.inside[id] && { surface: door.point, inside: door.inside[id] }, !door.floors));
+    : door.regionIds.forEach(id => show(id, door.inside[id] && { surface: door.point, inside: door.inside[id], wayIn: true }, !door.floors));
   useEffect(() => {
     const abort = new AbortController();
     if (!insetPin || insetPin.tileVersion !== tiles.version) { setError("Insets are not available for these map tiles."); return; }
@@ -73,7 +77,7 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
   }, [assets]);
   // Showing or hiding an area keeps the view (or moves to the new area) instead of fitting the route.
   const areasChanged = useRef(false);
-  useEffect(() => { areasChanged.current = true; }, [shown, doors]);
+  useEffect(() => { areasChanged.current = true; }, [shown, doors, planes]);
   useEffect(() => {
     if (!assets || !target.current) return;
     try {
@@ -89,7 +93,7 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
       if (keepView.current && routeMatches(props)) keepView.current = false;
       const instance = createComposition(target.current, assets, props, () => callbacks.current, layer,
         terrain, setStatus, previous,
-        { shown, doors, onDoor: door => toggleDoor.current(door) });
+        { shown, doors, onDoor: door => toggleDoor.current(door), planes, onPlane: (regionId, plane) => choosePlane.current(regionId, plane) });
       composition.current = instance;
       // End-to-end tests find tiles on the map through this; it isn't in production builds.
       if (import.meta.env.DEV) (window as unknown as { insetMap?: typeof instance }).insetMap = instance;
@@ -97,7 +101,7 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
       instance.select(callbacks.current.selectedSegment);
       return () => { lastView.current = instance.view(); composition.current = undefined; instance.dispose(); };
     } catch (error) { setError(String(error)); }
-  }, [assets, props.route, props.start, props.destination, props.style, shown, doors]);
+  }, [assets, props.route, props.start, props.destination, props.style, shown, doors, planes]);
   useEffect(() => { composition.current?.select(props.selectedSegment); }, [props.selectedSegment]);
   useEffect(() => { composition.current?.preview(props.previewRoute); }, [props.previewRoute]);
   return <>

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkCatalogue, loadInsetAssets, loadInsetEntrances, sha256, upperFloorDoors } from "./assets";
+import { areaFloors, checkCatalogue, loadInsetAssets, loadInsetEntrances, sha256, upperFloorDoors } from "./assets";
 import { requiredAssets } from "./testAssets";
 import { nativeTileUrl } from "./tactical";
 import { pickWorld } from "./composition";
@@ -62,13 +62,41 @@ describe("named areas and their entrances", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(anchors)));
     const { areas, doors } = await loadInsetEntrances(assets);
     expect(areas).toEqual([{ regionId: "cave", name: "Cave", tileCount: 100,
-      entrance: { surface: { x: 2885, y: 3398, plane: 0 }, inside: { x: 2805, y: 10005, plane: 2 } } }]);
+      entrance: { surface: { x: 2885, y: 3398, plane: 0 }, inside: { x: 2805, y: 10005, plane: 2 }, wayIn: true } }]);
     // The neighbouring ladder tile is the same entrance; the reversed stairs lead in from their target.
     expect(doors.map(door => [door.point.x, door.inside.cave])).toEqual([[2884, { x: 2805, y: 10005, plane: 2 }],
       [2950, { x: 2805, y: 10001, plane: 2 }]]);
     vi.stubGlobal("fetch", vi.fn(async () => new Response(anchors + " ")));
     await expect(loadInsetEntrances(assets)).rejects.toThrow("hash mismatch");
   });
+
+  it("places an area by an anchor that isn't a way in, but marks no door there", async () => {
+    const base = requiredAssets([room]);
+    const anchors = JSON.stringify({
+      connections: { ring: { source: { point: [2412, 4434, 0], regionId: "zanaris" }, target: { point: [2805, 10005, 2], regionId: "cave" } } },
+      regions: { cave: { defaultAnchor: 0, anchors: [{ hops: 1, point: [2412, 4434, 0], entrance: false, path: [{ connectionId: "ring", reversed: false }] }] } },
+    });
+    const assets = { ...base, base: "https://tiles/insets/i", labels: { cave: { name: "Cave", plane: 2, status: "named" } },
+      manifest: { ...base.manifest, files: { ...base.manifest.files, "anchors.json": await sha256(anchors) } } };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(anchors)));
+    const { areas, doors } = await loadInsetEntrances(assets);
+    expect(areas[0].entrance).toEqual({ surface: { x: 2412, y: 4434, plane: 0 }, inside: { x: 2805, y: 10005, plane: 2 }, wayIn: false });
+    expect(doors).toEqual([]);
+  });
+});
+
+it("groups an area's components by plane, near enough to draw in one frame", () => {
+  const part = (id: string, plane: number, x: number): Region => ({ ...room, id, plane, bounds: [x, 10000, x + 10, 10010], mask: [[x, 10000, 10, 10]] });
+  const chasm = { areas: [{ areaKey: "chasm" }] };
+  const base = requiredAssets([part("ground", 0, 1400), part("lift", 1, 1450), part("chain", 1, 1420), part("top", 2, 1430),
+    part("far", 1, 1700), part("other", 2, 1440)]);
+  const assets = { ...base, labels: { ground: { name: "Chasm", plane: 0, ...chasm }, lift: { name: "Chasm", plane: 1, ...chasm },
+    chain: { name: "Chasm", plane: 1, ...chasm }, top: { name: "Chasm", plane: 2, ...chasm }, far: { name: "Chasm", plane: 1, ...chasm },
+    other: { name: "Unidentified", plane: 2 } } };
+  // The far room is over 128 tiles away; the unnamed one isn't part of the area.
+  expect([...areaFloors(assets, "ground")]).toEqual([[0, ["ground"]], [1, ["chain", "lift"]], [2, ["top"]]]);
+  expect([...areaFloors(assets, "other")]).toEqual([[2, ["other"]]]);
+  expect(areaFloors(assets, "missing").size).toBe(0);
 });
 
 it("offers an upper floor only where a ladder or staircase from the ground reaches it", () => {
