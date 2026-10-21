@@ -90,8 +90,12 @@ export async function loadInsetAssets(base: string, tileVersion: string, signal:
   return { catalogue, labels: naming.regions, manifest: checked, base };
 }
 
-/** A named area's way in from the surface: where to stand outside, and where that puts you. */
-export interface InsetEntrance { surface: WorldPoint; inside: WorldPoint }
+/**
+ * Where a named area hangs off the surface: a surface point, and where the anchor's chain arrives in the
+ * area. `wayIn` says the surface point is where a player goes in (osrs-tiles' `entrance`); otherwise it
+ * only places the area, as for areas reached by fairy ring.
+ */
+export interface InsetEntrance { surface: WorldPoint; inside: WorldPoint; wayIn: boolean }
 export interface InsetArea { regionId: string; name: string; tileCount: number; entrance?: InsetEntrance }
 export interface InsetDoor {
   point: WorldPoint; regionIds: string[]; inside: Record<string, WorldPoint>;
@@ -166,7 +170,7 @@ export async function loadInsetEntrances(assets: InsetAssets, signal?: AbortSign
   if (await sha256(raw) !== hash) throw new Error("Inset asset hash mismatch");
   const anchors = JSON.parse(raw) as {
     connections: Record<string, { source: { point: unknown; regionId: string }; target: { point: unknown; regionId: string } }>;
-    regions: Record<string, { anchors: { hops: number; point: unknown; path: { connectionId: string; reversed: boolean }[] }[]; defaultAnchor: number | null }>;
+    regions: Record<string, { anchors: { hops: number; point: unknown; entrance?: boolean; path: { connectionId: string; reversed: boolean }[] }[]; defaultAnchor: number | null }>;
   };
   const regions = new Map(assets.catalogue.regions.map(region => [region.id, region]));
   const areas: InsetArea[] = [];
@@ -181,9 +185,11 @@ export async function loadInsetEntrances(assets: InsetAssets, signal?: AbortSign
       const surface = worldPoint(anchor.point);
       const inside = connection && worldPoint(last.reversed ? connection.source.point : connection.target.point);
       if (!surface || !inside) continue;
-      if (index === (entry!.defaultAnchor ?? 0) || !entrance) entrance = { surface, inside };
+      // Bundles from before osrs-tiles marked entrances treat every anchor as one.
+      const wayIn = anchor.entrance !== false;
+      if (index === (entry!.defaultAnchor ?? 0) || !entrance) entrance = { surface, inside, wayIn };
       // One entrance often spans neighbouring tiles; mark it once.
-      if (anchor.hops === 1 && ![...doors.values()].some(door => door.regionIds.includes(regionId)
+      if (anchor.hops === 1 && wayIn && ![...doors.values()].some(door => door.regionIds.includes(regionId)
         && door.point.plane === surface.plane && Math.max(Math.abs(door.point.x - surface.x), Math.abs(door.point.y - surface.y)) <= 3)) {
         const key = `${surface.x},${surface.y},${surface.plane}`;
         const door = doors.get(key) || { point: surface, regionIds: [], inside: {} };

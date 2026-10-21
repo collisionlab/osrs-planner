@@ -54,7 +54,7 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
   const toggleDoor = useRef((_: InsetDoor) => {});
   // A building's floors open beside it, where the view already is.
   toggleDoor.current = door => door.regionIds.every(id => shownAreas.some(area => area.regionId === id)) ? hide(door.regionIds)
-    : door.regionIds.forEach(id => show(id, door.inside[id] && { surface: door.point, inside: door.inside[id] }, !door.floors));
+    : door.regionIds.forEach(id => show(id, door.inside[id] && { surface: door.point, inside: door.inside[id], wayIn: true }, !door.floors));
   useEffect(() => {
     const abort = new AbortController();
     if (!insetPin || insetPin.tileVersion !== tiles.version) { setError("Insets are not available for these map tiles."); return; }

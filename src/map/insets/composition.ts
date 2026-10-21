@@ -150,10 +150,11 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   map.addLayer(new VectorLayer({ source: contours, zIndex: 5, updateWhileInteracting: true, updateWhileAnimating: true,
     style: [new Style({ stroke: new Stroke({ color: "#c6b994", width: 8 }) }), new Style({ stroke: new Stroke({ color: "#262b25", width: 6 }) })] }));
   // Shown areas: a faint line from the surface entrance to where it leads, which follows inset drags.
+  // An anchor that isn't a way in only places its area, so it gets no line.
   const entranceSource = new VectorSource();
   map.addLayer(new VectorLayer({ source: entranceSource, zIndex: 90, updateWhileInteracting: true, updateWhileAnimating: true,
     style: new Style({ stroke: new Stroke({ color: "#f7f1dc", width: 2, lineDash: [2, 6] }) }) }));
-  for (const crossing of entrances) {
+  for (const crossing of entrances.filter(entrance => shown.find(area => area.regionId === entrance.toRegion)?.entrance?.wayIn)) {
     const line = new LineString([projected(crossing.source.from), projected(crossing.source.to)]);
     entranceSource.addFeature(new Feature(line)); owned.addLink(crossing.fromRegion, crossing.toRegion, line);
   }
@@ -318,7 +319,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
       if (!shape || !placement) return;
       const extent = regionExtent(shape, placement.offset);
       const crossing = entrances.find(entrance => entrance.toRegion === regionId);
-      if (crossing) extend(extent, [...projected(crossing.source.from), ...projected(crossing.source.from)]);
+      if (crossing && shown.find(area => area.regionId === regionId)?.entrance?.wayIn) extend(extent, [...projected(crossing.source.from), ...projected(crossing.source.from)]);
       view.fit(extent, { padding: [90, 70, 70, 70], maxZoom: 9, duration: 250 });
     },
     /** Where the view is, to restore it in a rebuilt composition. */

@@ -62,12 +62,26 @@ describe("named areas and their entrances", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(anchors)));
     const { areas, doors } = await loadInsetEntrances(assets);
     expect(areas).toEqual([{ regionId: "cave", name: "Cave", tileCount: 100,
-      entrance: { surface: { x: 2885, y: 3398, plane: 0 }, inside: { x: 2805, y: 10005, plane: 2 } } }]);
+      entrance: { surface: { x: 2885, y: 3398, plane: 0 }, inside: { x: 2805, y: 10005, plane: 2 }, wayIn: true } }]);
     // The neighbouring ladder tile is the same entrance; the reversed stairs lead in from their target.
     expect(doors.map(door => [door.point.x, door.inside.cave])).toEqual([[2884, { x: 2805, y: 10005, plane: 2 }],
       [2950, { x: 2805, y: 10001, plane: 2 }]]);
     vi.stubGlobal("fetch", vi.fn(async () => new Response(anchors + " ")));
     await expect(loadInsetEntrances(assets)).rejects.toThrow("hash mismatch");
+  });
+
+  it("places an area by an anchor that isn't a way in, but marks no door there", async () => {
+    const base = requiredAssets([room]);
+    const anchors = JSON.stringify({
+      connections: { ring: { source: { point: [2412, 4434, 0], regionId: "zanaris" }, target: { point: [2805, 10005, 2], regionId: "cave" } } },
+      regions: { cave: { defaultAnchor: 0, anchors: [{ hops: 1, point: [2412, 4434, 0], entrance: false, path: [{ connectionId: "ring", reversed: false }] }] } },
+    });
+    const assets = { ...base, base: "https://tiles/insets/i", labels: { cave: { name: "Cave", plane: 2, status: "named" } },
+      manifest: { ...base.manifest, files: { ...base.manifest.files, "anchors.json": await sha256(anchors) } } };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(anchors)));
+    const { areas, doors } = await loadInsetEntrances(assets);
+    expect(areas[0].entrance).toEqual({ surface: { x: 2412, y: 4434, plane: 0 }, inside: { x: 2805, y: 10005, plane: 2 }, wayIn: false });
+    expect(doors).toEqual([]);
   });
 });
 
