@@ -15,8 +15,6 @@ for (const kind of ["walk", "transport", "teleport"] as const) for (const select
     lineCap: look.lineCap, lineJoin: look.lineJoin, lineDash: look.dashArray?.split(" ").map(Number) }) }));
   dots.set(key, new Style({ image: new Circle({ radius: look.weight / 2, fill: new Fill({ color: look.color }) }) }));
 }
-const bankHit = new Style({ image: new RegularShape({ points: 4, radius: routeMarkers.bank.size / Math.SQRT2,
-  angle: Math.PI / 4, fill: new Fill({ color: "transparent" }) }), zIndex: 1 });
 
 /** Map units per game tile (see `worldToMap`). */
 const TILE_UNITS = 32;
@@ -50,8 +48,7 @@ function endpointHit(resolution: number): Style[] {
 
 export function routeFeatureStyle(feature: FeatureLike, selectedSegment?: number, resolution = 1): Style | Style[] {
   const role = String(feature.get("role"));
-  if (role === "start" || role === "destination") return endpointHit(resolution);
-  if (role === "bank" || role === "landing") return bankHit;
+  if (role === "start" || role === "destination" || role === "bank" || role === "landing") return endpointHit(resolution);
   const selected = selectedSegment !== undefined && feature.get("segmentIndex") === selectedSegment;
   const key = `${role as RouteLineKind}/${selected}`;
   return (feature.getGeometry()?.getType() === "Point" ? dots : lines).get(key)!;
@@ -64,22 +61,16 @@ export function routeFeatureStyle(feature: FeatureLike, selectedSegment?: number
  */
 export function routeMarkerOverlay(feature: Feature<Point>, kind: keyof typeof routeMarkers | "landing", title: string,
   snap: (coordinate: Coordinate) => Coordinate = coordinate => coordinate) {
-  // A teleport's landing tile, marked like an endpoint in the teleport colour.
-  const look = kind === "landing" ? { label: "T", className: "", size: 0 } : routeMarkers[kind];
+  // Teleport landings and bank stops are marked like endpoints, in their own colour.
+  const label = document.createElement("span");
+  label.textContent = kind === "landing" ? "T" : kind === "bank" ? "$" : routeMarkers[kind].label;
+  label.className = "inset-endpoint-tag";
   const element = document.createElement("div");
   element.title = title;
   element.setAttribute("aria-label", title);
-  const label = document.createElement("span"); label.textContent = look.label;
-  if (kind === "bank") {
-    element.className = look.className;
-    element.style.width = element.style.height = `${look.size}px`;
-    element.append(label);
-  } else {
-    element.className = `inset-endpoint ${kind}`;
-    const tile = document.createElement("i"); tile.className = "inset-endpoint-tile";
-    label.className = "inset-endpoint-tag";
-    element.append(tile, label);
-  }
+  element.className = `inset-endpoint ${kind}`;
+  const tile = document.createElement("i"); tile.className = "inset-endpoint-tile";
+  element.append(tile, label);
   const overlay = new Overlay({ element, positioning: "center-center", stopEvent: false });
   const update = () => overlay.setPosition(snap(feature.getGeometry()!.getCoordinates()));
   feature.on("change", update); update();

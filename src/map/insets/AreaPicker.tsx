@@ -46,7 +46,7 @@ export function AreaPicker({ areas, shown, onShow, onHide }: {
     {open && matches.length > 0 && <ul className="area-results" id={listId} role="listbox">
       {matches.map((area, index) => <li key={area.regionId} id={`${listId}-${index}`} role="option" aria-selected={index === active}
         onMouseDown={event => { event.preventDefault(); choose(area); }} onMouseEnter={() => setActive(index)}>
-        {area.name}{!area.entrance?.wayIn && <small>no known entrance</small>}
+        {area.name}
       </li>)}
     </ul>}
     {shown.length > 0 && <ul className="area-chips" aria-label="Shown areas">
