@@ -42,4 +42,12 @@ describe("map features", () => {
     expect(on([cave])).not.toBe(on([{ ...cave, from: p(11, 10) }]));
     expect(on([{ ...landing, point: p(20, 20, 1) }])).not.toBe(on([landing]));
   });
+
+  it("lays out again for other regions, but not for anchors inside regions already listed", () => {
+    const inCave: MapFeature = { kind: "point", key: "tile", point: p(500, 9000), tone: "entrance", role: "origin" };
+    const listed = { features: [], anchors: [], regions: [{ regionId: "cave" }] };
+    expect(layoutKey(listed, classify)).toBe(layoutKey({ ...listed, anchors: [inCave] }, classify));
+    expect(layoutKey(listed, classify)).not.toBe(layoutKey({ ...listed, regions: [{ regionId: "cave", entrance: { surface: p(1, 1), inside: p(500, 9000), wayIn: true } }] }, classify));
+    expect(featurePoints({ kind: "mask", key: "m", regionId: "cave", tone: "area" })).toEqual([]);
+  });
 });

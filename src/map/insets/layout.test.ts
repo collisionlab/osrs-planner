@@ -36,6 +36,16 @@ describe("pasted region layout", () => {
     expect(place(3100)[1]).toBe(place(3000)[1]);
   });
 
+  it("keeps in-place regions at their own coordinates, and places others beside them", () => {
+    const transitions = [crossing("a", "b", point(105), point(205), 0)];
+    const layout = layoutRegions([room("a", 100), room("b", 200)], transitions, [], 320, new Set(), new Set(["a"]));
+    expect(layout.get("a")).toEqual({ offset: [0, 0], anchored: true });
+    expect(layout.get("b")).toMatchObject({ anchored: true, parent: "a" });
+    // Two in place stay where they are, even overlapping nothing else.
+    const both = layoutRegions([room("a", 100), room("b", 200)], [], [], 320, new Set(), new Set(["a", "b"]));
+    expect([both.get("a")!.offset, both.get("b")!.offset]).toEqual([[0, 0], [0, 0]]);
+  });
+
   it("marks a disconnected endpoint as unanchored instead of inventing an entrance", () => {
     expect(layoutRegions([room("a", 100)], [], [worldToMap(point(3000, 3500))], 320).get("a")!.anchored).toBe(false);
   });

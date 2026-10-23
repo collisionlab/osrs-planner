@@ -34,17 +34,23 @@ export function regionExtent(region: Region, offset: Coordinate = [0, 0]): numbe
  * Place from actual route crossings, in either travel direction, then keep offsets in map units.
  * `besideFootprint` regions (upper floors) are placed beside where they really are, whatever the
  * route used to reach them: a glider landing on a platform says nothing about where it is.
+ * `inPlace` regions stay at their own world coordinates.
  */
 export function layoutRegions(regions: Region[], transitions: RegionLink[], surfaceRoute: Coordinate[], gap: number,
-  besideFootprint: Set<string> = new Set()): Map<string, Placement> {
+  besideFootprint: Set<string> = new Set(), inPlace: Set<string> = new Set()): Map<string, Placement> {
   const placements = new Map<string, Placement>([["main-world", { offset: [0, 0], anchored: true }]]);
   const shapes = new Map(regions.map(region => [region.id, region]));
-  if (!surfaceRoute.length && regions.length && !transitions.some(t => t.fromRegion === "main-world" || t.toRegion === "main-world")) {
+  const obstacles: number[][] = [];
+  // Regions shown where they really are: placed as they are, and others go beside them.
+  for (const region of regions.filter(region => inPlace.has(region.id))) {
+    placements.set(region.id, { offset: [0, 0], anchored: true });
+    obstacles.push(regionExtent(region));
+  }
+  if (!inPlace.size && !surfaceRoute.length && regions.length && !transitions.some(t => t.fromRegion === "main-world" || t.toRegion === "main-world")) {
     // An underground-only route has a real root, without inventing a surface entrance.
     const root = transitions.find(t => shapes.has(t.fromRegion))?.fromRegion || regions[0].id;
     placements.set(root, { offset: [0, 0], anchored: true });
   }
-  const obstacles: number[][] = [];
   const inside = (point: Coordinate, box: number[]) => point[0] >= box[0] && point[0] <= box[2] && point[1] >= box[1] && point[1] <= box[3];
   /** The side a placement went to: 0 right, 1 left, 2 above, 3 below. */
   const sides = new Map<string, number>();
