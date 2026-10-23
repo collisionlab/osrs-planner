@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import tiles from "../../../tiles.json";
-import { insetPin, savedStyle } from "../../map/layers";
+import { insetPin, mapLayers, savedStyle, saveStyle, type MapLayer, type MapStyle } from "../../map/layers";
 import { CollisionMap, releaseTiles } from "../../map/insets/collision";
 import { COLLISION_RADIUS } from "../../map/insets/composition";
 import { diffLineUrl, githubUrl, loadHeads, loadReview, parseSource, row, sourceLabel, sourcePath,
@@ -142,6 +142,8 @@ export function ReviewPage() {
     addEventListener("keydown", onKey); return () => removeEventListener("keydown", onKey);
   }, [index, units]);
   useEffect(() => { document.title = source ? `Review ${sourceLabel(source)} · Workbench` : "Workbench"; }, [source]);
+  const [style, setStyle] = useState(savedStyle);
+  const styles = Object.entries(mapLayers) as [MapStyle, MapLayer][];
   const counts = review?.counts;
   return <div className="wb-page">
     <header className="wb-header">
@@ -169,10 +171,14 @@ export function ReviewPage() {
       <main className="wb-main">
         <section className="wb-map">
           {insetPin && drawn ? <Suspense fallback={<div className="route-map" role="status">Loading inset map…</div>}>
-            <InsetMap route={drawn.route} review={drawn.review} focusTile={focusTile} style={savedStyle()} insets onPick={() => {}} onFallback={() => {}}
+            <InsetMap route={drawn.route} review={drawn.review} focusTile={focusTile} style={style} insets onPick={() => {}} onFallback={() => {}}
               selectedSegment={selectedChange && segmentIndex(unit, selectedChange)}
               onSelectSegment={i => setSelectedChange(unit.changes.find(change => segmentIndex(unit, change) === i))} />
           </Suspense> : <p className="wb-message">Insets are not available for these map tiles.</p>}
+          {insetPin && styles.length > 1 && <div className="map-style-toggle wb-style" role="group" aria-label="Map style">
+            {styles.map(([id, { label }]) => <button key={id} type="button" aria-pressed={style === id}
+              onClick={() => { setStyle(id); saveStyle(id); }}>{label}</button>)}
+          </div>}
         </section>
         <section className="wb-detail" aria-label="Rows">
           <h2>{unit.title} <small>{unit.file}</small></h2>
