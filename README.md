@@ -223,3 +223,6 @@ routes. These routes are shared by the layout tests and gallery; no separate
 case list needs maintaining. They are historical regressions, not release data,
 and do not need refreshing when the game cache changes. Runtime catalogues are
 generated from the current cache by the sidecar.
+
+The Inset Investigation workbench also shows the pinned production routing graph's
+[routing partitions and structural negative mask](docs/routing-layers.md).

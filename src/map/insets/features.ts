@@ -2,6 +2,7 @@ import type { WorldPoint } from "../../domain/contracts";
 import type { CollisionMap } from "./collision";
 import type { InsetEntrance } from "./assets";
 import type { RegionLink } from "./layout";
+import type { RoutingOverlay } from "./routing";
 
 /**
  * What a tool draws over the inset map besides a route: a small set of geographical features, each
@@ -45,6 +46,8 @@ export interface OverlayRegion {
 }
 
 export interface FeatureOverlay {
+  /** The production routing layers, drawn under the features. */
+  routing?: RoutingOverlay;
   features: MapFeature[];
   /**
    * The features this view is about: their areas are laid out as insets (an edge into an area puts it

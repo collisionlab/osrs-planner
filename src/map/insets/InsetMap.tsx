@@ -9,6 +9,7 @@ import { createComposition } from "./composition";
 import { anchorsKey, layoutKey as overlayLayoutKey, type FeatureOverlay } from "./features";
 import { catalogueClassifier } from "./preview";
 import type { WorldBox } from "./projection";
+import type { RoutingCrossing } from "./routing";
 import "ol/ol.css";
 import "../routeMarkers.css";
 import "./styles.css";
@@ -22,6 +23,8 @@ const routeMatches = ({ route, start, destination }: OsrsMapProps) =>
 export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): void;
   /** Features over the map besides the route; changing them keeps the layout unless their anchors change. */
   overlay?: FeatureOverlay;
+  /** A routing separator was clicked (with routing layers in the overlay). */
+  onRoutingCrossing?(crossing: RoutingCrossing): void;
   /** Items under a click, by key (with an overlay), and the tile clicked. */
   onSelectFeatures?(keys: string[], point: WorldPoint): void;
   /** The world tiles in view after each move, a box per area drawn. */
@@ -134,6 +137,7 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
         terrain, setStatus, previous,
         { shown, doors, onDoor: door => toggleDoor.current(door), planes, onPlane: (regionId, plane) => choosePlane.current(regionId, plane),
           overlay: overlay.current,
+          onRoutingCrossing: crossing => callbacks.current.onRoutingCrossing?.(crossing),
           onSelectFeatures: props.onSelectFeatures && ((keys, point) => callbacks.current.onSelectFeatures?.(keys, point)),
           onView: props.onView && ((boxes, resolution) => callbacks.current.onView?.(boxes, resolution)) });
       composition.current = instance;

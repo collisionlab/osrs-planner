@@ -160,9 +160,21 @@ button.wb-chip[aria-pressed="true"] { border-color: var(--orange); }
   .wb-body { grid-template-columns: 1fr; }
   .wb-units { max-height: 30vh; border-right: 0; border-bottom: 1px solid var(--line); }
   .wb-main { grid-template-rows: 60vh auto; }
+  .wb-below-map { grid-template-columns: 1fr; }
   .wb-detail { max-height: none; }
   .wb-rows { display: block; overflow-x: auto; }
   .wb-keys { display: none; }
   /* The inset actions take the top row on a phone. */
   .wb-style { top: auto; bottom: 12px; right: auto; left: 12px; }
 }
+
+/* The transport explorer's details and routing layers share the row under the map. */
+.wb-below-map { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); min-height: 0; }
+.wb-below-map > .wb-detail + .wb-detail { border-left: 1px solid var(--line); }
+.wb-routing h3 { margin: 0 0 .4rem; }
+.wb-routing-toggles { display: flex; flex-wrap: wrap; gap: .2rem 1rem; }
+.wb-routing label { display: block; margin: .4rem 0; }
+.wb-routing-toggles label { margin: 0; }
+.wb-routing input[type=number] { width: 6em; }
+.wb-routing button { margin: .15rem; }
+.wb-detail > .wb-routing { padding: 0; }
