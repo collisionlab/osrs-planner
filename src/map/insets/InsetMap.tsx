@@ -125,7 +125,7 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
       const style = tiles.styles.includes(props.style) ? props.style : "tactical";
       const terrain = { base: `${tiles.base}/${style}/${tiles.version}` };
       const layer = style === props.style
-        ? { url: `${terrain.base}/{z}/{x}/{y}.png`, maxNativeZoom: 8, attribution: mapLayers.tactical?.attribution || "" }
+        ? { url: `${terrain.base}/{z}/{x}/{y}.png`, maxNativeZoom: 8, attribution: mapLayers[style]?.attribution || "" }
         : mapLayers[props.style] || mapLayers.standard!;
       const previous = keepView.current || areasChanged.current || props.keepView ? lastView.current : undefined;
       areasChanged.current = false;
