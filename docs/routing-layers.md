@@ -8,7 +8,7 @@ itself isn't outlined, since the base map and collision already show it. Selecti
 tile highlights its production component with a solid outline and shows its tile count, bounds and
 crossing adjacency. Focus component fits its actual location in the current inset placement. Gold
 dashed centre-to-centre edges are internal synthetic walking crossings, including diagonals. Clicking
-an edge outlines its two endpoint tiles and shows both production IDs and its recorded cost. These edges are never gameplay transports.
+an edge outlines its two endpoint tiles and shows both production IDs and its recorded cost. The release and plugin revision sit in the page footer. These edges are never gameplay transports.
 
 The magenta mask contains only structurally unreachable walkable terrain. Seas are left out: the
 collision map leaves sea tiles open, so the release classes unreachable natural components of

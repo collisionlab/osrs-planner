@@ -167,7 +167,9 @@ button.wb-chip[aria-pressed="true"] { border-color: var(--orange); }
   .wb-style { top: auto; bottom: 12px; right: auto; left: 12px; }
 }
 
-.wb-routing label { display: block; margin: .5rem 0; }
+.wb-routing h3 { margin: 0 0 .4rem; }
+.wb-routing-toggles { display: flex; flex-wrap: wrap; gap: .2rem 1rem; }
+.wb-routing label { display: block; margin: .4rem 0; }
+.wb-routing-toggles label { margin: 0; }
 .wb-routing input[type=number] { width: 6em; }
-.wb-routing small { display: block; opacity: .75; }
 .wb-routing button { margin: .15rem; }

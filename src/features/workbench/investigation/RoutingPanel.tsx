@@ -71,49 +71,43 @@ export function useRoutingLayers(inspected: WorldPoint | undefined, focus: (box:
 
   const panel = <section className="wb-panel-body wb-routing" aria-label="Routing partitions">
     <h3>Routing partitions</h3>
-    {LAYERS.map(([key, label]) => <label key={key}>
-      <input type="checkbox" checked={options[key]} disabled={!pin} onChange={event => choose({ [key]: event.target.checked })} /> {label}
-    </label>)}
+    <div className="wb-routing-toggles">
+      {LAYERS.map(([key, label]) => <label key={key}>
+        <input type="checkbox" checked={options[key]} disabled={!pin} onChange={event => choose({ [key]: event.target.checked })} /> {label}
+      </label>)}
+    </div>
     {!pin && <p className="wb-note">No compatible routing release is pinned.</p>}
     {active && !data && !error && <p role="status">Loading verified routing layers…</p>}
     {error && <p role="alert" className="wb-warning">{error}</p>}
-    {active && <p className="wb-note">Zoom in for exact tile boundaries. Gold dashed edges are internal pathfinding crossings; physical walls belong to the base map.</p>}
-    {options.unreachable && <label>
-      Hide fragments smaller than <input aria-label="Minimum unreachable fragment tiles" type="number" min="0" step="1" value={options.minimumSize}
+    {active && <p className="wb-note">Tints are production components; gold dashes are the pathfinder's internal crossings, not transports.</p>}
+    {options.unreachable && <label title="By the size of the whole natural walking component. Seas are never shown.">
+      Hide unreachable fragments under <input aria-label="Minimum unreachable fragment tiles" type="number" min="0" step="1" value={options.minimumSize}
         onChange={event => choose({ minimumSize: Math.max(0, Math.floor(Number(event.target.value) || 0)) })} /> tiles
-      <small>Presentation only, by natural walking-component size. Structural reachability has no account requirements.
-        Seas ({data?.manifest.expanses.tileCount.toLocaleString() ?? "…"} tiles) are open expanses, never shown.</small>
     </label>}
     {inspection && <p aria-label="Routing tile status">
       {inspection.status}{inspection.component !== undefined && ` · production routing component ${inspection.component}`}
     </p>}
     {active && component && <div aria-label="Production routing component">
-      <h4>Routing component {component.id}</h4>
       <p>
-        {component.tileCount.toLocaleString()} search tiles · plane {component.plane}<br />
-        Bounds: {component.bounds.join(", ")}<br />
-        {component.separatorCrossings} separator crossings · {component.neighbours.length} distinct neighbours
+        <b>Component {component.id}</b> · {component.tileCount.toLocaleString()} tiles · plane {component.plane}
+        {" "}<button type="button" onClick={() => focusComponent(component)}>Focus component</button>
       </p>
-      <button type="button" onClick={() => focusComponent(component)}>Focus component</button>
-      <p>Adjacent through crossings: {component.neighbours.map(id => <button type="button" key={id} onClick={() => chooseComponent(id)}>{id}</button>)}</p>
+      {component.neighbours.length > 0 && <p>Crosses to: {component.neighbours.map(id =>
+        <button type="button" key={id} onClick={() => chooseComponent(id)}>{id}</button>)}</p>}
     </div>}
     {active && crossing && <div aria-label="Synthetic crossing details">
-      <h4>Internal routing crossing {crossing.id}</h4>
       <p>
-        {crossing.from.join(" ")} → {crossing.to.join(" ")}<br />
-        Cost: {crossing.cost}<br />
-        Components: {crossing.fromComponent ?? "outside retained search graph"} → {crossing.toComponent ?? "outside retained search graph"}
+        <b>Internal routing crossing {crossing.id}</b> · cost {crossing.cost}<br />
+        <span className="wb-mono">{crossing.from.join(" ")} → {crossing.to.join(" ")}</span>
       </p>
-      {[crossing.fromComponent, crossing.toComponent].filter((id): id is number => id !== undefined)
-        .map(id => <button type="button" key={id} onClick={() => chooseComponent(id)}>Component {id}</button>)}
-      <p className="wb-note">Synthetic walking edge in the pathfinder. Version-scoped ID: {data?.manifest.version}:{crossing.id}.</p>
+      <p>Components: {[crossing.fromComponent, crossing.toComponent].map((id, i) => id === undefined
+        ? <span key={i}>outside the search graph </span>
+        : <button type="button" key={i} onClick={() => chooseComponent(id)}>{id}</button>)}</p>
     </div>}
-    {active && data && <p className="wb-note">
-      Production plugin {data.manifest.plugin.revision.slice(0, 12)} · routing release {data.manifest.version} · collision content
-      verified against tiles {data.manifest.tileVersion}
-    </p>}
   </section>;
 
+  /** For the page footer, beside the other releases. */
+  const provenance = data ? `${data.manifest.version.slice(0, 12)}, plugin ${data.manifest.plugin.revision.slice(0, 7)}` : undefined;
   const selectCrossing = (selectedCrossing: RoutingCrossing) => choose({ selectedCrossing, selectedComponent: undefined });
-  return { overlay, panel, selectCrossing };
+  return { overlay, panel, provenance, selectCrossing };
 }

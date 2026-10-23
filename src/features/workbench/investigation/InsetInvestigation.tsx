@@ -242,7 +242,6 @@ export function InsetInvestigation() {
         </div>
       </section>
       <aside className="wb-side-panel" aria-label="Details">
-        {routing.panel}
         {area && data ? <>
           <div className="wb-panel-head">
             <h2>{area.name}</h2>
@@ -252,6 +251,7 @@ export function InsetInvestigation() {
             </div>
             {selectedRegion && <p className="wb-note">Region <span className="wb-mono">{selectedRegion.id}</span> · plane {selectedRegion.plane} · {selectedRegion.tileCount.toLocaleString()} tiles · bounds <span className="wb-mono">{selectedRegion.bounds.join(", ")}</span></p>}
           </div>
+          {routing.panel}
           {state.mode === "topology"
             ? <TopologyPanel data={data} area={area} state={topologyState} checks={checks} topology={topology} candidate={candidate} item={state.item}
               plugin={meta?.plugin} releasePlugin={data.plugin} transports={transports} nearby={nearby?.transports} classify={classify} collision={collisionReady ? collision : undefined}
@@ -260,9 +260,9 @@ export function InsetInvestigation() {
             : <LabellingPanel data={data} area={area} region={state.region} item={state.item} plugin={data.plugin ?? meta?.plugin} onItem={item => update({ item })}
               onShow={showPoint} onRegion={chooseRegion} onArea={id => { const next = data.byId.get(id); if (next) chooseArea(next); }}
               correction={correction} onCorrection={setCorrection} picking={picking} onPicking={setPicking} shows={point => !!mapRef.current?.shows(point)} />}
-        </> : <div className="wb-panel-body"><p className="wb-note">Choose an area to investigate. Areas with outstanding issues come first; provisional ones are regions nobody has named.</p>
+        </> : <>{routing.panel}<div className="wb-panel-body"><p className="wb-note">Choose an area to investigate. Areas with outstanding issues come first; provisional ones are regions nobody has named.</p>
           {data && <p className="wb-note">{data.investigations.state === "loaded" ? "Worklist: investigations.json." : `${data.investigations.reason}`}</p>}
-          <p className="wb-note">Topology: {topologyState.state === "loaded" ? `report by ${topologyState.report.generator.repository}@${topologyState.report.generator.rev.slice(0, 7)}` : topologyState.state === "loading" ? "loading…" : topologyState.reason}</p></div>}
+          <p className="wb-note">Topology: {topologyState.state === "loaded" ? `report by ${topologyState.report.generator.repository}@${topologyState.report.generator.rev.slice(0, 7)}` : topologyState.state === "loading" ? "loading…" : topologyState.reason}</p></div></>}
       </aside>
     </div>
     <footer className="wb-footer wb-provenance">
@@ -270,6 +270,7 @@ export function InsetInvestigation() {
       <span className={`wb-prov ${topologyState.state === "loaded" ? checks?.verified ? "ok" : "differs" : "unknown"}`}><b>Topology</b> {topologyState.state === "loaded"
         ? `${topologyState.report.generator.repository.split("/").at(-1)}@${topologyState.report.generator.rev.slice(0, 7)}, cache ${topologyState.report.collision.cacheId}${checks?.verified ? "" : " — unverified against this page"}`
         : topologyState.state === "loading" ? "loading" : "unavailable"}</span>
+      {routing.provenance && <span className="wb-prov ok"><b>Routing</b> {routing.provenance}, verified against these tiles</span>}
     </footer>
   </div>;
 }

@@ -143,7 +143,7 @@ test("selects the exact production diagonal crossing as an internal edge", async
   const details = page.getByLabel("Synthetic crossing details");
   await expect(details).toContainText("Internal routing crossing 1");
   await expect(details).toContainText("3282 2904 0 → 3283 2905 0");
-  await expect(details).toContainText("Cost: 1");
+  await expect(details).toContainText("cost 1");
 });
 
 test("never draws a sea, and says it is an open expanse", async ({ page }) => {
