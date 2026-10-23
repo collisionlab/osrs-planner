@@ -106,6 +106,23 @@ test("shows a teleport's landing without making up an origin", async ({ page }) 
   await expect(page.getByRole("navigation", { name: "Transports" })).toContainText(`anywhere → ${homeTeleport.destination.x} ${homeTeleport.destination.y} 0`);
 });
 
+test("lists every transport arriving at or leaving a clicked tile, teleports included", async ({ page }) => {
+  await mockCatalogue(page);
+  const tile = homeTeleport.destination;
+  await open(page, `?at=${tile.x},${tile.y},${tile.plane}&z=10`);
+  await expect(page.getByRole("navigation", { name: "Transports" }).locator(".wb-list-heading")).toContainText(/in view/);
+  const [x, y] = await page.evaluate(p => (window as unknown as { insetMap: { pixel(p: Point): number[] } }).insetMap.pixel(p), tile);
+  await page.locator(".inset-map").click({ position: { x, y } });
+  const list = page.getByRole("navigation", { name: "Transports" });
+  await expect(list.locator(".wb-list-heading")).toContainText(`At ${tile.x} ${tile.y} ${tile.plane}`);
+  const arriving = list.getByRole("region", { name: "Arriving here" });
+  const expected = fixture.transports.filter(t => t.destination.x === tile.x && t.destination.y === tile.y && t.destination.plane === tile.plane);
+  await expect(arriving.locator("h3 small")).toHaveText(String(expected.length));
+  await expect(arriving).toContainText("Lumbridge Home Teleport");
+  await list.getByRole("button", { name: "back to all in view" }).click();
+  await expect(list.locator(".wb-list-heading")).toContainText(/in view/);
+});
+
 test("filters by type, and keeps the filter in the URL", async ({ page }) => {
   await mockCatalogue(page);
   await open(page, "?at=3210,3214,0&z=9");
