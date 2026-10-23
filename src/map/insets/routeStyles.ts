@@ -110,11 +110,14 @@ export function markStyle(feature: FeatureLike, resolution: number, selected = f
 }
 
 const collisionLooks: Record<string, Style> = {
-  blocked: new Style({ fill: new Fill({ color: "rgba(255, 90, 90, 0.28)" }) }),
+  boundary: new Style({ stroke: new Stroke({ color: "rgba(119, 226, 212, 0.85)", width: 1.5, lineCap: "square" }) }),
   wall: new Style({ stroke: new Stroke({ color: "#ff8f6b", width: 3, lineCap: "butt" }) }),
-  edge: new Style({ stroke: new Stroke({ color: "rgba(255, 143, 107, 0.6)", width: 1.5, lineCap: "butt" }) }),
+  edge: new Style({ stroke: new Stroke({ color: "#ff8f6b", width: 2, lineCap: "butt", lineDash: [4, 3] }) }),
 };
-/** The pathfinder's collision: blocked tiles shaded, walls and doors heavy, other closed edges thin. */
+/**
+ * The pathfinder's collision, as lines: a light line where walkable ground ends, a heavy line for a
+ * wall or door between two walkable tiles, a dashed one for an edge an object closes.
+ */
 export function collisionStyle(feature: FeatureLike): Style {
   return collisionLooks[feature.get("kind") as string];
 }
