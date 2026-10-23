@@ -1,4 +1,3 @@
-import { useRoutingLayers } from "./RoutingPanel";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import tiles from "../../../../tiles.json";
@@ -17,6 +16,7 @@ import { loadInvestigation, tilePoint, type Area, type AreaFilter, type Investig
 import type { CorrectionInput } from "./drafts";
 import { emptyCorrection, LabellingPanel, type PickTarget } from "./LabellingPanel";
 import { investigationOverlay, keyId, keyKind } from "./overlay";
+import { useRoutingLayers } from "./RoutingPanel";
 import { readState, releaseId, writeState, type InvestigationState } from "./state";
 import { areaTopology, gapAreas, loadTopology, reportChecks, type TopologyState } from "./topology";
 import { nearbyBox, TopologyPanel } from "./TopologyPanel";

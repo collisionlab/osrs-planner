@@ -2,52 +2,71 @@ import Layer from "ol/layer/Layer";
 import type OLMap from "ol/Map";
 import type { Coordinate } from "ol/coordinate";
 import type { WorldPoint } from "../../domain/contracts";
-import { worldToMap, mapToWorld, visibleBoxes } from "./projection";
-import type { Region } from "./geometry";
-import { contains } from "./geometry";
-import { visibleNegative, type RoutingOverlay, type RoutingSquare, type RoutingCrossing } from "./routing";
+import { contains, type Region } from "./geometry";
+import { mapToWorld, visibleBoxes, worldToMap } from "./projection";
+import { squarePath, visibleNegative, type RoutingCrossing, type RoutingOverlay, type RoutingSquare } from "./routing";
 
 // Magenta: no terrain style uses it, so the mask never reads as dirt or lava.
 const UNREACHABLE = "rgba(214,70,170,.5)";
 const SELECTED_FILL = "rgba(107,197,230,.36)";
 const SELECTED_LINE = "#8ce0f4";
 const BORDER = "rgba(226,236,240,.85)";
+const SEPARATOR = "#e8b765";
+const SEPARATOR_SELECTED = "#fff3a6";
 /** Faint tints, none red (the unreachable mask) or gold (separators), so neighbouring components read apart. */
 const TINTS = ["rgba(90,169,230,.22)", "rgba(123,211,137,.22)", "rgba(179,157,219,.24)", "rgba(77,208,196,.22)", "rgba(159,168,218,.24)", "rgba(165,214,167,.22)"];
 const componentTint = (id: number) => TINTS[(Math.imul(id, 2654435761) >>> 0) % TINTS.length];
 
+/** Map units per pixel above which nothing is drawn, and above which separators aren't. */
+const MAX_RESOLUTION = 16;
+const SEPARATOR_RESOLUTION = 8;
+const CACHED_BITMAPS = 64;
+
 export interface RoutingPlacement { shape: Pick<Region, "plane" | "bounds" | "mask">; offset: Coordinate }
-/** One viewport canvas in the shared OL composition; source-square bitmaps are reused by every placement. */
+
+/**
+ * The routing overlay: one viewport canvas in the shared composition, clipped to each placement's
+ * terrain and moved with it. Square bitmaps are shared by every placement of the same square.
+ */
 export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
   let overlay: RoutingOverlay | undefined;
   let unsubscribe: (() => void) | undefined;
   const canvas = document.createElement("canvas");
-  canvas.dataset.routingLayer = "true"; canvas.style.position = "absolute"; canvas.style.pointerEvents = "none";
+  canvas.dataset.routingLayer = "true";
+  canvas.style.position = "absolute";
+  canvas.style.pointerEvents = "none";
   const bitmaps = new Map<RoutingSquare, HTMLCanvasElement>();
+
   const pixel = (x: number, y: number, plane: number, offset: Coordinate) => {
-    const point = worldToMap({ x, y, plane }); return map.getPixelFromCoordinate([point[0] + offset[0], point[1] + offset[1]]);
+    const point = worldToMap({ x, y, plane });
+    return map.getPixelFromCoordinate([point[0] + offset[0], point[1] + offset[1]]);
   };
   const selectedIds = () => {
     const options = overlay!.options;
     return new Set([options.selectedComponent, options.selectedCrossing?.fromComponent, options.selectedCrossing?.toComponent]
       .filter((id): id is number => id !== undefined));
   };
+
   /** Tile fills only, one pixel per tile: scaled without smoothing they stay tile-crisp at every zoom. */
   const bitmap = (square: RoutingSquare) => {
-    const cached = bitmaps.get(square); if (cached) return cached;
-    const image = document.createElement("canvas"); image.width = image.height = 64;
+    const cached = bitmaps.get(square);
+    if (cached) return cached;
+    const image = document.createElement("canvas");
+    image.width = image.height = 64;
     const ctx = image.getContext("2d")!, options = overlay!.options, selected = selectedIds();
+    const fill = (colour: string, x: number, y: number) => { ctx.fillStyle = colour; ctx.fillRect(x, y, 1, 1); };
     for (let i = 0; i < 4096; i++) {
       const x = i & 63, y = 63 - (i >> 6), owner = square.owners[i];
-      if (options.unreachable && visibleNegative(square, i, options.minimumSize)) { ctx.fillStyle = UNREACHABLE; ctx.fillRect(x, y, 1, 1); }
+      if (options.unreachable && visibleNegative(square, i, options.minimumSize)) fill(UNREACHABLE, x, y);
       if (owner < 0) continue;
-      if (selected.has(owner) && (options.components || options.separators)) { ctx.fillStyle = SELECTED_FILL; ctx.fillRect(x, y, 1, 1); }
-      else if (options.components) { ctx.fillStyle = componentTint(owner); ctx.fillRect(x, y, 1, 1); }
+      if (selected.has(owner) && (options.components || options.separators)) fill(SELECTED_FILL, x, y);
+      else if (options.components) fill(componentTint(owner), x, y);
     }
     bitmaps.set(square, image);
-    while (bitmaps.size > 64) bitmaps.delete(bitmaps.keys().next().value!);
+    while (bitmaps.size > CACHED_BITMAPS) bitmaps.delete(bitmaps.keys().next().value!);
     return image;
   };
+
   /**
    * Tile-edge segments, in world tile-edge coordinates (tile centres are integers): borders between
    * two production components, and the outline of the selected ones. Blocked tiles inside a component
@@ -56,11 +75,12 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
   const segments = (square: RoutingSquare, sx: number, sy: number) => {
     const options = overlay!.options, selected = selectedIds(), borders: number[] = [], outline: number[] = [];
     for (let i = 0; i < 4096; i++) {
-      const flags = square.boundaries[i]; if (!flags) continue;
+      const flags = square.boundaries[i];
+      if (!flags) continue;
       const x = sx * 64 + (i & 63), y = sy * 64 + (i >> 6), mine = selected.has(square.owners[i]);
       for (let side = 0; side < 4; side++) {
-        const kind = (flags >> (side * 2)) & 3; if (!kind) continue;
-        const target = mine ? outline : kind === 2 && options.components ? borders : undefined;
+        const kind = (flags >> (side * 2)) & 3;
+        const target = !kind ? undefined : mine ? outline : kind === 2 && options.components ? borders : undefined;
         if (!target) continue;
         // N, E, S, W edges of the tile's unit square.
         if (side === 0) target.push(x - .5, y + .5, x + .5, y + .5);
@@ -71,85 +91,135 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
     }
     return { borders, outline };
   };
+
   const stroke = (ctx: CanvasRenderingContext2D, lines: number[], plane: number, offset: Coordinate) => {
     ctx.beginPath();
     for (let i = 0; i < lines.length; i += 4) {
       const a = pixel(lines[i], lines[i + 1], plane, offset), b = pixel(lines[i + 2], lines[i + 3], plane, offset);
-      ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+      ctx.moveTo(a[0], a[1]);
+      ctx.lineTo(b[0], b[1]);
     }
     ctx.stroke();
   };
+
+  const drawSeparators = (ctx: CanvasRenderingContext2D, edges: Iterable<RoutingCrossing>, offset: Coordinate, resolution: number) => {
+    const { selectedCrossing, selectedComponent } = overlay!.options;
+    for (const edge of edges) {
+      const selected = edge.id === selectedCrossing?.id
+        || (selectedComponent !== undefined && (edge.fromComponent === selectedComponent || edge.toComponent === selectedComponent));
+      const a = pixel(edge.from[0], edge.from[1], edge.from[2], offset), b = pixel(edge.to[0], edge.to[1], edge.to[2], offset);
+      ctx.strokeStyle = selected ? SEPARATOR_SELECTED : SEPARATOR;
+      ctx.lineWidth = selected ? 2.5 : 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(a[0], a[1]);
+      ctx.lineTo(b[0], b[1]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Endpoint tiles only for the crossing being inspected: a cut has many crossings sharing tiles.
+      if (edge.id !== selectedCrossing?.id) continue;
+      const half = 16 / resolution;
+      for (const end of [a, b]) ctx.strokeRect(end[0] - half, end[1] - half, half * 2, half * 2);
+    }
+  };
+
   const layer = new Layer({ zIndex: 58, render: frame => {
-    const size = frame.size, ratio = frame.pixelRatio;
-    canvas.width = size[0] * ratio; canvas.height = size[1] * ratio;
-    canvas.style.width = `${size[0]}px`; canvas.style.height = `${size[1]}px`;
-    const ctx = canvas.getContext("2d")!; ctx.scale(ratio, ratio); ctx.imageSmoothingEnabled = false;
-    if (!overlay || frame.viewState.resolution > 16 || !(overlay.options.components || overlay.options.separators || overlay.options.unreachable)) return canvas;
+    const size = frame.size, ratio = frame.pixelRatio, resolution = frame.viewState.resolution;
+    canvas.width = size[0] * ratio;
+    canvas.height = size[1] * ratio;
+    canvas.style.width = `${size[0]}px`;
+    canvas.style.height = `${size[1]}px`;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(ratio, ratio);
+    ctx.imageSmoothingEnabled = false;
+    const options = overlay?.options;
+    if (!overlay || !options || resolution > MAX_RESOLUTION || !(options.components || options.separators || options.unreachable)) return canvas;
     for (const { shape, offset } of contexts()) {
-      const boxes = visibleBoxes(frame.extent!, [{ plane: shape.plane, bounds: shape.bounds, offset }]);
-      if (!boxes.length) continue;
-      const box = boxes[0];
-      ctx.save(); ctx.beginPath();
-      for (const [x,y,w,h] of shape.mask) {
-        const a = pixel(x-.5,y+h-.5,shape.plane,offset), b = pixel(x+w-.5,y-.5,shape.plane,offset);
-        ctx.rect(a[0],a[1],b[0]-a[0],b[1]-a[1]);
+      const box = visibleBoxes(frame.extent!, [{ plane: shape.plane, bounds: shape.bounds, offset }])[0];
+      if (!box) continue;
+      // Clip to the placement's own terrain, and clear what an earlier placement drew under it.
+      ctx.save();
+      ctx.beginPath();
+      for (const [x, y, w, h] of shape.mask) {
+        const a = pixel(x - .5, y + h - .5, shape.plane, offset), b = pixel(x + w - .5, y - .5, shape.plane, offset);
+        ctx.rect(a[0], a[1], b[0] - a[0], b[1] - a[1]);
       }
-      ctx.clip(); ctx.clearRect(0,0,size[0],size[1]);
+      ctx.clip();
+      ctx.clearRect(0, 0, size[0], size[1]);
       const edges = new Map<number, RoutingCrossing>(), borders: number[][] = [], outlines: number[][] = [];
-      for (let sx = box.x1 >> 6; sx <= box.x2 >> 6; sx++) for (let sy = box.y1 >> 6; sy <= box.y2 >> 6; sy++) {
-        // Skip squares outside irregular terrain before loading them.
-        if (!shape.mask.some(([x,y,w,h]) => x < (sx+1)*64 && x+w > sx*64 && y < (sy+1)*64 && y+h > sy*64)) continue;
-        const path = `p${shape.plane}/${sx}/${sy}.bin`, square = overlay.data.get(path);
-        if (!square) { void overlay.data.loadSquare(path); continue; }
-        const a = pixel(sx*64-.5,(sy+1)*64-.5,shape.plane,offset), b = pixel((sx+1)*64-.5,sy*64-.5,shape.plane,offset);
-        ctx.drawImage(bitmap(square),a[0],a[1],b[0]-a[0],b[1]-a[1]);
-        const lines = segments(square, sx, sy); borders.push(lines.borders); outlines.push(lines.outline);
-        square.edges.forEach(edge => edges.set(edge.id,edge));
-      }
-      ctx.lineCap = "square";
-      ctx.strokeStyle = BORDER; ctx.lineWidth = 1.5; borders.forEach(lines => stroke(ctx, lines, shape.plane, offset));
-      ctx.strokeStyle = SELECTED_LINE; ctx.lineWidth = 2; outlines.forEach(lines => stroke(ctx, lines, shape.plane, offset));
-      if (overlay.options.separators && frame.viewState.resolution <= 8) for (const edge of edges.values()) {
-        const selected = edge.id === overlay.options.selectedCrossing?.id || (overlay.options.selectedComponent !== undefined && [edge.fromComponent,edge.toComponent].includes(overlay.options.selectedComponent));
-        const a = pixel(edge.from[0],edge.from[1],edge.from[2],offset), b = pixel(edge.to[0],edge.to[1],edge.to[2],offset);
-        ctx.strokeStyle = selected ? "#fff3a6" : "#e8b765"; ctx.lineWidth = selected ? 2.5 : 1.5; ctx.setLineDash([4,3]);
-        ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke(); ctx.setLineDash([]);
-        // Endpoint tiles only for the crossing being inspected: a cut has many crossings sharing tiles.
-        if (edge.id === overlay.options.selectedCrossing?.id) for (const endpoint of [a,b]) {
-          const half = 16 / frame.viewState.resolution; ctx.strokeRect(endpoint[0]-half,endpoint[1]-half,half*2,half*2);
+      for (let sx = box.x1 >> 6; sx <= box.x2 >> 6; sx++) {
+        for (let sy = box.y1 >> 6; sy <= box.y2 >> 6; sy++) {
+          // Skip squares outside irregular terrain before loading them.
+          if (!shape.mask.some(([x, y, w, h]) => x < (sx + 1) * 64 && x + w > sx * 64 && y < (sy + 1) * 64 && y + h > sy * 64)) continue;
+          const path = squarePath({ x: sx * 64, y: sy * 64, plane: shape.plane }), square = overlay.data.get(path);
+          if (!square) {
+            void overlay.data.loadSquare(path);
+            continue;
+          }
+          const a = pixel(sx * 64 - .5, (sy + 1) * 64 - .5, shape.plane, offset), b = pixel((sx + 1) * 64 - .5, sy * 64 - .5, shape.plane, offset);
+          ctx.drawImage(bitmap(square), a[0], a[1], b[0] - a[0], b[1] - a[1]);
+          const lines = segments(square, sx, sy);
+          borders.push(lines.borders);
+          outlines.push(lines.outline);
+          square.edges.forEach(edge => edges.set(edge.id, edge));
         }
       }
+      ctx.lineCap = "square";
+      ctx.strokeStyle = BORDER;
+      ctx.lineWidth = 1.5;
+      borders.forEach(lines => stroke(ctx, lines, shape.plane, offset));
+      ctx.strokeStyle = SELECTED_LINE;
+      ctx.lineWidth = 2;
+      outlines.forEach(lines => stroke(ctx, lines, shape.plane, offset));
+      if (options.separators && resolution <= SEPARATOR_RESOLUTION) drawSeparators(ctx, edges.values(), offset, resolution);
       ctx.restore();
     }
     return canvas;
   } });
   map.addLayer(layer);
+
   return {
     update(next?: RoutingOverlay) {
       if (next === overlay) return;
-      if (next?.data !== overlay?.data) { unsubscribe?.(); unsubscribe = next?.data.subscribe(() => layer.changed()); }
-      overlay = next; bitmaps.clear(); layer.changed();
+      if (next?.data !== overlay?.data) {
+        unsubscribe?.();
+        unsubscribe = next?.data.subscribe(() => layer.changed());
+      }
+      overlay = next;
+      bitmaps.clear();
+      layer.changed();
     },
-    /** Picks only the displayed plane and mask, using the same placement offset as the bitmap. */
+    /** The separator under a click, on the plane and placement shown there, as drawn. */
     crossing(coordinate: Coordinate, point: WorldPoint) {
-      if (!overlay?.options.separators || (map.getView().getResolution() ?? 100) > 8) return undefined;
-      for (const { shape, offset } of [...contexts()].reverse()) {
-        const hit = mapToWorld([coordinate[0]-offset[0],coordinate[1]-offset[1]],shape.plane);
-        if (!contains({ ...shape } as Region,hit.x,hit.y,hit.plane)) continue;
-        if (point.plane !== hit.plane || point.x !== hit.x || point.y !== hit.y) return undefined;
-        const target = map.getPixelFromCoordinate(coordinate), scale = map.getView().getResolution() ?? 1;
-        // Include adjacent squares: an edge can straddle the square border.
-        for (let sx=(hit.x-1)>>6;sx<=(hit.x+1)>>6;sx++) for(let sy=(hit.y-1)>>6;sy<=(hit.y+1)>>6;sy++) {
-          for (const edge of overlay.data.get(`p${hit.plane}/${sx}/${sy}.bin`)?.edges || []) {
-            const a=pixel(edge.from[0],edge.from[1],hit.plane,offset),b=pixel(edge.to[0],edge.to[1],hit.plane,offset);
-            const dx=b[0]-a[0],dy=b[1]-a[1],t=Math.max(0,Math.min(1,((target[0]-a[0])*dx+(target[1]-a[1])*dy)/(dx*dx+dy*dy)));
-            if(Math.hypot(target[0]-a[0]-t*dx,target[1]-a[1]-t*dy)<=Math.min(6,10/scale)) return edge;
+      if (!overlay?.options.separators || (map.getView().getResolution() ?? 100) > SEPARATOR_RESOLUTION) return undefined;
+      // The topmost placement holding the clicked tile decides.
+      const placement = [...contexts()].reverse().find(({ shape, offset }) => {
+        const hit = mapToWorld([coordinate[0] - offset[0], coordinate[1] - offset[1]], shape.plane);
+        return contains(shape as Region, hit.x, hit.y, hit.plane);
+      });
+      if (!placement) return undefined;
+      const { shape, offset } = placement;
+      const hit = mapToWorld([coordinate[0] - offset[0], coordinate[1] - offset[1]], shape.plane);
+      if (point.plane !== hit.plane || point.x !== hit.x || point.y !== hit.y) return undefined;
+      const target = map.getPixelFromCoordinate(coordinate), tolerance = Math.min(6, 10 / (map.getView().getResolution() ?? 1));
+      // Adjacent squares too: an edge can straddle a square border.
+      for (let sx = (hit.x - 1) >> 6; sx <= (hit.x + 1) >> 6; sx++) {
+        for (let sy = (hit.y - 1) >> 6; sy <= (hit.y + 1) >> 6; sy++) {
+          for (const edge of overlay.data.get(squarePath({ x: sx * 64, y: sy * 64, plane: hit.plane }))?.edges || []) {
+            const a = pixel(edge.from[0], edge.from[1], hit.plane, offset), b = pixel(edge.to[0], edge.to[1], hit.plane, offset);
+            const dx = b[0] - a[0], dy = b[1] - a[1];
+            const t = Math.max(0, Math.min(1, ((target[0] - a[0]) * dx + (target[1] - a[1]) * dy) / (dx * dx + dy * dy)));
+            if (Math.hypot(target[0] - a[0] - t * dx, target[1] - a[1] - t * dy) <= tolerance) return edge;
           }
         }
-        return undefined;
       }
       return undefined;
     },
-    dispose() { unsubscribe?.(); bitmaps.clear(); map.removeLayer(layer); layer.dispose(); },
+    dispose() {
+      unsubscribe?.();
+      bitmaps.clear();
+      map.removeLayer(layer);
+      layer.dispose();
+    },
   };
 }

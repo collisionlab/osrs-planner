@@ -10,8 +10,11 @@ crossing adjacency. Focus component fits its actual location in the current inse
 dashed centre-to-centre edges are internal synthetic walking crossings, including diagonals. Clicking
 an edge outlines its two endpoint tiles and shows both production IDs and its recorded cost. These edges are never gameplay transports.
 
-The magenta mask contains only structurally unreachable walkable terrain. Its size filter hides
-whole small natural walking components for presentation; it changes no graph membership. Inspection
+The magenta mask contains only structurally unreachable walkable terrain. Seas are left out: the
+collision map leaves sea tiles open, so the release classes unreachable natural components of
+100,000 tiles or more as open expanses (`manifest.expanses`), never drawn; inspecting one says so.
+The size filter hides whole small natural walking components for presentation; it changes no graph
+membership. Inspection
 distinguishes excluded walkable terrain, reachable terrain absent from search, non-walkable terrain,
 missing collision and a failed data fetch. Excluded tiles receive no invented production IDs.
 

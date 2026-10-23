@@ -1,4 +1,3 @@
-import { routingLayer } from "./routingLayer";
 import Feature from "ol/Feature";
 import OLMap from "ol/Map";
 import Overlay from "ol/Overlay";
@@ -29,6 +28,8 @@ import { PastedTerrainSource } from "./PastedTerrainSource";
 import { RegionFeatures } from "./RegionFeatures";
 import { collisionStyle, doorStyle, endpointPixels, featureStyle, maskStyle, routeFeatureStyle, routeMarkerOverlay } from "./routeStyles";
 import { regionContour } from "./contour";
+import type { RoutingCrossing } from "./routing";
+import { routingLayer } from "./routingLayer";
 import { edgeLinks, featurePoints, featuresOf, keysHit, type FeatureOverlay, type MapFeature } from "./features";
 import { visibleBoxes, type WorldBox } from "./projection";
 
@@ -57,7 +58,8 @@ export interface AreaOptions {
   planes?: Record<string, number>;
   /** An inset's plane button was clicked. */
   onPlane?(regionId: string, plane: number): void;
-  onRoutingCrossing?(crossing: import("./routing").RoutingCrossing): void;
+  /** A routing separator was clicked. */
+  onRoutingCrossing?(crossing: RoutingCrossing): void;
   /** Features drawn over the map besides the route (the workbench's tools; see features.ts). */
   overlay?: FeatureOverlay;
   /** Items under a click, by their features' keys, and the tile clicked. */
@@ -420,13 +422,16 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   const picked = new Map(groups.flatMap(group => group.members.map(member => [member.id, placements.get(group.lead.id)!] as const)));
   upper.forEach(shape => picked.set(shape.id, { offset: [0, 0], anchored: true }));
   hitPlacements = picked;
+  // The routing overlay draws over the surface first, then each placed inset, as the terrain is drawn.
   const routing = routingLayer(map, () => [
-    ...assets.catalogue.surfaceRects.filter(([plane]) => plane === 0).map(([plane,x,y,w,h]) => ({
-      shape: { plane, bounds: [x,y,x+w,y+h] as [number,number,number,number], mask: [[x,y,w,h] as [number,number,number,number]] }, offset: [0,0],
-    })),
+    ...assets.catalogue.surfaceRects.filter(([plane]) => plane === 0).map(([plane, x, y, w, h]) => {
+      const rect: [number, number, number, number] = [x, y, w, h];
+      return { shape: { plane, bounds: [x, y, x + w, y + h] as [number, number, number, number], mask: [rect] }, offset: [0, 0] };
+    }),
     ...[...picked].map(([id, placement]) => ({ shape: regionById.get(id)!, offset: placement.offset })),
   ]);
-  routing.update(overlay?.routing); cleanup.push(() => routing.dispose());
+  routing.update(overlay?.routing);
+  cleanup.push(() => routing.dispose());
 
   drawable = point => {
     const region = classify(point);
@@ -543,7 +548,10 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     const hit = map.forEachFeatureAtPixel(event.pixel, feature => feature, { layerFilter: candidate => candidate === routes, hitTolerance: 6 });
     if (hit && typeof hit.get("segmentIndex") === "number") { callbacks().onSelectSegment?.(hit.get("segmentIndex")); return; }
     const crossing = routing.crossing(event.coordinate, pickWorld(event.coordinate, assets, picked, 0));
-    if (crossing && areas.onRoutingCrossing) { areas.onRoutingCrossing(crossing); return; }
+    if (crossing && areas.onRoutingCrossing) {
+      areas.onRoutingCrossing(crossing);
+      return;
+    }
     const items = keysHit(map.getFeaturesAtPixel(event.pixel, { layerFilter: candidate => candidate === featureLayer, hitTolerance: 6 })
       .map(feature => ({ key: feature.get("key") })));
     if (items.length && areas.onSelectFeatures) { areas.onSelectFeatures(items, pickWorld(event.coordinate, assets, picked, 0)); return; }
@@ -600,7 +608,11 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     /** Where a world tile is drawn, in pixels from the map's top left (for end-to-end tests). */
     pixel(point: WorldPoint) { return map.getPixelFromCoordinate(projected(point)); },
     /** Replace the overlay's features and selection, keeping the layout (its anchors must be the same). */
-    update(next?: FeatureOverlay) { overlay = next; routing.update(next?.routing); drawOverlay(); },
+    update(next?: FeatureOverlay) {
+      overlay = next;
+      routing.update(next?.routing);
+      drawOverlay();
+    },
     /** Bring the overlay's anchors into view, close enough to see their collision. */
     fitAnchors,
     /** Highlight an item's features and bring them into view. */
