@@ -7,6 +7,15 @@ import type { Region } from "./geometry";
 import { contains } from "./geometry";
 import { visibleNegative, type RoutingOverlay, type RoutingSquare, type RoutingCrossing } from "./routing";
 
+// Magenta: no terrain style uses it, so the mask never reads as dirt or lava.
+const UNREACHABLE = "rgba(214,70,170,.5)";
+const SELECTED_FILL = "rgba(107,197,230,.36)";
+const SELECTED_LINE = "#8ce0f4";
+const BORDER = "rgba(226,236,240,.85)";
+/** Faint tints, none red (the unreachable mask) or gold (separators), so neighbouring components read apart. */
+const TINTS = ["rgba(90,169,230,.22)", "rgba(123,211,137,.22)", "rgba(179,157,219,.24)", "rgba(77,208,196,.22)", "rgba(159,168,218,.24)", "rgba(165,214,167,.22)"];
+const componentTint = (id: number) => TINTS[(Math.imul(id, 2654435761) >>> 0) % TINTS.length];
+
 export interface RoutingPlacement { shape: Pick<Region, "plane" | "bounds" | "mask">; offset: Coordinate }
 /** One viewport canvas in the shared OL composition; source-square bitmaps are reused by every placement. */
 export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
@@ -18,29 +27,57 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
   const pixel = (x: number, y: number, plane: number, offset: Coordinate) => {
     const point = worldToMap({ x, y, plane }); return map.getPixelFromCoordinate([point[0] + offset[0], point[1] + offset[1]]);
   };
+  const selectedIds = () => {
+    const options = overlay!.options;
+    return new Set([options.selectedComponent, options.selectedCrossing?.fromComponent, options.selectedCrossing?.toComponent]
+      .filter((id): id is number => id !== undefined));
+  };
+  /** Tile fills only, one pixel per tile: scaled without smoothing they stay tile-crisp at every zoom. */
   const bitmap = (square: RoutingSquare) => {
     const cached = bitmaps.get(square); if (cached) return cached;
-    const image = document.createElement("canvas"); image.width = image.height = 512;
-    const ctx = image.getContext("2d")!, options = overlay!.options;
-    const selected = new Set([options.selectedComponent, options.selectedCrossing?.fromComponent, options.selectedCrossing?.toComponent].filter((id): id is number => id !== undefined));
+    const image = document.createElement("canvas"); image.width = image.height = 64;
+    const ctx = image.getContext("2d")!, options = overlay!.options, selected = selectedIds();
     for (let i = 0; i < 4096; i++) {
-      const x = (i & 63) * 8, y = (63 - (i >> 6)) * 8;
-      if (options.unreachable && visibleNegative(square, i, options.minimumSize)) { ctx.fillStyle = "rgba(205,104,72,.38)"; ctx.fillRect(x, y, 8, 8); }
-      const strong = (options.components || (options.separators && !!options.selectedCrossing)) && square.owners[i] >= 0 && selected.has(square.owners[i]);
-      if (strong) { ctx.fillStyle = "rgba(107,197,230,.30)"; ctx.fillRect(x, y, 8, 8); }
-      if (!options.components && !strong) continue;
-      for (let side = 0; side < 4; side++) {
-        const kind = (square.boundaries[i] >> (side * 2)) & 3;
-        if (!kind) continue;
-        ctx.strokeStyle = strong ? "#8ce0f4" : kind === 1 ? "rgba(160,174,183,.55)" : "rgba(140,190,210,.65)";
-        ctx.lineWidth = strong ? 1.8 : .8; ctx.beginPath();
-        const ends = [[x,y,x+8,y],[x+8,y,x+8,y+8],[x,y+8,x+8,y+8],[x,y,x,y+8]][side];
-        ctx.moveTo(ends[0], ends[1]); ctx.lineTo(ends[2], ends[3]); ctx.stroke();
-      }
+      const x = i & 63, y = 63 - (i >> 6), owner = square.owners[i];
+      if (options.unreachable && visibleNegative(square, i, options.minimumSize)) { ctx.fillStyle = UNREACHABLE; ctx.fillRect(x, y, 1, 1); }
+      if (owner < 0) continue;
+      if (selected.has(owner) && (options.components || options.separators)) { ctx.fillStyle = SELECTED_FILL; ctx.fillRect(x, y, 1, 1); }
+      else if (options.components) { ctx.fillStyle = componentTint(owner); ctx.fillRect(x, y, 1, 1); }
     }
     bitmaps.set(square, image);
     while (bitmaps.size > 64) bitmaps.delete(bitmaps.keys().next().value!);
     return image;
+  };
+  /**
+   * Tile-edge segments, in world tile-edge coordinates (tile centres are integers): borders between
+   * two production components, and the outline of the selected ones. Blocked tiles inside a component
+   * are already visible as gaps in its tint, so the edge of the search graph isn't outlined.
+   */
+  const segments = (square: RoutingSquare, sx: number, sy: number) => {
+    const options = overlay!.options, selected = selectedIds(), borders: number[] = [], outline: number[] = [];
+    for (let i = 0; i < 4096; i++) {
+      const flags = square.boundaries[i]; if (!flags) continue;
+      const x = sx * 64 + (i & 63), y = sy * 64 + (i >> 6), mine = selected.has(square.owners[i]);
+      for (let side = 0; side < 4; side++) {
+        const kind = (flags >> (side * 2)) & 3; if (!kind) continue;
+        const target = mine ? outline : kind === 2 && options.components ? borders : undefined;
+        if (!target) continue;
+        // N, E, S, W edges of the tile's unit square.
+        if (side === 0) target.push(x - .5, y + .5, x + .5, y + .5);
+        else if (side === 1) target.push(x + .5, y - .5, x + .5, y + .5);
+        else if (side === 2) target.push(x - .5, y - .5, x + .5, y - .5);
+        else target.push(x - .5, y - .5, x - .5, y + .5);
+      }
+    }
+    return { borders, outline };
+  };
+  const stroke = (ctx: CanvasRenderingContext2D, lines: number[], plane: number, offset: Coordinate) => {
+    ctx.beginPath();
+    for (let i = 0; i < lines.length; i += 4) {
+      const a = pixel(lines[i], lines[i + 1], plane, offset), b = pixel(lines[i + 2], lines[i + 3], plane, offset);
+      ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+    }
+    ctx.stroke();
   };
   const layer = new Layer({ zIndex: 58, render: frame => {
     const size = frame.size, ratio = frame.pixelRatio;
@@ -58,7 +95,7 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
         ctx.rect(a[0],a[1],b[0]-a[0],b[1]-a[1]);
       }
       ctx.clip(); ctx.clearRect(0,0,size[0],size[1]);
-      const edges = new Map<number, RoutingCrossing>();
+      const edges = new Map<number, RoutingCrossing>(), borders: number[][] = [], outlines: number[][] = [];
       for (let sx = box.x1 >> 6; sx <= box.x2 >> 6; sx++) for (let sy = box.y1 >> 6; sy <= box.y2 >> 6; sy++) {
         // Skip squares outside irregular terrain before loading them.
         if (!shape.mask.some(([x,y,w,h]) => x < (sx+1)*64 && x+w > sx*64 && y < (sy+1)*64 && y+h > sy*64)) continue;
@@ -66,14 +103,19 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
         if (!square) { void overlay.data.loadSquare(path); continue; }
         const a = pixel(sx*64-.5,(sy+1)*64-.5,shape.plane,offset), b = pixel((sx+1)*64-.5,sy*64-.5,shape.plane,offset);
         ctx.drawImage(bitmap(square),a[0],a[1],b[0]-a[0],b[1]-a[1]);
+        const lines = segments(square, sx, sy); borders.push(lines.borders); outlines.push(lines.outline);
         square.edges.forEach(edge => edges.set(edge.id,edge));
       }
+      ctx.lineCap = "square";
+      ctx.strokeStyle = BORDER; ctx.lineWidth = 1.5; borders.forEach(lines => stroke(ctx, lines, shape.plane, offset));
+      ctx.strokeStyle = SELECTED_LINE; ctx.lineWidth = 2; outlines.forEach(lines => stroke(ctx, lines, shape.plane, offset));
       if (overlay.options.separators && frame.viewState.resolution <= 8) for (const edge of edges.values()) {
         const selected = edge.id === overlay.options.selectedCrossing?.id || (overlay.options.selectedComponent !== undefined && [edge.fromComponent,edge.toComponent].includes(overlay.options.selectedComponent));
         const a = pixel(edge.from[0],edge.from[1],edge.from[2],offset), b = pixel(edge.to[0],edge.to[1],edge.to[2],offset);
-        ctx.strokeStyle = selected ? "#fff3a6" : "#e8b765"; ctx.lineWidth = selected ? 3 : 2; ctx.setLineDash([3,3]);
+        ctx.strokeStyle = selected ? "#fff3a6" : "#e8b765"; ctx.lineWidth = selected ? 2.5 : 1.5; ctx.setLineDash([4,3]);
         ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke(); ctx.setLineDash([]);
-        if (frame.viewState.resolution <= 2 || selected) for (const endpoint of [a,b]) {
+        // Endpoint tiles only for the crossing being inspected: a cut has many crossings sharing tiles.
+        if (edge.id === overlay.options.selectedCrossing?.id) for (const endpoint of [a,b]) {
           const half = 16 / frame.viewState.resolution; ctx.strokeRect(endpoint[0]-half,endpoint[1]-half,half*2,half*2);
         }
       }
