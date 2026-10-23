@@ -3,6 +3,7 @@ package shortestpath.workbench;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -67,6 +68,16 @@ class ReviewsTest {
         assertEquals(1, review.units.size());
         assertEquals("agility_shortcuts-4", review.units.get(0).id);
         assertEquals("Pass Gap 2", review.units.get(0).changes.get(0).head.label);
+    }
+
+    @Test
+    void clonesAheadOfTheFirstRequest() throws InterruptedException {
+        Path cache = temp.resolve("cache-warm");
+        new Reviews(List.of("Owner/repo"), cache, remote).warm();
+        for (int i = 0; i < 100 && !Files.isDirectory(cache.resolve("Owner/repo.git/objects")); i++) {
+            Thread.sleep(50);
+        }
+        assertTrue(Files.isDirectory(cache.resolve("Owner/repo.git/objects")));
     }
 
     @Test

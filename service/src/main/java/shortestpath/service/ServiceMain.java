@@ -52,7 +52,9 @@ public final class ServiceMain {
         ObjectMapper mapper = JsonMapper.builder().findAndAddModules().build();
         RoutingEngine engine = new RoutingEngine(mapper);
         int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
-        app(mapper, engine, Workbench.fromEnvironment()).start(port);
+        Reviews reviews = Workbench.fromEnvironment();
+        app(mapper, engine, reviews).start(port);
+        reviews.warm();
     }
 
     static Javalin app(ObjectMapper mapper, RoutingEngine engine) {

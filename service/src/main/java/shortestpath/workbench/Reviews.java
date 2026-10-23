@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.LoggerFactory;
 
 /**
  * Transport reviews of a pull request or a compare range, read from git and cached by the two
@@ -59,6 +60,24 @@ public final class Reviews {
         for (String repository : repositories) {
             sources.put(repository.toLowerCase(), new GitSource(repository, cache, remote));
         }
+    }
+
+    /**
+     * Clones each repository in the background, so the first review after a deploy (a new container,
+     * an empty cache) doesn't wait for it. A failure only logs: the first request clones instead.
+     */
+    public void warm() {
+        Thread thread = new Thread(() -> {
+            for (GitSource source : sources.values()) {
+                try {
+                    source.warm();
+                } catch (RuntimeException e) {
+                    LoggerFactory.getLogger(Reviews.class).warn("could not clone {} ahead of requests", source.repository(), e);
+                }
+            }
+        }, "workbench-warm");
+        thread.setDaemon(true);
+        thread.start();
     }
 
     /** The served repository's canonical name, or {@code null}. */
