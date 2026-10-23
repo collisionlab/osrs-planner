@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
  */
 public final class Workbench {
     private static final Pattern PULL_RANGE = Pattern.compile("^([0-9a-f]{40})\\.\\.([0-9a-f]{40})$");
+    private static final String STARTED = "workbench.started";
     private static final String IMMUTABLE = "public, max-age=31536000, immutable";
 
     private Workbench() { }
@@ -31,11 +32,19 @@ public final class Workbench {
         Map<String, String> env = System.getenv();
         List<String> repositories = List.of(env.getOrDefault("WORKBENCH_REPOS", "Skretzo/shortest-path").split(","));
         Path cache = Path.of(env.getOrDefault("WORKBENCH_CACHE", System.getProperty("java.io.tmpdir") + "/workbench"));
-        return new Reviews(repositories, cache, "https://github.com/", new GitHubPulls("https://api.github.com/", env.get("GITHUB_TOKEN")));
+        return new Reviews(repositories, cache, "https://github.com/", "https://api.github.com/", env.get("GITHUB_TOKEN"));
     }
 
     public static void routes(Javalin app, Reviews reviews) {
         String github = "/workbench/v1/github/{owner}/{repo}";
+        // Each request timed by route and status, errors included (after-handlers run after exception mapping).
+        app.before("/workbench/*", ctx -> ctx.attribute(STARTED, System.nanoTime()));
+        app.after("/workbench/*", ctx -> {
+            Long started = ctx.attribute(STARTED);
+            if (started != null) {
+                reviews.metrics().request(route(ctx.endpointHandlerPath()), ctx.statusCode(), System.nanoTime() - started);
+            }
+        });
         // The open pull requests that change transports, listed again every few minutes.
         app.get(github + "/pulls", ctx ->
             ctx.header("Cache-Control", "public, max-age=60").json(reviews.openPulls(repository(ctx, reviews))));
@@ -64,6 +73,22 @@ public final class Workbench {
             boolean pinned = GitSource.SHA.matcher(ends[0]).matches() && GitSource.SHA.matcher(ends[1]).matches();
             ctx.header("Cache-Control", pinned ? IMMUTABLE : "public, max-age=60").json(reviews.compare(repository(ctx, reviews), ends[0], ends[1]));
         });
+    }
+
+    /** A short name for a route's path template, for metrics. */
+    static String route(String path) {
+        if (path.endsWith("/files/{range}")) {
+            return "files";
+        } else if (path.endsWith("/pull/{number}")) {
+            return "pull";
+        } else if (path.endsWith("/heads")) {
+            return "heads";
+        } else if (path.endsWith("/pulls")) {
+            return "pulls";
+        } else if (path.contains("/compare/")) {
+            return "compare";
+        }
+        return "other";
     }
 
     private static String repository(Context ctx, Reviews reviews) {
