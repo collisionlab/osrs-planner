@@ -1,0 +1,61 @@
+/* Workbench: dense tool pages for people editing the plugin's data. Colours come from the planner's theme. */
+.wb-page { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; height: 100dvh; color: var(--text); background: var(--ink); font: 13px/1.4 system-ui, sans-serif; }
+.wb-header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; padding: 8px 16px; background: var(--panel); border-bottom: 2px solid var(--orange); }
+.wb-brand { color: var(--ink); background: var(--orange); padding: 2px 6px; font: 10px var(--pixel); text-transform: uppercase; letter-spacing: .04em; }
+.wb-tool { font: 11px var(--pixel); color: var(--muted); }
+.wb-source { color: var(--cyan); font-weight: 600; }
+.wb-title { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40ch; }
+.wb-summary, .wb-keys { color: var(--muted); }
+.wb-keys { margin-left: auto; }
+.wb-page kbd { padding: 0 4px; border: 1px solid var(--line); border-bottom-width: 2px; font: 11px ui-monospace, monospace; color: var(--text); }
+.wb-page .added { color: #5ee08a; } .wb-page .removed { color: #ff6b6b; } .wb-page .changed { color: #ffc44d; }
+.wb-message { padding: 24px 16px; color: var(--muted); }
+.wb-body { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; min-height: 0; }
+.wb-units { overflow: auto; border-right: 1px solid var(--line); background: var(--panel); }
+.wb-units ol { list-style: none; margin: 0; padding: 0; }
+.wb-units button { display: grid; gap: 2px; width: 100%; padding: 8px 12px; text-align: left; color: var(--text); background: none; border: 0; border-bottom: 1px solid var(--line); border-left: 3px solid transparent; font: inherit; cursor: pointer; }
+.wb-units button:hover { background: var(--raised); }
+.wb-units button[aria-current="true"] { background: var(--raised); border-left-color: var(--orange); }
+.wb-unit-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wb-unit-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font: 11px ui-monospace, monospace; }
+.wb-counts { display: flex; gap: 6px; }
+.wb-main { display: grid; grid-template-rows: minmax(260px, 1fr) auto; min-width: 0; min-height: 0; }
+.wb-map { position: relative; overflow: hidden; min-height: 0; }
+.wb-detail { max-height: 38vh; overflow: auto; padding: 8px 16px 12px; border-top: 1px solid var(--line); background: var(--panel); }
+.wb-detail h2 { margin: 0 0 6px; font-size: 14px; }
+.wb-detail h2 small { margin-left: 8px; color: var(--muted); font: 11px ui-monospace, monospace; }
+.wb-warning { margin: 0 0 8px; padding: 6px 10px; color: var(--text); background: rgba(255, 107, 107, .12); border-left: 3px solid #ff6b6b; }
+.wb-rows { width: 100%; border-collapse: collapse; }
+.wb-rows th { position: sticky; top: 0; padding: 4px 6px; text-align: left; color: var(--muted); background: var(--panel); font-weight: 500; font-size: 11px; }
+.wb-rows td { padding: 4px 6px; border-top: 1px solid var(--line); vertical-align: top; }
+.wb-rows tr { cursor: pointer; }
+.wb-rows tr:hover td { background: var(--raised); }
+.wb-rows tr.selected td { background: var(--raised); }
+.wb-rows tr.selected td:first-child { box-shadow: inset 3px 0 var(--orange); }
+.wb-rows a { color: var(--cyan); }
+.wb-mono { font: 12px ui-monospace, monospace; white-space: nowrap; }
+.wb-tile { padding: 0; color: var(--text); background: none; border: 0; border-bottom: 1px dashed var(--muted); font: inherit; cursor: pointer; }
+.wb-tile:hover { color: var(--orange); border-bottom-color: var(--orange); }
+.wb-details { display: flex; flex-wrap: wrap; gap: 2px 12px; color: var(--muted); }
+.wb-details b { color: var(--text); font-weight: 500; }
+.wb-rows del { color: #ff6b6b; } .wb-rows ins { color: #5ee08a; text-decoration: none; }
+.wb-badge { display: inline-grid; place-items: center; width: 18px; height: 18px; color: var(--ink); font-weight: 700; }
+.wb-badge.added { background: #5ee08a; color: var(--ink); } .wb-badge.removed { background: #ff6b6b; color: var(--ink); } .wb-badge.changed { background: #ffc44d; color: var(--ink); }
+.wb-footer { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 5px 16px; color: var(--muted); background: var(--panel); border-top: 1px solid var(--line); font: 11px ui-monospace, monospace; }
+.wb-footer a { color: var(--cyan); }
+.wb-home { max-width: 720px; padding: 32px 16px; }
+.wb-home h1 { font: 16px var(--pixel); }
+.wb-home form { display: flex; gap: 8px; margin: 16px 0; }
+.wb-home input { flex: 1; min-width: 0; padding: 8px; color: var(--text); background: var(--panel); border: 1px solid var(--line); font: inherit; }
+.wb-home button { padding: 8px 14px; color: var(--ink); background: var(--orange); border: 0; font: 11px var(--pixel); cursor: pointer; }
+.wb-hint { color: var(--muted); }
+.wb-hint code { color: var(--text); }
+@media (max-width: 760px) {
+  .wb-page { height: auto; min-height: 100dvh; }
+  .wb-body { grid-template-columns: 1fr; }
+  .wb-units { max-height: 30vh; border-right: 0; border-bottom: 1px solid var(--line); }
+  .wb-main { grid-template-rows: 60vh auto; }
+  .wb-detail { max-height: none; }
+  .wb-rows { display: block; overflow-x: auto; }
+  .wb-keys { display: none; }
+}

@@ -30,6 +30,8 @@ import shortestpath.accounts.canonical.CanonicalAccounts;
 import shortestpath.routeapi.AccountJson;
 import shortestpath.routeapi.Catalog;
 import shortestpath.routeapi.RouteApi;
+import shortestpath.workbench.Reviews;
+import shortestpath.workbench.Workbench;
 
 /**
  * The route service's HTTP API: {@code POST /v1/route}, {@code GET /v1/presets}, {@code GET /v1/catalog},
@@ -50,10 +52,14 @@ public final class ServiceMain {
         ObjectMapper mapper = JsonMapper.builder().findAndAddModules().build();
         RoutingEngine engine = new RoutingEngine(mapper);
         int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
-        app(mapper, engine).start(port);
+        app(mapper, engine, Workbench.fromEnvironment()).start(port);
     }
 
     static Javalin app(ObjectMapper mapper, RoutingEngine engine) {
+        return app(mapper, engine, Workbench.fromEnvironment());
+    }
+
+    static Javalin app(ObjectMapper mapper, RoutingEngine engine, Reviews reviews) {
         SchemaValidator validator = new SchemaValidator();
         PrometheusMeterRegistry metrics = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
         Counter rejected = Counter.builder("route_requests_rejected_total").register(metrics);
@@ -155,6 +161,9 @@ public final class ServiceMain {
                 finish(metrics, routeLog, ctx, request, "busy", null, received, -1);
             }
         });
+        Workbench.routes(app, reviews);
+        app.exception(Reviews.NotServed.class, (error, ctx) -> error(ctx, 404, error.getMessage()));
+        app.exception(Reviews.NotFound.class, (error, ctx) -> error(ctx, 404, error.getMessage()));
         app.exception(IllegalArgumentException.class, (error, ctx) -> error(ctx, 400, error.getMessage()));
         app.exception(InvalidFormatException.class, (error, ctx) -> error(ctx, 400,
             "invalid value " + error.getValue() + " at " + path(error)));

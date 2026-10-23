@@ -8,6 +8,7 @@ import VectorSource from "ol/source/Vector";
 import LineString from "ol/geom/LineString";
 import MultiLineString from "ol/geom/MultiLineString";
 import Point from "ol/geom/Point";
+import Polygon from "ol/geom/Polygon";
 import Translate from "ol/interaction/Translate";
 import { Stroke, Style } from "ol/style";
 import { createEmpty, extend, isEmpty } from "ol/extent";
@@ -24,7 +25,8 @@ import { surfaceLayer } from "./tactical";
 import { regionTerrain, type TerrainTiles } from "./terrain";
 import { PastedTerrainSource } from "./PastedTerrainSource";
 import { RegionFeatures } from "./RegionFeatures";
-import { doorStyle, endpointPixels, routeFeatureStyle, routeMarkerOverlay } from "./routeStyles";
+import { collisionStyle, doorStyle, endpointPixels, reviewMarkStyle, routeFeatureStyle, routeMarkerOverlay, type ReviewTone } from "./routeStyles";
+import type { CollisionMap } from "./collision";
 import { regionContour } from "./contour";
 
 export function segmentPoints(segment: NonNullable<OsrsMapProps["route"]>["segments"][number]): WorldPoint[] {
@@ -52,7 +54,27 @@ export interface AreaOptions {
   planes?: Record<string, number>;
   /** An inset's plane button was clicked. */
   onPlane?(regionId: string, plane: number): void;
+  /** Transport rows under review (the workbench), drawn over the route that carries them (see features/workbench/review.ts). */
+  review?: ReviewOptions;
 }
+
+export interface ReviewOptions {
+  /** The colour of each route segment, by index: an added, removed or changed row. */
+  tones: Record<number, ReviewTone>;
+  /** Tiles to outline: each row's origin and fill its destination. */
+  marks: { point: WorldPoint; tone: ReviewTone; role: "origin" | "destination" }[];
+  /** Blocked tiles and walls around the marks, when zoomed in far enough to see single tiles. */
+  collision?: CollisionMap;
+  /** Names for the areas these points are in, where the inset release hasn't named them. */
+  names?: { point: WorldPoint; name: string }[];
+}
+
+/** The coarsest view a review opens at: 8 px a game tile, where collision is drawn. */
+const REVIEW_MAX_RESOLUTION = 4;
+/** The fewest tiles across a review is first shown with. */
+const REVIEW_FIT_TILES = 24;
+/** Tiles of collision drawn around each review mark. */
+export const COLLISION_RADIUS = 20;
 
 export function createComposition(target: HTMLElement, releaseAssets: InsetAssets, props: OsrsMapProps,
   callbacks: () => OsrsMapProps, layer: { url: string; attribution: string; maxNativeZoom?: number },
@@ -150,7 +172,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     else {
       const coordinates = step.kind === "walk" ? step.path.map(projected) : [projected(step.source.from), projected(step.source.to)];
       const feature = new Feature(new LineString(coordinates));
-      feature.setProperties({ role: step.kind, segmentIndex: step.segmentIndex });
+      feature.setProperties({ role: step.kind, segmentIndex: step.segmentIndex, tone: areas.review?.tones[step.segmentIndex] });
       routeSource.addFeature(feature); owned.add(section.regionId, feature);
     }
   }
@@ -158,7 +180,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     if (hidden.has(crossing.fromRegion) || hidden.has(crossing.toRegion)) continue;
     const feature = new Feature(new LineString([projected(crossing.source.from), projected(crossing.source.to)]));
     feature.setProperties({ role: crossing.source.kind,
-      segmentIndex: crossing.segmentIndex });
+      segmentIndex: crossing.segmentIndex, tone: areas.review?.tones[crossing.segmentIndex] });
     routeSource.addFeature(feature); owned.addLink(crossing.fromRegion, crossing.toRegion, feature.getGeometry()!);
   }
   if (start) addPoint(start.coordinate, "start");
@@ -182,6 +204,46 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   for (const crossing of entrances.filter(entrance => shown.find(area => area.regionId === entrance.toRegion)?.entrance?.wayIn)) {
     const line = new LineString([projected(crossing.source.from), projected(crossing.source.to)]);
     entranceSource.addFeature(new Feature(line)); owned.addLink(crossing.fromRegion, crossing.toRegion, line);
+  }
+  const reviewSource = new VectorSource();
+  map.addLayer(new VectorLayer({ source: reviewSource, zIndex: 99, updateWhileInteracting: true, updateWhileAnimating: true, style: reviewMarkStyle }));
+  const collisionSource = new VectorSource();
+  map.addLayer(new VectorLayer({ source: collisionSource, zIndex: 60, maxResolution: REVIEW_MAX_RESOLUTION + .01, updateWhileInteracting: true, updateWhileAnimating: true,
+    style: collisionStyle }));
+  /** A tile's square on the map, drawn where its region is placed. */
+  const tileRing = (point: WorldPoint, inset = 0) => {
+    const [cx, cy] = projected(point), half = 16 - inset;
+    return [[cx - half, cy - half], [cx + half, cy - half], [cx + half, cy + half], [cx - half, cy + half], [cx - half, cy - half]];
+  };
+  for (const mark of areas.review?.marks || []) {
+    if (hidden.has(classify(mark.point))) continue;
+    const feature = new Feature(new Polygon([tileRing(mark.point, mark.role === "origin" ? 2 : 0)]));
+    feature.setProperties({ tone: mark.tone, role: mark.role });
+    reviewSource.addFeature(feature); owned.add(classify(mark.point), feature);
+  }
+  const collision = areas.review?.collision;
+  if (collision) {
+    const drawn = new Set<string>();
+    for (const mark of areas.review?.marks || []) {
+      const { x: mx, y: my, plane } = mark.point;
+      for (let x = mx - COLLISION_RADIUS; x <= mx + COLLISION_RADIUS; x++) for (let y = my - COLLISION_RADIUS; y <= my + COLLISION_RADIUS; y++) {
+        const point = { x, y, plane }, key = `${x},${y},${plane}`, region = classify(point);
+        if (drawn.has(key) || hidden.has(region) || region !== classify(mark.point)) continue;
+        drawn.add(key);
+        const tile = collision.tile(point);
+        if (!tile) continue;
+        const [cx, cy] = projected(point);
+        const add = (feature: Feature) => { collisionSource.addFeature(feature); owned.add(region, feature); };
+        if (tile.blocked) { const f = new Feature(new Polygon([tileRing(point)])); f.set("kind", "blocked"); add(f); continue; }
+        // Each closed edge once, from the tile north or east of it; walls drawn heavier than objects.
+        if (!tile.north && !collision.tile({ x, y: y + 1, plane })?.blocked) {
+          const f = new Feature(new LineString([[cx - 16, cy + 16], [cx + 16, cy + 16]])); f.set("kind", tile.wallNorth ? "wall" : "edge"); add(f);
+        }
+        if (!tile.east && !collision.tile({ x: x + 1, y, plane })?.blocked) {
+          const f = new Feature(new LineString([[cx + 16, cy - 16], [cx + 16, cy + 16]])); f.set("kind", tile.wallEast ? "wall" : "edge"); add(f);
+        }
+      }
+    }
   }
   const doorSource = new VectorSource();
   const doorLayer = new VectorLayer({ source: doorSource, zIndex: 95, maxResolution: 8.01, style: doorStyle });
@@ -221,7 +283,8 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
       cleanup.push(() => { source.dispose(); terrain.dispose(); });
       void terrain.ready.then(count => { if (!disposed) { failures += count; status(); } });
     } catch (error) { warnings.push(String(error)); status(); return undefined; }
-    const imageLayer = new ImageLayer({ source, zIndex: 10 + layers++ });
+    // Pasted in order, but always under the outlines, lines and markers (z-index 60 and up), however many there are.
+    const imageLayer = new ImageLayer({ source, zIndex: 10 + layers++ / 1000 });
     map.addLayer(imageLayer);
     if (outlined) {
       const outline = new Feature(new MultiLineString(regionContour(shape).map(line => line.map(([x, y]) => {
@@ -232,6 +295,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     }
     return (next: Coordinate) => { const bounds = regionExtent(shape, next); source.moveTo(bounds); imageLayer.setExtent(bounds); };
   };
+  const provisionalNames = new Map((areas.review?.names || []).map(({ point, name }) => [classify(point), name] as const));
   /** An inset: its floor's terrain, and a label to drag it by with a button per plane its area has. */
   const drawGroup = (group: typeof groups[number]) => {
     const placement = placements.get(group.lead.id)!;
@@ -244,7 +308,8 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     const header = document.createElement("div"); header.className = "inset-header";
     const label = document.createElement("button"); label.className = "inset-label"; label.type = "button";
     // Upper floors are small and come in stacks, so their plane is their whole label.
-    const name = assets.labels[group.lead.id]?.name || (isDetachedUpperFloor(group.lead) ? "" : `Terrain at ${group.lead.bounds[0]}, ${group.lead.bounds[1]}`);
+    const naming = assets.labels[group.lead.id];
+    const name = (naming?.status === "unresolved" ? provisionalNames.get(group.lead.id) : undefined) || naming?.name || (isDetachedUpperFloor(group.lead) ? "" : `Terrain at ${group.lead.bounds[0]}, ${group.lead.bounds[1]}`);
     label.textContent = name ? `${name} · Plane ${group.plane}` : `Plane ${group.plane}`;
     label.title = "Drag to move; press Enter or double-click to reset";
     header.append(label);
@@ -328,6 +393,28 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     groups.forEach(group => extend(extent, groupExtent(group, placements.get(group.lead.id)!.offset)));
     if (!isEmpty(extent)) view.fit(extent, { padding: [70, 70, 70, 70], maxZoom: 9 });
   };
+  /**
+   * Fit the review marks closely enough to see single tiles and their collision (8 px a tile or
+   * more), with at least {@link REVIEW_FIT_TILES} tiles around them for context.
+   */
+  const fitReview = () => {
+    const marks = (areas.review?.marks || []).filter(mark => !hidden.has(classify(mark.point)));
+    if (!marks.length) { fit(); return; }
+    const around = (points: WorldPoint[]) => {
+      const extent = createEmpty();
+      points.forEach(point => { const at = projected(point); extend(extent, [...at, ...at]); });
+      const [x1, y1, x2, y2] = extent, half = REVIEW_FIT_TILES * 16, cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
+      return [Math.min(x1, cx - half), Math.min(y1, cy - half), Math.max(x2, cx + half), Math.max(y2, cy + half)];
+    };
+    const padding = [90, 70, 70, 70];
+    view.fit(around(marks.map(mark => mark.point)), { padding, maxZoom: 10 });
+    // Too far apart to see single tiles (an area placed beside a distant entrance): start at the
+    // first origin's end; the row table moves to the other.
+    if ((view.getResolution() ?? 1) > REVIEW_MAX_RESOLUTION) {
+      const first = marks.find(mark => mark.role === "origin") || marks[0];
+      view.fit(around(marks.filter(mark => classify(mark.point) === classify(first.point)).map(mark => mark.point)), { padding, maxZoom: 10 });
+    }
+  };
   /** Show a whole inset and where it is entered from. */
   function fitRegion(regionId: string) {
     const group = groups.find(candidate => candidate.lead.id === regionId), placement = placements.get(regionId);
@@ -379,6 +466,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => map.updateSize()) : undefined;
   observer?.observe(target);
   if (initialView) { view.setCenter(initialView.center); view.setResolution(initialView.resolution); }
+  else if (areas.review) fitReview();
   else fit();
   return {
     fit,
@@ -403,6 +491,8 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
         previewSource.addFeature(feature);
       });
     },
+    /** Centre a game tile where it is drawn, close enough to see its collision. */
+    showTile(point: WorldPoint) { view.animate({ center: projected(point), resolution: Math.min(view.getResolution() ?? 2, 2), duration: 250 }); },
     /** Where a world tile is drawn, in pixels from the map's top left (for end-to-end tests). */
     pixel(point: WorldPoint) { return map.getPixelFromCoordinate(projected(point)); },
     select(index?: number) {
