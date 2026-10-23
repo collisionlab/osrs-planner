@@ -9,6 +9,7 @@ import { COLLISION_RADIUS } from "../../../map/insets/composition";
 import { catalogueClassifier } from "../../../map/insets/preview";
 import type { WorldBox } from "../../../map/insets/projection";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "../provenance";
+import { useRoutingLayers } from "../RoutingPanel";
 import { loadMeta, loadView, type TransportMeta, type TransportView } from "../transports";
 import "../workbench.css";
 import { AreaBrowser } from "./AreaBrowser";
@@ -16,7 +17,6 @@ import { loadInvestigation, tilePoint, type Area, type AreaFilter, type Investig
 import type { CorrectionInput } from "./drafts";
 import { emptyCorrection, LabellingPanel, type PickTarget } from "./LabellingPanel";
 import { investigationOverlay, keyId, keyKind } from "./overlay";
-import { useRoutingLayers } from "./RoutingPanel";
 import { readState, releaseId, writeState, type InvestigationState } from "./state";
 import { areaTopology, gapAreas, loadTopology, reportChecks, type TopologyState } from "./topology";
 import { nearbyBox, TopologyPanel } from "./TopologyPanel";

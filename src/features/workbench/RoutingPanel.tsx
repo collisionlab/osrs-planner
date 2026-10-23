@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import tiles from "../../../../tiles.json";
-import type { WorldPoint } from "../../../domain/contracts";
-import type { WorldBox } from "../../../map/insets/projection";
+import tiles from "../../../tiles.json";
+import type { WorldPoint } from "../../domain/contracts";
+import type { WorldBox } from "../../map/insets/projection";
 import { RoutingData, squarePath, type RoutingComponent, type RoutingCrossing, type RoutingOptions, type RoutingOverlay,
-  type RoutingPin } from "../../../map/insets/routing";
+  type RoutingPin } from "../../map/insets/routing";
 
 const LAYERS = [["components", "Routing components"], ["separators", "Synthetic separators"], ["unreachable", "Structurally unreachable"]] as const;
 

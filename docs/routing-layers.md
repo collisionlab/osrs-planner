@@ -1,6 +1,7 @@
-# Routing partitions in Inset Investigation
+# Routing partitions in the workbench
 
-The Routing partitions panel adds three independent controls to the shared OpenLayers map:
+The Routing partitions panel, in Inset Investigation and the Transport Explorer, adds three independent
+controls to the shared OpenLayers map:
 Routing components, Synthetic separators and Structurally unreachable. They work with any available
 base style, including Blueprint. Each production component gets a faint tint (blocked tiles inside it
 show as gaps), and borders between two components are thin crisp lines; the edge of the search graph

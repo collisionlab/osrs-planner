@@ -8,6 +8,7 @@ import { COLLISION_RADIUS } from "../../map/insets/composition";
 import type { WorldBox } from "../../map/insets/projection";
 import { TONES } from "../../map/insets/routeStyles";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "./provenance";
+import { useRoutingLayers } from "./RoutingPanel";
 import { clusterKey, loadDetail, loadMeta, loadView, parseTile, readState, searchTransports, sourceUrl, toneOf, toneOfType,
   typeName, viewOverlay, writeState, type ExplorerState, type TransportDetail, type TransportMeta, type TransportSummary,
   type TransportView } from "./transports";
@@ -129,7 +130,7 @@ export function TransportExplorer() {
   const selected = detail?.id === state.selected ? detail : undefined;
   // Drawn against the boxes the view was asked for, so features never outrun the data behind them.
   const [viewBoxes, setViewBoxes] = useState<WorldBox[]>();
-  const overlay = useMemo(() => viewOverlay(view, selected, collisionFor === selected?.id ? collision : undefined, viewBoxes),
+  const transportOverlay = useMemo(() => viewOverlay(view, selected, collisionFor === selected?.id ? collision : undefined, viewBoxes),
     [view, selected, collisionFor, collision, viewBoxes]);
 
   // A selection from the list, a search or a link brings it into view; one picked on the map doesn't.
@@ -138,6 +139,10 @@ export function TransportExplorer() {
   const select = (id: string | undefined, fit: boolean) => { fitNext.current = fit; update({ selected: id }); };
   const [here, setHere] = useState<{ ids: string[] }>();
   const [focusBox, setFocusBox] = useState<WorldBox>();
+  // A tile clicked on the map, for the routing layers to inspect.
+  const [picked, setPicked] = useState<WorldPoint>();
+  const routing = useRoutingLayers(picked, setFocusBox);
+  const overlay = useMemo(() => transportOverlay && { ...transportOverlay, routing: routing.overlay }, [transportOverlay, routing.overlay]);
   const [focusTile, setFocusTile] = useState<{ point: WorldPoint }>();
   const onSelectFeatures = (keys: string[]) => {
     const cluster = keys.find(key => key.startsWith("cluster:"));
@@ -231,7 +236,8 @@ export function TransportExplorer() {
       <main className="wb-main">
         <section className="wb-map">
           {insetPin ? <Suspense fallback={<div className="route-map" role="status">Loading inset map…</div>}>
-            <InsetMap overlay={overlay} style={style} insets onPick={() => setHere(undefined)} onFallback={() => {}}
+            <InsetMap overlay={overlay} style={style} insets onPick={point => { setHere(undefined); setPicked(point); }}
+              onRoutingCrossing={routing.selectCrossing} onFallback={() => {}}
               onSelectFeatures={onSelectFeatures} onView={recordView} fitSelection={false} fitAnchors={fitNext.current}
               initialCentre={state.at ?? LUMBRIDGE} focusBox={focusBox} focusTile={focusTile}
               onReady={instance => { mapRef.current = instance; }} />
@@ -241,13 +247,17 @@ export function TransportExplorer() {
               onClick={() => { setStyle(id); saveStyle(id); }}>{label}</button>)}
           </div>}
         </section>
-        {selected ? <Detail detail={selected} meta={meta} onShow={p => setFocusTile({ point: p })} />
-          : <section className="wb-detail wb-hint-panel"><p className="wb-note">Click a transport on the map or in the list to see where it comes from. Teleports, which leave from anywhere, show only where they land.</p></section>}
+        <div className="wb-below-map">
+          {selected ? <Detail detail={selected} meta={meta} onShow={p => setFocusTile({ point: p })} />
+            : <section className="wb-detail wb-hint-panel"><p className="wb-note">Click a transport on the map or in the list to see where it comes from. Teleports, which leave from anywhere, show only where they land.</p></section>}
+          <div className="wb-detail">{routing.panel}</div>
+        </div>
       </main>
     </div>
     <footer className="wb-footer wb-provenance">
       {lines.map(line => <span key={line.subject} className={`wb-prov ${line.status}`} title={line.status === "differs" ? "Not made from the same revision" : undefined}>
         <b>{line.subject}</b> {line.text}</span>)}
+      {routing.provenance && <span className="wb-prov ok"><b>Routing</b> {routing.provenance}, verified against these tiles</span>}
     </footer>
   </div>;
 }
