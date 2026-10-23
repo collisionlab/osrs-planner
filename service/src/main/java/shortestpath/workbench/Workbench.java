@@ -71,6 +71,36 @@ public final class Workbench {
         });
     }
 
+    /**
+     * The inset investigation's topology report from shortest-path-tooling, served as it was made:
+     * the file {@code WORKBENCH_TOPOLOGY} names, else {@code workbench-topology.json} on the
+     * classpath. The page checks it; without one it answers 404 and the page says so, rather than
+     * working anything out itself.
+     */
+    public static void topologyRoutes(Javalin app, Supplier<byte[]> report) {
+        app.get("/workbench/v1/topology", ctx -> {
+            byte[] body = report.get();
+            if (body == null) {
+                throw new Reviews.NotFound("this build has no topology report from shortest-path-tooling");
+            }
+            ctx.header("Cache-Control", "public, max-age=300").contentType("application/json").result(body);
+        });
+    }
+
+    /** The topology report this service serves, or null (see {@link #topologyRoutes}). */
+    public static byte[] topologyReport(String path) {
+        try {
+            if (path != null && !path.isBlank()) {
+                return java.nio.file.Files.readAllBytes(Path.of(path));
+            }
+            try (var stream = Workbench.class.getResourceAsStream("/workbench-topology.json")) {
+                return stream == null ? null : stream.readAllBytes();
+            }
+        } catch (java.io.IOException error) {
+            throw new java.io.UncheckedIOException(error);
+        }
+    }
+
     /** At most this many boxes a view, each at most this many tiles a side. */
     static final int MAX_BOXES = 24, MAX_BOX_SIDE = 4096;
 
@@ -157,6 +187,8 @@ public final class Workbench {
             return "pulls";
         } else if (path.contains("/compare/")) {
             return "compare";
+        } else if (path.endsWith("/topology")) {
+            return "topology";
         } else if (path.contains("/transports")) {
             return path.endsWith("/transports") ? "transports" : path.endsWith("{id}") ? "transport" : path.substring(path.lastIndexOf('/') + 1);
         }
