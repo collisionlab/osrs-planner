@@ -35,11 +35,13 @@ final class GitSource {
 
     private final String repository, remote;
     private final Path dir;
+    private final WorkbenchMetrics metrics;
 
     /** {@code remote} is where repositories live: {@code https://github.com/}, or a directory in tests. */
-    GitSource(String repository, Path cache, String remote) {
+    GitSource(String repository, Path cache, String remote, WorkbenchMetrics metrics) {
         this.repository = repository;
         this.remote = remote;
+        this.metrics = metrics;
         this.dir = cache.resolve(repository + ".git");
     }
 
@@ -136,7 +138,7 @@ final class GitSource {
         }
         Path partial = dir.resolveSibling(dir.getFileName() + ".partial");
         deleteRecursively(partial);
-        Result result = exec(List.of("git", "clone", "--quiet", "--bare", "--filter=blob:none", "--no-tags",
+        Result result = exec("clone", List.of("git", "clone", "--quiet", "--bare", "--filter=blob:none", "--no-tags",
             remote + repository + ".git", partial.toString()), dir.getParent());
         if (result.exit != 0) {
             throw new IllegalStateException("git clone " + repository + " failed: " + result.error);
@@ -159,7 +161,7 @@ final class GitSource {
     private Result run(List<String> args) {
         List<String> command = new ArrayList<>(List.of("git", "--git-dir", dir.toString()));
         command.addAll(args);
-        return exec(command, dir);
+        return exec(args.get(0), command, dir);
     }
 
     private static final class Result {
@@ -170,6 +172,20 @@ final class GitSource {
             this.exit = exit;
             this.output = output;
             this.error = error;
+        }
+    }
+
+    /** Runs git, timed under {@code name} (its subcommand). */
+    private Result exec(String name, List<String> command, Path workingDir) {
+        long started = System.nanoTime();
+        boolean ok = false;
+        try {
+            Result result = exec(command, workingDir);
+            // cat-file -e answers "no" with exit 1, which isn't a failure.
+            ok = result.exit == 0 || name.equals("cat-file");
+            return result;
+        } finally {
+            metrics.git(name, ok, System.nanoTime() - started);
         }
     }
 

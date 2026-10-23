@@ -53,15 +53,26 @@ final class GitHubPulls {
     private final ObjectMapper mapper = new ObjectMapper();
     private final Map<String, Listing> last = new ConcurrentHashMap<>();
     private final String api, token;
+    private final WorkbenchMetrics metrics;
 
     /** {@code api} is {@code https://api.github.com/}, or a stand-in in tests; {@code token} may be null. */
-    GitHubPulls(String api, String token) {
+    GitHubPulls(String api, String token, WorkbenchMetrics metrics) {
         this.api = api;
         this.token = token;
+        this.metrics = metrics;
     }
 
     /** The open pull requests, oldest number last; the first 100, which is plenty for a plugin's repository. */
     List<OpenPull> open(String repository) {
+        try {
+            return list(repository);
+        } catch (RuntimeException e) {
+            metrics.githubListing("error", null);
+            throw e;
+        }
+    }
+
+    private List<OpenPull> list(String repository) {
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(api + "repos/" + repository + "/pulls?state=open&per_page=100"))
             .timeout(Duration.ofSeconds(30))
             .header("Accept", "application/vnd.github+json")
@@ -82,10 +93,13 @@ final class GitHubPulls {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("interrupted", e);
         }
+        Long remaining = response.headers().firstValue("X-RateLimit-Remaining").map(Long::valueOf).orElse(null);
         if (response.statusCode() == 304 && previous != null) {
+            metrics.githubListing("not_modified", remaining);
             return previous.pulls;
         }
         if (response.statusCode() != 200) {
+            metrics.githubListing("error", remaining);
             throw new IllegalStateException("GitHub answered " + response.statusCode() + " for " + repository + "'s pull requests");
         }
         if (response.headers().firstValue("Link").filter(link -> link.contains("rel=\"next\"")).isPresent()) {
@@ -102,6 +116,7 @@ final class GitHubPulls {
             throw new UncheckedIOException(e);
         }
         response.headers().firstValue("ETag").ifPresent(etag -> last.put(repository, new Listing(etag, pulls)));
+        metrics.githubListing("ok", remaining);
         return pulls;
     }
 }

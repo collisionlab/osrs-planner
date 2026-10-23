@@ -163,6 +163,7 @@ public final class ServiceMain {
                 finish(metrics, routeLog, ctx, request, "busy", null, received, -1);
             }
         });
+        reviews.bindTo(metrics);
         Workbench.routes(app, reviews);
         app.exception(Reviews.NotServed.class, (error, ctx) -> error(ctx, 404, error.getMessage()));
         app.exception(Reviews.NotFound.class, (error, ctx) -> error(ctx, 404, error.getMessage()));

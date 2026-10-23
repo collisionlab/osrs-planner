@@ -2,6 +2,8 @@ package shortestpath.workbench;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.binder.cache.CaffeineCacheMetrics;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -93,20 +95,32 @@ public final class Reviews {
     }
 
     private final Map<String, GitSource> sources = new LinkedHashMap<>();
+    private final WorkbenchMetrics metrics = new WorkbenchMetrics();
     private final GitHubPulls github;
     private final Map<String, PullList> open = new ConcurrentHashMap<>();
-    private final Cache<String, Review> reviews = Caffeine.newBuilder().maximumSize(256).build();
+    private final Cache<String, Review> reviews = Caffeine.newBuilder().maximumSize(256).recordStats().build();
     private final Cache<String, Heads> heads = Caffeine.newBuilder().maximumSize(256).expireAfterWrite(Duration.ofMinutes(1)).build();
 
     /**
      * {@code repositories} are {@code owner/name}, the only ones served; {@code remote} as in {@link GitSource};
-     * {@code github} lists open pull requests, or is null for no list.
+     * {@code github} is GitHub's API ({@code https://api.github.com/}) for listing open pull requests,
+     * or null for no list; {@code token} may be null.
      */
-    Reviews(List<String> repositories, Path cache, String remote, GitHubPulls github) {
-        this.github = github;
+    Reviews(List<String> repositories, Path cache, String remote, String github, String token) {
+        this.github = github == null ? null : new GitHubPulls(github, token, metrics);
         for (String repository : repositories) {
-            sources.put(repository.toLowerCase(), new GitSource(repository, cache, remote));
+            sources.put(repository.toLowerCase(), new GitSource(repository, cache, remote, metrics));
         }
+    }
+
+    /** Reports to the service's {@code /metrics}. */
+    public void bindTo(MeterRegistry registry) {
+        metrics.bindTo(registry);
+        CaffeineCacheMetrics.monitor(registry, reviews, "workbench_reviews");
+    }
+
+    WorkbenchMetrics metrics() {
+        return metrics;
     }
 
     /**
@@ -130,9 +144,12 @@ public final class Reviews {
             try {
                 source.warm();
                 if (github != null) {
-                    open.put(source.repository().toLowerCase(), listOpen(source));
+                    PullList list = listOpen(source);
+                    open.put(source.repository().toLowerCase(), list);
+                    metrics.refreshed(true, list.pulls.size());
                 }
             } catch (RuntimeException e) {
+                metrics.refreshed(false, 0);
                 LoggerFactory.getLogger(Reviews.class).warn("could not refresh {}", source.repository(), e);
             }
         }
@@ -226,7 +243,14 @@ public final class Reviews {
         return sha;
     }
 
-    private static Review review(GitSource source, Integer pull, String base, String head) {
+    private Review review(GitSource source, Integer pull, String base, String head) {
+        long started = System.nanoTime();
+        Review review = build(source, pull, base, head);
+        metrics.reviewBuilt(System.nanoTime() - started);
+        return review;
+    }
+
+    private static Review build(GitSource source, Integer pull, String base, String head) {
         String mergeBase = source.mergeBase(base, head);
         List<TransportDiff.FileVersions> files = new ArrayList<>();
         for (String[] change : source.changed(mergeBase, head, REVIEWED_DIRS)) {

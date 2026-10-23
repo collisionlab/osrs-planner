@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.javalin.Javalin;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.javalin.testtools.JavalinTest;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -55,7 +56,7 @@ class ReviewsTest {
     }
 
     static Reviews reviews() {
-        return new Reviews(List.of("Owner/repo"), temp.resolve("cache-" + System.nanoTime()), remote, null);
+        return new Reviews(List.of("Owner/repo"), temp.resolve("cache-" + System.nanoTime()), remote, null, null);
     }
 
     @Test
@@ -88,7 +89,9 @@ class ReviewsTest {
         }).start(0);
         try {
             Path cache = temp.resolve("cache-list");
-            Reviews reviews = new Reviews(List.of("Owner/repo"), cache, remote, new GitHubPulls("http://localhost:" + github.port() + "/", null));
+            Reviews reviews = new Reviews(List.of("Owner/repo"), cache, remote, "http://localhost:" + github.port() + "/", null);
+            SimpleMeterRegistry meters = new SimpleMeterRegistry();
+            reviews.bindTo(meters);
             assertNull(reviews.openPulls("Owner/repo").refreshedAt);
             reviews.refresh();
             assertTrue(Files.isDirectory(cache.resolve("Owner/repo.git/objects")));
@@ -105,6 +108,14 @@ class ReviewsTest {
             reviews.refresh();
             assertEquals(1, reviews.openPulls("Owner/repo").pulls.size());
             assertEquals(java.util.Arrays.asList(null, "\"v1\""), asked);
+            // What the dashboard shows: the listings, the open list, and git's timings.
+            assertEquals(1, meters.counter("workbench_github_listings_total", "outcome", "ok").count());
+            assertEquals(1, meters.counter("workbench_github_listings_total", "outcome", "not_modified").count());
+            assertEquals(2, meters.counter("workbench_refreshes_total", "outcome", "ok").count());
+            assertEquals(1, meters.get("workbench_open_pulls").gauge().value());
+            assertTrue(meters.get("workbench_open_pulls_listed_timestamp_seconds").gauge().value() > 0);
+            assertTrue(meters.get("workbench_git_duration").tag("command", "clone").timer().count() == 1);
+            assertTrue(meters.get("workbench_review_build_duration").timer().count() >= 1);
         } finally {
             github.stop();
         }
@@ -131,6 +142,8 @@ class ReviewsTest {
     @Test
     void servesImmutableRangesAndTheCurrentPullRequest() {
         Reviews reviews = reviews();
+        SimpleMeterRegistry meters = new SimpleMeterRegistry();
+        reviews.bindTo(meters);
         Javalin app = Javalin.create();
         Workbench.routes(app, reviews);
         app.exception(Reviews.NotServed.class, (error, ctx) -> ctx.status(404));
@@ -151,6 +164,8 @@ class ReviewsTest {
             assertEquals(404, client.get("/workbench/v1/github/Owner/repo/compare/master...no-such-branch").code());
             assertEquals(404, client.get("/workbench/v1/github/Other/repo/pull/7").code());
             assertEquals(200, client.get("/workbench/v1/github/Owner/repo/pulls").code());
+            assertEquals(1, meters.get("workbench_requests").tags("route", "files", "status", "200").timer().count());
+            assertEquals(1, meters.get("workbench_requests").tags("route", "compare", "status", "404").timer().count());
         });
     }
 
