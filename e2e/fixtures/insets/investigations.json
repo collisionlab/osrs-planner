@@ -1,0 +1,124 @@
+{
+ "schemaVersion": 1,
+ "catalogueSha256": "17ee60e82a079c32db962dcc2cdeec757e591c5be8a69b2df919e20a3d475bac",
+ "labelsSha256": "b925269bb9276fc552fc55451d3c4d9a6f9077682e7ab092d0e264b3dee3ff58",
+ "anchorsSha256": "ce7fb6e4e4c564f920fe1cd93458ed60ee922075f3e57fa11268f405302acb92",
+ "plugin": {
+  "repository": "Skretzo/shortest-path",
+  "rev": "12728cca1857ff25e40f92cecd10ff08970d6d32"
+ },
+ "areas": [
+  {
+   "id": "region:p0-3648-8576-75e60686e8",
+   "status": "provisional",
+   "areaKey": null,
+   "name": "Unidentified terrain at 3648, 8576",
+   "aliases": [],
+   "regionIds": [
+    "p0-3648-8576-75e60686e8"
+   ],
+   "relatedAreaIds": [],
+   "priority": 900,
+   "issues": [
+    {
+     "code": "large-unidentified",
+     "severity": "warning",
+     "message": "24,321 tiles of terrain with no name and no anchor.",
+     "regionId": "p0-3648-8576-75e60686e8"
+    }
+   ],
+   "candidates": [
+    {
+     "id": "n-fixture-1",
+     "name": "Fixture Caverns",
+     "regionId": "p0-3648-8576-75e60686e8",
+     "evidence": [
+      "s-fixture-label"
+     ],
+     "reason": "A map label lies inside the region's terrain; no transport reaches it, so nothing confirms it.",
+     "score": 0.4
+    }
+   ]
+  },
+  {
+   "id": "area:taverley-dungeon",
+   "status": "named",
+   "areaKey": "taverley-dungeon",
+   "name": "Taverley Dungeon",
+   "aliases": [
+    "Taverley Dungeon"
+   ],
+   "regionIds": [
+    "p0-2815-9671-fa8e6b76d2",
+    "p1-2770-9792-d5ff518273",
+    "p1-2887-9797-df2334d7b8"
+   ],
+   "relatedAreaIds": [
+    "area:cerberus-lair"
+   ],
+   "priority": 640,
+   "issues": [
+    {
+     "code": "possible-topology-gap",
+     "severity": "warning",
+     "message": "The topology report finds an unreached walking component here.",
+     "regionId": "p0-2815-9671-fa8e6b76d2",
+     "point": [
+      2905,
+      9681,
+      0
+     ]
+    }
+   ],
+   "candidates": []
+  },
+  {
+   "id": "area:cerberus-lair",
+   "status": "named",
+   "areaKey": "cerberus-lair",
+   "name": "Cerberus' Lair",
+   "aliases": [],
+   "regionIds": [
+    "p0-1216-1226-a40bc5e713",
+    "p0-1280-1216-f64e97948d",
+    "p0-1280-1289-8dcbd52856"
+   ],
+   "relatedAreaIds": [
+    "area:taverley-dungeon"
+   ],
+   "priority": 120,
+   "issues": [],
+   "candidates": []
+  },
+  {
+   "id": "area:troll-stronghold",
+   "status": "named",
+   "areaKey": "troll-stronghold",
+   "name": "Troll Stronghold",
+   "aliases": [],
+   "regionIds": [
+    "p0-2822-10048-f2db540fc3",
+    "p1-2823-10049-556156fff1",
+    "p2-2820-10049-1cbab586ab"
+   ],
+   "relatedAreaIds": [],
+   "priority": 30,
+   "issues": [],
+   "candidates": []
+  }
+ ],
+ "evidence": {
+  "s-fixture-label": {
+   "id": "s-fixture-label",
+   "kind": "mejrs",
+   "name": "Fixture Caverns",
+   "point": [
+    3711,
+    8703,
+    0
+   ],
+   "source": "https://docs.google.com/spreadsheets/d/1859HuKw5dXqmfakFd6e6kQ_PEXQA02namB4aNVQ0qpY/edit",
+   "row": 9999
+  }
+ }
+}

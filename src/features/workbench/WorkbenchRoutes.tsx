@@ -3,6 +3,7 @@ import { Link, Route, Routes, useNavigate } from "react-router-dom";
 import { OpenPullList } from "./OpenPulls";
 import { ReviewPage } from "./ReviewPage";
 import { TransportExplorer } from "./TransportExplorer";
+import { InsetInvestigation } from "./investigation/InsetInvestigation";
 import "./workbench.css";
 
 /**
@@ -20,6 +21,7 @@ export function WorkbenchRoutes() {
   return <Routes>
     <Route path="/" element={<WorkbenchHome />} />
     <Route path="/transports" element={<TransportExplorer />} />
+    <Route path="/insets" element={<InsetInvestigation />} />
     <Route path="/github/:owner/:repo/pull/:number" element={<ReviewPage />} />
     <Route path="/github/:owner/:repo/pull/:number/files" element={<ReviewPage />} />
     <Route path="/github/:owner/:repo/pull/:number/files/:range" element={<ReviewPage />} />
@@ -57,6 +59,8 @@ function WorkbenchHome({ missing }: { missing?: boolean }) {
       <OpenPullList />
       <h1>Transport explorer</h1>
       <p>Every transport the plugin builds from its data, on the map: what each needs, and the rows it came from. <Link to="/transports">Open the explorer</Link></p>
+      <h1>Inset investigation</h1>
+      <p>Areas off the main map, region by region: their names and the evidence behind them, their anchors and connections, and where the world's topology may be missing a link. <Link to="/insets">Investigate insets</Link></p>
     </main>
   </div>;
 }

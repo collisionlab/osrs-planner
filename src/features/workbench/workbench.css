@@ -89,7 +89,72 @@ a.wb-brand { text-decoration: none; }
 .wb-prov.differs::before { content: "⚠ "; }
 .wb-prov.unknown { color: var(--muted); }
 .wb-prov b { color: var(--text); font-weight: 500; }
+/* Inset investigation */
+.wb-insets-body { grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(320px, 420px); }
+.wb-insets-map { border-right: 1px solid var(--line); }
+.wb-side-panel { overflow: auto; min-height: 0; background: var(--panel); }
+.wb-panel-head { position: sticky; top: 0; z-index: 2; padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.wb-panel-head h2 { margin: 0 0 6px; font-size: 14px; }
+.wb-panel-head .wb-note { margin: 6px 0 0; }
+.wb-modes { position: static; }
+.wb-panel-body { padding: 4px 14px 16px; }
+.wb-section { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.wb-section h3 { margin: 0 0 6px; font-size: 12px; }
+.wb-section h3 small { color: var(--muted); font-weight: 400; }
+.wb-area-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; padding: 6px 12px; border-bottom: 1px solid var(--line); color: var(--muted); }
+.wb-area-filters label { display: grid; gap: 2px; font-size: 11px; }
+.wb-area-filters select, .wb-form input, .wb-form select, .wb-form textarea, .wb-end input { min-width: 0; padding: 3px 5px; color: var(--text); background: var(--ink); border: 1px solid var(--line); font: inherit; }
+.wb-flag { padding: 0 4px; color: var(--muted); border: 1px solid var(--line); font-size: 10px; }
+.wb-flag.gap { color: #ff7ad9; border-color: #ff7ad9; } .wb-flag.issue { color: #ffc44d; border-color: #ffc44d; }
+.wb-pad { padding: 6px 12px; }
+.wb-map-tools { position: absolute; z-index: 600; left: 12px; bottom: 44px; display: flex; flex-wrap: wrap; gap: 6px; }
+.wb-map-tools .map-style-toggle { position: static; }
+.wb-tilebar { position: absolute; z-index: 600; left: 12px; right: 12px; bottom: 10px; padding: 4px 8px; color: var(--text); background: rgba(20, 25, 20, .86); border: 1px solid var(--line); font-size: 12px; pointer-events: none; }
+.wb-placement { color: #ffc44d; }
+.wb-callout { margin: 8px 0; padding: 8px 10px; background: var(--raised); border-left: 3px solid var(--orange); }
+.wb-callout h4 { margin: 0 0 6px; font-size: 12px; }
+.wb-checks { list-style: none; margin: 0 0 6px; padding: 0; font-size: 12px; }
+.wb-checks li::before { content: "✓ "; color: #5ee08a; }
+.wb-checks li.differs::before { content: "⚠ "; color: #ffc44d; } .wb-checks li.unknown::before { content: "? "; color: var(--muted); }
+.wb-unavailable { margin: 0; padding: 6px 10px; color: var(--muted); border: 1px dashed var(--line); }
+.wb-support { margin-left: 6px; padding: 0 5px; border: 1px solid #5ee08a; color: #5ee08a; font-size: 11px; }
+.wb-support.insufficient { border-color: #ffc44d; color: #ffc44d; }
+.wb-bad { color: #ff6b6b; }
+.wb-kind { margin-left: 4px; padding: 0 5px; font-size: 10px; font-weight: 400; text-transform: uppercase; letter-spacing: .04em; }
+.wb-kind.fact { color: #5ee08a; border: 1px solid #5ee08a; } .wb-kind.suggestion { color: #ff7ad9; border: 1px dashed #ff7ad9; }
+.wb-status { color: var(--muted); font-size: 11px; }
+.wb-list { list-style: none; margin: 0; padding: 0; }
+.wb-list > li { padding: 4px 0; border-top: 1px solid var(--line); }
+.wb-list > li.selected { box-shadow: inset 3px 0 var(--orange); padding-left: 6px; }
+.wb-compact > li { padding: 2px 0; }
+.wb-item { display: flex; justify-content: space-between; gap: 8px; width: 100%; padding: 2px 0; color: var(--text); background: none; border: 0; font: inherit; text-align: left; cursor: pointer; }
+.wb-item[aria-current="true"] { color: var(--orange); }
+.wb-issue.error b { color: #ff6b6b; } .wb-issue.warning b { color: #ffc44d; }
+.wb-entry { padding: 4px 0; }
+.wb-chain { margin: 2px 0 0; padding-left: 18px; }
+.wb-chain li.default { color: var(--text); }
+.wb-step + .wb-step::before { content: " → "; }
+.wb-form { display: grid; gap: 6px; }
+.wb-form label, .wb-field { display: grid; gap: 2px; color: var(--muted); font-size: 11px; }
+.wb-form fieldset { display: grid; gap: 3px; margin: 0; padding: 4px 8px; border: 1px solid var(--line); }
+.wb-form legend { color: var(--muted); font-size: 11px; }
+.wb-form .wb-check, .wb-check { display: flex; align-items: center; gap: 4px; color: var(--text); font-size: 12px; }
+.wb-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.wb-small { padding: 2px 8px; color: var(--ink); background: var(--orange); border: 0; font: 10px var(--pixel); cursor: pointer; }
+.wb-small[aria-pressed="true"] { background: #ffc44d; }
+.wb-small:disabled { opacity: .5; cursor: default; }
+.wb-problems { margin: 6px 0; padding-left: 18px; color: #ffc44d; font-size: 12px; }
+.wb-draft-text { max-height: 220px; overflow: auto; margin: 6px 0; padding: 6px; color: var(--text); background: var(--ink); border: 1px solid var(--line); font: 11px ui-monospace, monospace; white-space: pre; }
+.wb-end { padding: 4px 0; }
+.wb-end .wb-facts { margin: 4px 0 0 8px; font-size: 12px; }
+.wb-explorer-link { color: var(--cyan); font-size: 12px; }
+button.wb-chip { color: var(--text); background: none; cursor: pointer; font: inherit; font-size: 12px; }
+button.wb-chip[aria-pressed="true"] { border-color: var(--orange); }
 @media (max-width: 760px) {
+  .wb-insets-body { grid-template-columns: 1fr; }
+  .wb-insets-map { height: 60vh; border-right: 0; }
+  .wb-side-panel { overflow: visible; }
+
   .wb-columns { grid-template-columns: 1fr; }
   .wb-page { height: auto; min-height: 100dvh; }
   .wb-body { grid-template-columns: 1fr; }

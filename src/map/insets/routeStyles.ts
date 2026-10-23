@@ -54,7 +54,8 @@ function endpointHit(resolution: number): Style[] {
 
 /** Feature colours: review rows by change, transports by kind. */
 export const TONES: Record<FeatureTone, string> = { added: "#5ee08a", removed: "#ff6b6b", changed: "#ffc44d",
-  object: "#f2ead2", journey: "#6fc3ff", teleport: "#c79bff", count: "#ffae47" };
+  object: "#f2ead2", journey: "#6fc3ff", teleport: "#c79bff", count: "#ffae47",
+  area: "#ffae47", candidate: "#ff7ad9", suspect: "#ff6b6b", component: "#7ee0d0", evidence: "#ffe066", entrance: "#f7f1dc", draft: "#5ee08a" };
 
 /** Screen pixels a review edge is moved to its right, so a row and its way back sit side by side. */
 const LANE_PX = 5;
@@ -122,10 +123,26 @@ export function collisionStyle(feature: FeatureLike): Style {
 function regionStyle(feature: FeatureLike, selected: boolean): Style {
   const color = TONES[feature.get("tone") as FeatureTone];
   return new Style({
-    fill: new Fill({ color: `${color}33` }), stroke: new Stroke({ color: selected ? "#ffffff" : `${color}cc`, width: selected ? 2.5 : 1.5 }),
+    fill: new Fill({ color: `${color}33` }), stroke: new Stroke({ color: selected ? "#ffffff" : `${color}cc`, width: selected ? 2.5 : 1.5,
+      lineDash: feature.get("dashed") ? [6, 4] : undefined }),
     text: feature.get("label") ? new Text({ text: String(feature.get("label")), font: "bold 12px ui-monospace, monospace", overflow: true,
       fill: new Fill({ color: "#ffffff" }), stroke: new Stroke({ color: ink, width: 3 }) }) : undefined,
   });
+}
+
+const maskLooks = new Map<string, Style>();
+/** A region's exact terrain: lightly tinted, its outline in its tone; heavier when `strong` (the selected region). */
+export function maskStyle(feature: FeatureLike): Style {
+  const tone = feature.get("tone") as FeatureTone, strong = !!feature.get("strong"), part = feature.get("part");
+  const key = `${tone}/${strong}/${part}`;
+  let style = maskLooks.get(key);
+  if (!style) {
+    const color = TONES[tone];
+    style = part === "fill" ? new Style({ fill: new Fill({ color: `${color}${strong ? "2e" : "14"}` }) })
+      : new Style({ stroke: new Stroke({ color: strong ? color : `${color}99`, width: strong ? 4 : 2 }) });
+    maskLooks.set(key, style);
+  }
+  return style;
 }
 
 /** An overlay feature (see features.ts), by its kind; `selected` is the selected item's key. */

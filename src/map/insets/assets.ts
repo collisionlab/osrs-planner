@@ -14,6 +14,8 @@ export interface InsetManifest {
 export interface InsetAssets {
   catalogue: Catalogue;
   labels: Record<string, { name: string; plane: number; status?: string; areas?: { areaKey: string }[] }>;
+  /** `labels.json`'s evidence records, as published (the workbench's inset investigation checks them). */
+  evidence?: Record<string, unknown>;
   manifest: InsetManifest;
   base: string;
 }
@@ -87,7 +89,7 @@ export async function loadInsetAssets(base: string, tileVersion: string, signal:
       throw new Error("Invalid inset name");
     }
   }
-  return { catalogue, labels: naming.regions, manifest: checked, base };
+  return { catalogue, labels: naming.regions, evidence: naming.evidence, manifest: checked, base };
 }
 
 /** How far apart, in tiles, one area's components can be and still be drawn as one inset. */

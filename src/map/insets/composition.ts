@@ -8,6 +8,7 @@ import VectorSource from "ol/source/Vector";
 import LineString from "ol/geom/LineString";
 import MultiLineString from "ol/geom/MultiLineString";
 import Point from "ol/geom/Point";
+import MultiPolygon from "ol/geom/MultiPolygon";
 import Polygon from "ol/geom/Polygon";
 import Translate from "ol/interaction/Translate";
 import { Stroke, Style } from "ol/style";
@@ -25,7 +26,7 @@ import { surfaceLayer } from "./tactical";
 import { regionTerrain, type TerrainTiles } from "./terrain";
 import { PastedTerrainSource } from "./PastedTerrainSource";
 import { RegionFeatures } from "./RegionFeatures";
-import { collisionStyle, doorStyle, endpointPixels, featureStyle, routeFeatureStyle, routeMarkerOverlay } from "./routeStyles";
+import { collisionStyle, doorStyle, endpointPixels, featureStyle, maskStyle, routeFeatureStyle, routeMarkerOverlay } from "./routeStyles";
 import { regionContour } from "./contour";
 import { edgeLinks, featurePoints, featuresOf, keysHit, type FeatureOverlay, type MapFeature } from "./features";
 import { visibleBoxes, type WorldBox } from "./projection";
@@ -57,8 +58,8 @@ export interface AreaOptions {
   onPlane?(regionId: string, plane: number): void;
   /** Features drawn over the map besides the route (the workbench's tools; see features.ts). */
   overlay?: FeatureOverlay;
-  /** Items under a click, by their features' keys. */
-  onSelectFeatures?(keys: string[]): void;
+  /** Items under a click, by their features' keys, and the tile clicked. */
+  onSelectFeatures?(keys: string[], point: WorldPoint): void;
   /** The world tiles in view, a box per area drawn, after each move. */
   onView?(boxes: WorldBox[], resolution: number): void;
 }
@@ -80,12 +81,18 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   const walked = [...(route?.segments.flatMap(segmentPoints) || []), ...anchorPoints];
   const assets = walked.length ? { ...releaseAssets, catalogue: withRouteFloors(releaseAssets.catalogue, walked) } : releaseAssets;
   const classify = catalogueClassifier(assets.catalogue, { detachUpperFloors: true });
+  const regionById = new Map(assets.catalogue.regions.map(region => [region.id, region]));
   const points = [start?.coordinate, destination?.coordinate, ...walked].filter((point): point is WorldPoint => !!point);
   const touched = new Set(points.map(classify));
   // A shown area keeps its entrance placement once an endpoint is put in it; a route that really
   // crosses into it is laid out first, so its own crossing wins.
-  const shown = areas.shown || [];
-  const shapes = assets.catalogue.regions.filter(region => touched.has(region.id) || shown.some(area => area.regionId === region.id));
+  // A tool's regions: those with an entrance are shown like the planner's areas, the rest in place.
+  const overlayRegions = (areas.overlay?.regions || []).filter(region => regionById.has(region.regionId));
+  const shown = [...areas.shown || [], ...overlayRegions.filter(region => region.entrance).map(({ regionId, entrance }) => ({
+    regionId, entrance, name: assets.labels[regionId]?.name || regionId, tileCount: regionById.get(regionId)!.tileCount }))];
+  const inPlace = new Set(overlayRegions.filter(region => !region.entrance && !region.aside).map(region => region.regionId));
+  const aside = new Set(overlayRegions.filter(region => !region.entrance && region.aside).map(region => region.regionId));
+  const shapes = assets.catalogue.regions.filter(region => touched.has(region.id) || inPlace.has(region.id) || aside.has(region.id) || shown.some(area => area.regionId === region.id));
   const decomposed = route ? decomposeRoute(route, classify) : { sections: [], transitions: [] };
   const surfacePoints = points.filter(point => classify(point) === "main-world").map(worldToMap);
   // A shown area is entered the way its anchors say, as if the route crossed there.
@@ -96,7 +103,6 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   }));
   // Each inset draws its area's components on one plane together (see areaFloors). A route's own
   // inset switched to another plane hides the route there.
-  const regionById = new Map(assets.catalogue.regions.map(region => [region.id, region]));
   const leads = new Set(shapes.map(shape => shape.id));
   const groups = shapes.map(lead => {
     const floors = areaFloors(assets, lead.id);
@@ -113,7 +119,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   const groupExtent = (group: typeof groups[number], offset: Coordinate) => regionExtent({ ...group.lead, bounds: group.bounds }, offset);
   const placements = layoutRegions(groups.map(group => ({ ...group.lead, bounds: group.bounds })),
     [...decomposed.transitions.filter(t => t.kind === "region"), ...entrances, ...edgeLinks(anchors, classify)], surfacePoints, 40 * 8,
-    new Set(shapes.filter(isDetachedUpperFloor).map(shape => shape.id)));
+    new Set(shapes.filter(isDetachedUpperFloor).map(shape => shape.id)), inPlace);
   // Unknown coordinates remain visible in their original world position.
   if (touched.has("unmapped") && !placements.has("unmapped")) placements.set("unmapped", { offset: [0, 0], anchored: false });
   const projected = (point: WorldPoint) => {
@@ -204,6 +210,9 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   const featureLayer = new VectorLayer({ source: featureSource, zIndex: 99, updateWhileInteracting: true, updateWhileAnimating: true,
     style: (feature, resolution) => featureStyle(feature, overlay?.selected, resolution) });
   map.addLayer(featureLayer);
+  // Regions' exact terrain, tinted under the collision and the features; clicks pass through to the terrain.
+  const maskSource = new VectorSource();
+  map.addLayer(new VectorLayer({ source: maskSource, zIndex: 55, updateWhileInteracting: true, updateWhileAnimating: true, style: maskStyle }));
   const collisionSource = new VectorSource();
   map.addLayer(new VectorLayer({ source: collisionSource, zIndex: 60, maxResolution: ANCHOR_MAX_RESOLUTION + .01, updateWhileInteracting: true, updateWhileAnimating: true,
     style: collisionStyle }));
@@ -217,7 +226,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   let drawable: (point: WorldPoint) => boolean = () => false;
   /** Draw (or redraw) the overlay's features and the collision around its anchors' tiles. */
   const drawOverlay = () => {
-    featureSource.clear(); collisionSource.clear();
+    featureSource.clear(); collisionSource.clear(); maskSource.clear();
     owned.remove(target => !!target.get("overlay"));
     if (!overlay) return;
     const anchored = new Set<MapFeature>(overlay.anchors);
@@ -225,6 +234,17 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
       feature.set("overlay", true); source.addFeature(feature); owned.add(region, feature);
     };
     for (const item of overlay.features) {
+      if (item.kind === "mask") {
+        const region = regionById.get(item.regionId), placement = picked.get(item.regionId);
+        if (!region || !placement || hidden.has(item.regionId)) continue;
+        // Mask rectangles' tile edges, as the outline draws them, where the region is now.
+        const corner = (x: number, y: number) => { const at = worldToMap({ x: x - 0.5, y: y - 0.5, plane: region.plane }); return [at[0] + placement.offset[0], at[1] + placement.offset[1]]; };
+        const fill = new Feature(new MultiPolygon(region.mask.map(([x, y, w, h]) => [[corner(x, y), corner(x + w, y), corner(x + w, y + h), corner(x, y + h), corner(x, y)]])));
+        const outline = new Feature(new MultiLineString(regionContour(region).map(line => line.map(([x, y]) => corner(x, y)))));
+        fill.setProperties({ part: "fill", tone: item.tone, strong: item.strong }); outline.setProperties({ part: "outline", tone: item.tone, strong: item.strong });
+        for (const feature of [fill, outline]) add(maskSource, item.regionId, feature);
+        continue;
+      }
       const ends = featurePoints(item);
       if (ends.some(point => hidden.has(classify(point))) || (!anchored.has(item) && !ends.every(drawable))) continue;
       let feature: Feature;
@@ -238,7 +258,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
         const [x1, y1, x2, y2] = item.bounds;
         const [a, b] = [projected({ x: x1, y: y1, plane: item.plane }), projected({ x: x2, y: y2, plane: item.plane })];
         feature = new Feature(new Polygon([[[a[0] - 16, a[1] - 16], [b[0] + 16, a[1] - 16], [b[0] + 16, b[1] + 16], [a[0] - 16, b[1] + 16], [a[0] - 16, a[1] - 16]]]));
-        feature.set("label", item.label);
+        feature.setProperties({ label: item.label, dashed: item.dashed });
       }
       feature.setProperties({ key: item.key, kind: item.kind, tone: item.tone });
       if (item.kind === "edge" && classify(item.from) !== classify(item.to)) {
@@ -277,7 +297,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   const resets: (() => void)[] = [];
   let failures = 0;
   const warnings = touched.has("unmapped") ? ["Some route points have no inset terrain."] : [];
-  if (shapes.some(r => !placements.get(r.id)?.anchored)) warnings.push("Some regions have no physical entrance on this route.");
+  if (shapes.some(r => !placements.get(r.id)?.anchored && !aside.has(r.id))) warnings.push("Some regions have no physical entrance on this route.");
   const status = () => report([...warnings, ...(failures ? [`${failures} terrain tiles unavailable.`] : [])].join(" "));
   status();
   // Inset labels, in drawing order (the route's own areas first). A label is hidden while its inset
@@ -477,6 +497,15 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     if (crossing && shown.find(area => area.regionId === regionId)?.entrance?.wayIn) extend(extent, [...projected(crossing.source.from), ...projected(crossing.source.from)]);
     view.fit(extent, { padding: [90, 70, 70, 70], maxZoom: 9, duration: 250 });
   }
+  /** Show regions' real geometry where they are drawn (each drawn floor of them). */
+  const fitRegions = (ids: string[]) => {
+    const extent = createEmpty();
+    for (const id of ids) {
+      const region = regionById.get(id), placement = picked.get(id);
+      if (region && placement) extend(extent, regionExtent(region, placement.offset));
+    }
+    if (!isEmpty(extent)) view.fit(extent, { padding: [90, 70, 70, 70], maxZoom: 9, duration: 250 });
+  };
   let draggingEndpoint = false;
   let dragged: WorldPoint | undefined;
   const translate = new Translate({ layers: [routes], filter: feature => ["start", "destination"].includes(feature.get("role")) });
@@ -505,7 +534,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     if (hit && typeof hit.get("segmentIndex") === "number") { callbacks().onSelectSegment?.(hit.get("segmentIndex")); return; }
     const items = keysHit(map.getFeaturesAtPixel(event.pixel, { layerFilter: candidate => candidate === featureLayer, hitTolerance: 6 })
       .map(feature => ({ key: feature.get("key") })));
-    if (items.length && areas.onSelectFeatures) { areas.onSelectFeatures(items); return; }
+    if (items.length && areas.onSelectFeatures) { areas.onSelectFeatures(items, pickWorld(event.coordinate, assets, picked, 0)); return; }
     callbacks().onPick(pickWorld(event.coordinate, assets, picked, 0));
   });
   map.on("pointermove", event => {
@@ -524,6 +553,9 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   return {
     fit,
     fitRegion,
+    fitRegions,
+    /** Whether a world tile is on terrain this map draws (the surface's ground floor, or a shown region). */
+    shows: (point: WorldPoint) => drawable(point),
     /** Where the view is, to restore it in a rebuilt composition. */
     view: () => ({ center: view.getCenter()!, resolution: view.getResolution()! }),
     reset() { resets.forEach(reset => reset()); fit(); },
@@ -550,6 +582,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     featureCount() {
       const counts: Record<string, number> = { edge: 0, point: 0, region: 0 };
       featureSource.forEachFeature(feature => { counts[feature.get("kind")]++; });
+      counts.mask = maskSource.getFeatures().filter(feature => feature.get("part") === "fill").length;
       return counts;
     },
     /** Where a world tile is drawn, in pixels from the map's top left (for end-to-end tests). */

@@ -1,0 +1,348 @@
+{
+ "schemaVersion": 1,
+ "generator": {
+  "repository": "osrs-pathfinding/shortest-path-tooling",
+  "rev": "e615afa705469cdb541c496f1fe99d7ce7e5d4e5"
+ },
+ "plugin": {
+  "repository": "Skretzo/shortest-path",
+  "rev": "12728cca1857ff25e40f92cecd10ff08970d6d32"
+ },
+ "collision": {
+  "cacheId": 2746,
+  "dumperRev": "e615afa705469cdb541c496f1fe99d7ce7e5d4e5"
+ },
+ "origin": [
+  3221,
+  3218,
+  0
+ ],
+ "reachability": "a tile is reachable when some chain of walking and transports leads to it from Lumbridge (3221 3218 0), following every transport whatever its requirements.",
+ "components": [
+  {
+   "id": "w-taverley-main",
+   "plane": 0,
+   "bounds": [
+    2815,
+    9671,
+    2970,
+    9854
+   ],
+   "tileCount": 8120,
+   "samples": [
+    [
+     2907,
+     9706,
+     0
+    ],
+    [
+     2912,
+     9692,
+     0
+    ]
+   ],
+   "reachable": true,
+   "significant": true,
+   "transports": {
+    "incoming": 14,
+    "outgoing": 11
+   }
+  },
+  {
+   "id": "w-taverley-dragons",
+   "plane": 0,
+   "bounds": [
+    2900,
+    9680,
+    2915,
+    9700
+   ],
+   "tileCount": 410,
+   "samples": [
+    [
+     2906,
+     9697,
+     0
+    ]
+   ],
+   "reachable": true,
+   "significant": true,
+   "transports": {
+    "incoming": 1,
+    "outgoing": 1
+   }
+  },
+  {
+   "id": "w-taverley-pocket",
+   "plane": 0,
+   "bounds": [
+    2903,
+    9679,
+    2908,
+    9684
+   ],
+   "tileCount": 36,
+   "samples": [
+    [
+     2905,
+     9681,
+     0
+    ]
+   ],
+   "mask": [
+    [
+     2903,
+     9679,
+     6,
+     6
+    ]
+   ],
+   "reachable": false,
+   "significant": true,
+   "transports": {
+    "incoming": 0,
+    "outgoing": 0
+   }
+  },
+  {
+   "id": "w-taverley-speck",
+   "plane": 0,
+   "bounds": [
+    2950,
+    9700,
+    2950,
+    9700
+   ],
+   "tileCount": 1,
+   "samples": [
+    [
+     2950,
+     9700,
+     0
+    ]
+   ],
+   "reachable": false,
+   "significant": false,
+   "transports": {
+    "incoming": 0,
+    "outgoing": 0
+   }
+  },
+  {
+   "id": "w-taverley-upper-west",
+   "plane": 1,
+   "bounds": [
+    2770,
+    9792,
+    2880,
+    9846
+   ],
+   "tileCount": 1863,
+   "samples": [
+    [
+     2791,
+     9819,
+     1
+    ]
+   ],
+   "reachable": true,
+   "significant": true,
+   "transports": {
+    "incoming": 2,
+    "outgoing": 2
+   }
+  },
+  {
+   "id": "w-cerberus-north",
+   "plane": 0,
+   "bounds": [
+    1216,
+    1226,
+    1258,
+    1272
+   ],
+   "tileCount": 780,
+   "samples": [
+    [
+     1240,
+     1246,
+     0
+    ]
+   ],
+   "reachable": true,
+   "significant": true,
+   "transports": {
+    "incoming": 1,
+    "outgoing": 1
+   }
+  },
+  {
+   "id": "w-cerberus-arena",
+   "plane": 0,
+   "bounds": [
+    1280,
+    1216,
+    1386,
+    1279
+   ],
+   "tileCount": 4100,
+   "samples": [
+    [
+     1312,
+     1241,
+     0
+    ],
+    [
+     1368,
+     1246,
+     0
+    ]
+   ],
+   "reachable": true,
+   "significant": true,
+   "transports": {
+    "incoming": 3,
+    "outgoing": 3
+   }
+  },
+  {
+   "id": "w-cerberus-arena-east",
+   "plane": 0,
+   "bounds": [
+    1330,
+    1260,
+    1340,
+    1275
+   ],
+   "tileCount": 770,
+   "samples": [
+    [
+     1333,
+     1269,
+     0
+    ]
+   ],
+   "reachable": true,
+   "significant": true,
+   "transports": {
+    "incoming": 1,
+    "outgoing": 1
+   }
+  },
+  {
+   "id": "w-cerberus-south",
+   "plane": 0,
+   "bounds": [
+    1280,
+    1289,
+    1322,
+    1336
+   ],
+   "tileCount": 773,
+   "samples": [
+    [
+     1304,
+     1310,
+     0
+    ]
+   ],
+   "reachable": true,
+   "significant": true,
+   "transports": {
+    "incoming": 1,
+    "outgoing": 1
+   }
+  }
+ ],
+ "candidates": [
+  {
+   "id": "k-taverley-upper",
+   "from": {
+    "point": [
+     2905,
+     9681,
+     0
+    ],
+    "componentId": "w-taverley-pocket"
+   },
+   "to": {
+    "point": [
+     2791,
+     9819,
+     1
+    ],
+    "componentId": "w-taverley-upper-west"
+   },
+   "support": "supported",
+   "reasons": [
+    "unreachable-component",
+    "facing-endpoints"
+   ],
+   "evidence": [
+    {
+     "kind": "transport",
+     "text": "A ladder row lands beside the pocket on plane 1, and nothing climbs back.",
+     "point": [
+      2791,
+      9819,
+      1
+     ],
+     "source": {
+      "file": "src/main/resources/transports/transports.tsv",
+      "line": 1330
+     }
+    }
+   ],
+   "sources": [
+    {
+     "file": "src/main/resources/transports/transports.tsv",
+     "line": 1330
+    }
+   ]
+  },
+  {
+   "id": "k-taverley-hunch",
+   "from": {
+    "point": [
+     2912,
+     9692,
+     0
+    ]
+   },
+   "to": {
+    "point": [
+     2956,
+     9824,
+     1
+    ]
+   },
+   "support": "insufficient",
+   "reasons": [
+    "label-suggests-exit"
+   ],
+   "evidence": [],
+   "sources": []
+  }
+ ],
+ "suspiciousEndpoints": [
+  {
+   "id": "e-taverley-blocked",
+   "point": [
+    2906,
+    9697,
+    0
+   ],
+   "role": "destination",
+   "label": "Climb-down Ladder (fixture)",
+   "reasons": [
+    "destination-blocked"
+   ],
+   "sources": [
+    {
+     "file": "src/main/resources/transports/transports.tsv",
+     "line": 1331
+    }
+   ]
+  }
+ ]
+}

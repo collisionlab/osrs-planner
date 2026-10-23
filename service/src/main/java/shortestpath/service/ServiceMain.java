@@ -193,6 +193,8 @@ public final class ServiceMain {
         reviews.bindTo(metrics);
         Workbench.routes(app, reviews);
         Workbench.transportRoutes(app, transports, Provenance.bundled());
+        byte[] topology = Workbench.topologyReport(System.getenv("WORKBENCH_TOPOLOGY"));
+        Workbench.topologyRoutes(app, () -> topology);
         app.exception(Reviews.NotServed.class, (error, ctx) -> error(ctx, 404, error.getMessage()));
         app.exception(Reviews.NotFound.class, (error, ctx) -> error(ctx, 404, error.getMessage()));
         app.exception(IllegalArgumentException.class, (error, ctx) -> error(ctx, 400, error.getMessage()));

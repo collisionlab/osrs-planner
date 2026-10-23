@@ -1,5 +1,6 @@
 import type { WorldPoint } from "../../domain/contracts";
 import type { CollisionMap } from "./collision";
+import type { InsetEntrance } from "./assets";
 import type { RegionLink } from "./layout";
 
 /**
@@ -13,7 +14,10 @@ export type FeatureTone =
   /** A transport by what it is: an object used where it stands, a journey, or a teleport. */
   | "object" | "journey" | "teleport"
   /** Many items counted together, too many to draw at this zoom. */
-  | "count";
+  | "count"
+  /** Inset investigation: an area's own regions, a link a diagnostic suggests, a doubtful transport end,
+   * a walking component, an evidence coordinate, an area's way in, and a link being drafted by hand. */
+  | "area" | "candidate" | "suspect" | "component" | "evidence" | "entrance" | "draft";
 
 export type MapFeature =
   /** From one tile to another, with an arrowhead at `to`; dashed for a removed row. */
@@ -21,7 +25,24 @@ export type MapFeature =
   /** A tile: an origin is outlined, a destination filled. */
   | { kind: "point"; key: string; point: WorldPoint; tone: FeatureTone; role: "origin" | "destination" }
   /** A rectangle of tiles (inclusive), labelled; `key` selects it like any feature. */
-  | { kind: "region"; key: string; plane: number; bounds: [number, number, number, number]; tone: FeatureTone; label?: string };
+  | { kind: "region"; key: string; plane: number; bounds: [number, number, number, number]; tone: FeatureTone; label?: string; dashed?: boolean }
+  /**
+   * An inset region's exact terrain (its mask in the inset catalogue), tinted and outlined; drawn only
+   * where the region is shown, and never hit by clicks, which fall through to the terrain under them.
+   */
+  | { kind: "mask"; key: string; regionId: string; tone: FeatureTone; strong?: boolean };
+
+/**
+ * An inset region a tool shows whether or not a feature is in it: beside `entrance` (as the planner
+ * shows an area), or without one where the region really is, joined to nothing, because placing it
+ * anywhere else would claim a way in nobody knows.
+ */
+export interface OverlayRegion {
+  regionId: string;
+  entrance?: InsetEntrance;
+  /** Beside the others rather than in place: another floor of tiles already shown, which would cover them. Joined to nothing. */
+  aside?: boolean;
+}
 
 export interface FeatureOverlay {
   features: MapFeature[];
@@ -36,11 +57,15 @@ export interface FeatureOverlay {
   collision?: CollisionMap;
   /** Names for the areas these points are in, where the inset release hasn't named them. */
   names?: { point: WorldPoint; name: string }[];
+  /** Inset regions to lay out besides those the anchors reach. */
+  regions?: OverlayRegion[];
 }
 
 export function featurePoints(feature: MapFeature): WorldPoint[] {
   if (feature.kind === "edge") return [feature.from, feature.to];
   if (feature.kind === "point") return [feature.point];
+  // A mask's tiles are the catalogue's; it places nothing and fits nothing by itself.
+  if (feature.kind === "mask") return [];
   const [x1, y1, x2, y2] = feature.bounds;
   return [{ x: x1, y: y1, plane: feature.plane }, { x: x2, y: y2, plane: feature.plane }];
 }
@@ -71,11 +96,13 @@ export const anchorsKey = (overlay?: FeatureOverlay) => overlay ? JSON.stringify
  */
 export function layoutKey(overlay: FeatureOverlay | undefined, classify: (point: WorldPoint) => string) {
   if (!overlay) return "";
+  // Anchors in regions the overlay lays out anyway change nothing.
+  const listed = new Set((overlay.regions || []).map(region => region.regionId));
   const areas = new Set(overlay.anchors.flatMap(featurePoints).map(point => {
     const region = classify(point);
-    return region === "main-world" && point.plane === 0 ? "" : `${region}/${point.plane}`;
+    return (region === "main-world" && point.plane === 0) || listed.has(region) ? "" : `${region}/${point.plane}`;
   }).filter(Boolean));
   // An area is placed beside the crossing that enters it, so a different crossing lays out again.
   const crossings = edgeLinks(overlay.anchors, classify).map(link => featurePoints({ kind: "edge", key: "", from: link.source.from, to: link.source.to, tone: "object" }));
-  return JSON.stringify([[...areas].sort(), crossings, overlay.names || []]);
+  return JSON.stringify([[...areas].sort(), crossings, overlay.names || [], overlay.regions || []]);
 }
