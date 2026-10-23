@@ -21,6 +21,12 @@ export class RegionFeatures {
     });
   }
 
+  /** Stop moving features and links that pass `test` (before redrawing them). */
+  remove(test: (target: Feature<Geometry> | LineString) => boolean) {
+    for (const [region, features] of this.owned) this.owned.set(region, features.filter(feature => !test(feature)));
+    for (const [region, links] of this.links) this.links.set(region, links.filter(link => !test(link.geometry)));
+  }
+
   translate(region: string, dx: number, dy: number) {
     if (!dx && !dy) return;
     for (const feature of this.owned.get(region) || []) feature.getGeometry()!.translate(dx, dy);

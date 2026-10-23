@@ -1,62 +1,38 @@
-import type { RoutePlan, TravelSegment, WorldPoint } from "../../domain/contracts";
-import type { ReviewOptions } from "../../map/insets/composition";
+import type { WorldPoint } from "../../domain/contracts";
 import type { CollisionMap } from "../../map/insets/collision";
-import { row, type ReviewUnit, type RowChange } from "./api";
-
-/**
- * A review unit as the inset map draws it: a route of its rows' transports, so the map lays out the
- * areas they cross exactly as it does for a planned route (an area reached only through this pull
- * request is placed beside the entrance the pull request adds), and the review marks over it.
- */
-export interface UnitMap {
-  route?: RoutePlan;
-  review: ReviewOptions;
-  /** Every tile the unit touches, to load collision around. */
-  points: WorldPoint[];
-}
+import { featurePoints, type FeatureOverlay, type MapFeature } from "../../map/insets/features";
+import type { ReviewUnit, RowChange } from "./api";
 
 const samePoint = (a?: WorldPoint | null, b?: WorldPoint | null) => a?.x === b?.x && a?.y === b?.y && a?.plane === b?.plane;
 
-export function unitMap(unit: ReviewUnit, collision?: CollisionMap): UnitMap {
-  const segments: TravelSegment[] = [];
-  const review: ReviewOptions = { tones: {}, marks: [], collision, names: [] };
+/** A row's features carry its index in the unit, so a click on the map selects the row. */
+export const changeKey = (unit: ReviewUnit, change: RowChange) => `${unit.id}/${unit.changes.indexOf(change)}`;
+export const changeOfKey = (unit: ReviewUnit, key?: string) => unit.changes.find(change => changeKey(unit, change) === key);
+
+/**
+ * A review unit as the inset map draws it: each row's edge (added, removed or edited; a moved row
+ * shows where it was too) and its tiles. They are all anchors, so the map lays out the areas they
+ * cross (an area reached only through this pull request is placed beside the entrance it adds) and
+ * draws collision around them.
+ */
+export function unitOverlay(unit: ReviewUnit, collision?: CollisionMap, selected?: RowChange): FeatureOverlay {
+  const features: MapFeature[] = [];
   const draw = (change: RowChange, version: "base" | "head", tone: "added" | "removed" | "changed") => {
-    const shown = change[version]!;
-    const { origin, destination } = shown;
-    if (origin && destination) {
-      review.tones[segments.length] = tone;
-      segments.push({ kind: "transport", transportId: `${shown.file}:${shown.line}`, name: shown.label || unit.title,
-        from: origin, to: destination, costTicks: 0, requirements: [] });
-    }
-    if (origin) review.marks.push({ point: origin, tone, role: "origin" });
-    if (destination) review.marks.push({ point: destination, tone, role: "destination" });
+    const { origin, destination } = change[version]!;
+    const key = changeKey(unit, change);
+    if (origin && destination) features.push({ kind: "edge", key, from: origin, to: destination, tone, dashed: tone === "removed" });
+    if (origin) features.push({ kind: "point", key, point: origin, tone, role: "origin" });
+    if (destination) features.push({ kind: "point", key, point: destination, tone, role: "destination" });
   };
   for (const change of unit.changes) {
     if (change.kind === "changed" && (!samePoint(change.base!.origin, change.head!.origin)
       || !samePoint(change.base!.destination, change.head!.destination))) draw(change, "base", "removed");
     draw(change, change.head ? "head" : "base", change.kind);
   }
-  const points = review.marks.map(mark => mark.point);
   // An area the inset release hasn't named takes the pull request's own heading for it.
-  review.names = points.map(point => ({ point, name: `${unit.title} (from PR)` }));
-  const route: RoutePlan | undefined = segments.length ? {
-    apiVersion: "v1", reachable: true, costTicks: 0,
-    start: { name: unit.title, coordinate: segments[0].from },
-    destination: { name: unit.title, coordinate: segments.at(-1)!.to },
-    segments,
-    metadata: { worldDataVersion: "review", accountSchemaVersion: 1, routingEngineVersion: "astar-v1" },
-  } : undefined;
-  return { route, review, points };
+  const names = features.filter(feature => feature.kind === "point").flatMap(featurePoints).map(point => ({ point, name: `${unit.title} (from PR)` }));
+  return { features, anchors: features, collision, names, selected: selected && changeKey(unit, selected) };
 }
 
-/** The unit's rows as their route's segment indexes, so selecting a row highlights its edge. */
-export function segmentIndex(unit: ReviewUnit, change: RowChange): number | undefined {
-  let index = 0;
-  for (const other of unit.changes) {
-    const moved = other.kind === "changed" && (!samePoint(other.base!.origin, other.head!.origin) || !samePoint(other.base!.destination, other.head!.destination));
-    const edges = (moved && other.base!.origin && other.base!.destination ? 1 : 0) + (row(other).origin && row(other).destination ? 1 : 0);
-    if (other === change) return row(change).origin && row(change).destination ? index + edges - 1 : undefined;
-    index += edges;
-  }
-  return undefined;
-}
+/** Every tile the unit touches, to load collision around. */
+export const unitPoints = (unit: ReviewUnit) => unitOverlay(unit).features.filter(feature => feature.kind === "point").flatMap(featurePoints);

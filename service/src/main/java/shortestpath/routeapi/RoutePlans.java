@@ -102,7 +102,8 @@ public final class RoutePlans {
         return segments;
     }
 
-    private static List<RouteApi.Capability> requirements(Transport transport, IntFunction<String> itemName) {
+    /** What a transport needs, as the route API lists it: quests, levels and items (named by {@code itemName}). */
+    public static List<RouteApi.Capability> requirements(Transport transport, IntFunction<String> itemName) {
         List<RouteApi.Capability> result = new ArrayList<>();
         transport.getQuests().stream().sorted(Comparator.comparing(Quest::getName))
             .forEach(quest -> result.add(capability("quest", quest.getName())));

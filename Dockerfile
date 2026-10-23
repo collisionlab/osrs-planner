@@ -18,6 +18,10 @@ RUN npm run build
 # gradle:*-jdk11: the plugin's build asks for a Java 11 toolchain.
 FROM gradle:8.14-jdk11 AS service
 WORKDIR /src
+# The plugin data's commits, for the workbench's provenance (see service/build.gradle).
+ARG TOOLING_REV=unknown
+ARG PLUGIN_REV=unknown
+ENV TOOLING_REV=${TOOLING_REV} PLUGIN_REV=${PLUGIN_REV}
 COPY . .
 RUN gradle --no-daemon :service:installDist
 

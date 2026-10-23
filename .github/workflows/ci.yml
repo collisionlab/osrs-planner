@@ -83,13 +83,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
       - uses: docker/setup-buildx-action@v3
+      - name: Plugin data commits
+        id: revs
+        run: |
+          echo "tooling=$(git -C tooling rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "plugin=$(git -C tooling/shortest-path rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Build and push
         id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          build-args: RELEASE=${{ github.sha }}
+          build-args: |
+            RELEASE=${{ github.sha }}
+            TOOLING_REV=${{ steps.revs.outputs.tooling }}
+            PLUGIN_REV=${{ steps.revs.outputs.plugin }}
           tags: ghcr.io/collisionlab/osrs-planner:${{ github.sha }}
       - uses: actions/create-github-app-token@v2
         id: bot

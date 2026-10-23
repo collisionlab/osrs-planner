@@ -15,9 +15,9 @@ a.wb-tool:hover { color: var(--orange); }
 .wb-body { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; min-height: 0; }
 .wb-units { overflow: auto; border-right: 1px solid var(--line); background: var(--panel); }
 .wb-units ol { list-style: none; margin: 0; padding: 0; }
-.wb-units button { display: grid; gap: 2px; width: 100%; padding: 8px 12px; text-align: left; color: var(--text); background: none; border: 0; border-bottom: 1px solid var(--line); border-left: 3px solid transparent; font: inherit; cursor: pointer; }
-.wb-units button:hover { background: var(--raised); }
-.wb-units button[aria-current="true"] { background: var(--raised); border-left-color: var(--orange); }
+.wb-units li > button { display: grid; gap: 2px; width: 100%; padding: 8px 12px; text-align: left; color: var(--text); background: none; border: 0; border-bottom: 1px solid var(--line); border-left: 3px solid transparent; font: inherit; cursor: pointer; }
+.wb-units li > button:hover { background: var(--raised); }
+.wb-units li > button[aria-current="true"] { background: var(--raised); border-left-color: var(--orange); }
 .wb-unit-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wb-unit-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font: 11px ui-monospace, monospace; }
 .wb-counts { display: flex; gap: 6px; }
@@ -62,7 +62,35 @@ a.wb-tool:hover { color: var(--orange); }
 .wb-open-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wb-open-meta { grid-column: 2 / -1; color: var(--muted); font: 11px ui-monospace, monospace; }
 .wb-draft { padding: 0 5px; color: var(--muted); border: 1px solid var(--line); font-size: 11px; }
+/* Transport explorer */
+a.wb-brand { text-decoration: none; }
+.wb-swatch { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border: 1px solid var(--ink); vertical-align: baseline; }
+.wb-search { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.wb-search input { flex: 1; min-width: 0; padding: 6px 8px; color: var(--text); background: var(--ink); border: 1px solid var(--line); font: inherit; }
+.wb-search button, .wb-filter-actions button { padding: 4px 10px; color: var(--ink); background: var(--orange); border: 0; font: 10px var(--pixel); cursor: pointer; }
+.wb-filters { padding: 6px 12px; border-bottom: 1px solid var(--line); }
+.wb-filters summary { cursor: pointer; color: var(--muted); }
+.wb-filters label { display: flex; align-items: center; gap: 4px; padding: 2px 0; }
+.wb-filters label small { margin-left: auto; color: var(--muted); font: 11px ui-monospace, monospace; }
+.wb-filter-actions { display: flex; gap: 6px; margin: 6px 0; }
+.wb-list-heading { margin: 0; padding: 6px 12px; color: var(--muted); border-bottom: 1px solid var(--line); }
+.wb-link { padding: 0; color: var(--cyan); background: none; border: 0; font: inherit; cursor: pointer; text-decoration: underline; }
+.wb-note { color: var(--muted); font-size: 12px; }
+.wb-detail h3 { margin: 4px 0; font-size: 12px; }
+.wb-detail h3 small { color: var(--muted); font-weight: 400; }
+.wb-columns { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(280px, 1.4fr); gap: 4px 24px; }
+.wb-facts { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; margin: 0; }
+.wb-facts dt { color: var(--muted); }
+.wb-facts dd { margin: 0; }
+.wb-chip { display: inline-block; margin: 0 4px 3px 0; padding: 0 6px; border: 1px solid var(--line); font-size: 12px; }
+.wb-chip.quest { border-color: #6fc3ff; } .wb-chip.skill { border-color: #5ee08a; } .wb-chip.item { border-color: #ffc44d; } .wb-chip.var { color: var(--muted); }
+.wb-sources td { cursor: default; }
+.wb-prov.differs { color: #ffc44d; }
+.wb-prov.differs::before { content: "⚠ "; }
+.wb-prov.unknown { color: var(--muted); }
+.wb-prov b { color: var(--text); font-weight: 500; }
 @media (max-width: 760px) {
+  .wb-columns { grid-template-columns: 1fr; }
   .wb-page { height: auto; min-height: 100dvh; }
   .wb-body { grid-template-columns: 1fr; }
   .wb-units { max-height: 30vh; border-right: 0; border-bottom: 1px solid var(--line); }

@@ -1,0 +1,3250 @@
+{
+ "meta": {
+  "apiVersion": "workbench-transports-v1",
+  "plugin": {
+   "repository": "Skretzo/shortest-path",
+   "rev": "12728cca1857ff25e40f92cecd10ff08970d6d32"
+  },
+  "tooling": {
+   "repository": "osrs-pathfinding/shortest-path-tooling",
+   "rev": "c78d9319b6fa30d30d9a42daa9e56977f2669593"
+  },
+  "total": 15190,
+  "viewLimit": 800,
+  "types": [
+   {
+    "type": "AGILITY_SHORTCUT",
+    "count": 647,
+    "teleport": false
+   },
+   {
+    "type": "BOAT",
+    "count": 131,
+    "teleport": false
+   },
+   {
+    "type": "CANOE",
+    "count": 45,
+    "teleport": false
+   },
+   {
+    "type": "CHARTER_SHIP",
+    "count": 404,
+    "teleport": false
+   },
+   {
+    "type": "FAIRY_RING",
+    "count": 3078,
+    "teleport": false
+   },
+   {
+    "type": "GNOME_GLIDER",
+    "count": 90,
+    "teleport": false
+   },
+   {
+    "type": "GRAPPLE_SHORTCUT",
+    "count": 15,
+    "teleport": false
+   },
+   {
+    "type": "HOT_AIR_BALLOON",
+    "count": 225,
+    "teleport": false
+   },
+   {
+    "type": "MAGIC_CARPET",
+    "count": 13,
+    "teleport": false
+   },
+   {
+    "type": "MAGIC_MUSHTREE",
+    "count": 24,
+    "teleport": false
+   },
+   {
+    "type": "MINECART",
+    "count": 974,
+    "teleport": false
+   },
+   {
+    "type": "QUETZAL",
+    "count": 182,
+    "teleport": false
+   },
+   {
+    "type": "QUETZAL_WHISTLE",
+    "count": 14,
+    "teleport": true
+   },
+   {
+    "type": "SEASONAL_TRANSPORTS",
+    "count": 438,
+    "teleport": true
+   },
+   {
+    "type": "SHIP",
+    "count": 36,
+    "teleport": false
+   },
+   {
+    "type": "SPIRIT_TREE",
+    "count": 1846,
+    "teleport": false
+   },
+   {
+    "type": "TELEPORTATION_BOX",
+    "count": 40,
+    "teleport": false
+   },
+   {
+    "type": "TELEPORTATION_ITEM",
+    "count": 433,
+    "teleport": true
+   },
+   {
+    "type": "TELEPORTATION_LEVER",
+    "count": 7,
+    "teleport": false
+   },
+   {
+    "type": "TELEPORTATION_MINIGAME",
+    "count": 253,
+    "teleport": true
+   },
+   {
+    "type": "TELEPORTATION_PORTAL",
+    "count": 129,
+    "teleport": false
+   },
+   {
+    "type": "TELEPORTATION_PORTAL_POH",
+    "count": 137,
+    "teleport": false
+   },
+   {
+    "type": "TELEPORTATION_SPELL",
+    "count": 68,
+    "teleport": true
+   },
+   {
+    "type": "TELEPORTATION_SPELL_HOME",
+    "count": 48,
+    "teleport": true
+   },
+   {
+    "type": "TRANSPORT",
+    "count": 5589,
+    "teleport": false
+   },
+   {
+    "type": "WILDERNESS_OBELISK",
+    "count": 324,
+    "teleport": false
+   }
+  ]
+ },
+ "transports": [
+  {
+   "id": "359b8674db83",
+   "type": "TELEPORTATION_ITEM",
+   "file": "src/main/resources/transports/teleportation_items.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge tablet",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null
+  },
+  {
+   "id": "61ea0e0cf4dd",
+   "type": "TELEPORTATION_PORTAL_POH",
+   "file": "src/main/resources/transports/teleportation_portals_poh.tsv",
+   "origin": {
+    "x": 1858,
+    "y": 7051,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Enter Lumbridge Portal 13623",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "811c9ef789de",
+   "type": "TELEPORTATION_PORTAL_POH",
+   "file": "src/main/resources/transports/teleportation_portals_poh.tsv",
+   "origin": {
+    "x": 1858,
+    "y": 7051,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Enter Respawn Portal 60798",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "dd281f5d4c4b",
+   "type": "TELEPORTATION_PORTAL_POH",
+   "file": "src/main/resources/transports/teleportation_portals_poh.tsv",
+   "origin": {
+    "x": 1858,
+    "y": 7051,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Enter Lumbridge Portal 13616",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "fa7a339556ee",
+   "type": "TELEPORTATION_PORTAL_POH",
+   "file": "src/main/resources/transports/teleportation_portals_poh.tsv",
+   "origin": {
+    "x": 1858,
+    "y": 7051,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Enter Lumbridge Portal 13630",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "0ecad19a9ba0",
+   "type": "TELEPORTATION_SPELL",
+   "file": "src/main/resources/transports/teleportation_spells.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Respawn Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null
+  },
+  {
+   "id": "767361317ebe",
+   "type": "TELEPORTATION_SPELL",
+   "file": "src/main/resources/transports/teleportation_spells.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null
+  },
+  {
+   "id": "31852aed89b2",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null
+  },
+  {
+   "id": "44ac954e5fe2",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null
+  },
+  {
+   "id": "4f3ec30cdd1e",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null
+  },
+  {
+   "id": "50affb0409dd",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null
+  },
+  {
+   "id": "6431450f6ead",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null
+  },
+  {
+   "id": "66cbf61ad6a4",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null
+  },
+  {
+   "id": "6abe5ec6fdc5",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null
+  },
+  {
+   "id": "7885de1b7326",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null
+  },
+  {
+   "id": "ae772210c4b9",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null
+  },
+  {
+   "id": "c01c513ff5ea",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null
+  },
+  {
+   "id": "e673c49f4bc0",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null
+  },
+  {
+   "id": "ea250f09f1d7",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null
+  },
+  {
+   "id": "02cb89518a55",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3205,
+    "y": 3228,
+    "plane": 1
+   },
+   "destination": {
+    "x": 3205,
+    "y": 3228,
+    "plane": 0
+   },
+   "label": "Climb-down Staircase 16672",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "07f8b7e6582b",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 1866,
+    "y": 5323,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3213,
+    "y": 3221,
+    "plane": 0
+   },
+   "label": "Open Large door 12350",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "3024590bdc43",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3213,
+    "y": 3221,
+    "plane": 0
+   },
+   "destination": {
+    "x": 1866,
+    "y": 5323,
+    "plane": 0
+   },
+   "label": "Open Large door 12349",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "3d0f7e29328f",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3209,
+    "y": 9617,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3209,
+    "y": 3217,
+    "plane": 0
+   },
+   "label": "Climb-up Ladder 17385",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "3e43261582a9",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3206,
+    "y": 3208,
+    "plane": 1
+   },
+   "destination": {
+    "x": 3206,
+    "y": 3208,
+    "plane": 0
+   },
+   "label": "Climb-down Staircase 16672",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "4d9fcaf4c1a9",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3213,
+    "y": 3221,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3212,
+    "y": 3221,
+    "plane": 0
+   },
+   "label": "Open Large door 12349",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "4e569c3cd6e3",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3212,
+    "y": 3222,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3213,
+    "y": 3222,
+    "plane": 0
+   },
+   "label": "Open Large door 12350",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "4ebec9d0b842",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3205,
+    "y": 3209,
+    "plane": 1
+   },
+   "destination": {
+    "x": 3206,
+    "y": 3208,
+    "plane": 0
+   },
+   "label": "Climb-down Staircase 16672",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "5666a3a20c45",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3213,
+    "y": 3222,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3212,
+    "y": 3222,
+    "plane": 0
+   },
+   "label": "Open Large door 12350",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "5881a2a74da0",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3034,
+    "y": 4793,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3221,
+    "y": 3219,
+    "plane": 0
+   },
+   "label": "Operate Appendage 27027",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "6f58d1a7da72",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3210,
+    "y": 9616,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3210,
+    "y": 3216,
+    "plane": 0
+   },
+   "label": "Climb-up Ladder 17385",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "739bd18c6d2b",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3207,
+    "y": 3218,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3207,
+    "y": 3217,
+    "plane": 0
+   },
+   "label": "Open Door 12348",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "9f6b2e39686f",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3212,
+    "y": 3221,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3213,
+    "y": 3221,
+    "plane": 0
+   },
+   "label": "Open Large door 12349",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "ac5f046d0319",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3208,
+    "y": 9616,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3208,
+    "y": 3216,
+    "plane": 0
+   },
+   "label": "Climb-up Ladder 17385",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "b529d146411b",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3205,
+    "y": 3209,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3205,
+    "y": 3209,
+    "plane": 1
+   },
+   "label": "Climb-up Staircase 16671",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "b7ed7342ecb3",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3205,
+    "y": 3228,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3206,
+    "y": 3229,
+    "plane": 1
+   },
+   "label": "Climb-up Staircase 16671",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "be89714a5a7e",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3210,
+    "y": 3216,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3210,
+    "y": 9616,
+    "plane": 0
+   },
+   "label": "Climb-down Trapdoor 14880",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "d2a12892f2f2",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3206,
+    "y": 3229,
+    "plane": 1
+   },
+   "destination": {
+    "x": 3205,
+    "y": 3228,
+    "plane": 0
+   },
+   "label": "Climb-down Staircase 16672",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "d53f99859fd3",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3206,
+    "y": 3208,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3205,
+    "y": 3209,
+    "plane": 1
+   },
+   "label": "Climb-up Staircase 16671",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "ec0dc4329057",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3209,
+    "y": 9615,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3209,
+    "y": 3215,
+    "plane": 0
+   },
+   "label": "Climb-up Ladder 17385",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "f9d5dac71bdc",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3207,
+    "y": 3217,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3207,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Open Door 12348",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "3c8ed254f588",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3205,
+    "y": 3228,
+    "plane": 1
+   },
+   "destination": {
+    "x": 3206,
+    "y": 3229,
+    "plane": 2
+   },
+   "label": "Climb-up Staircase 16672",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "5b5a8de278e1",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3205,
+    "y": 3209,
+    "plane": 2
+   },
+   "destination": {
+    "x": 3206,
+    "y": 3208,
+    "plane": 1
+   },
+   "label": "Climb-down Staircase 16673",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "6270c9433787",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3206,
+    "y": 3229,
+    "plane": 2
+   },
+   "destination": {
+    "x": 3205,
+    "y": 3228,
+    "plane": 1
+   },
+   "label": "Climb-down Staircase 16673",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "da881b818ce7",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3205,
+    "y": 3209,
+    "plane": 1
+   },
+   "destination": {
+    "x": 3205,
+    "y": 3209,
+    "plane": 2
+   },
+   "label": "Climb-up Staircase 16672",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "e5961fa057b4",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3206,
+    "y": 3208,
+    "plane": 1
+   },
+   "destination": {
+    "x": 3205,
+    "y": 3209,
+    "plane": 2
+   },
+   "label": "Climb-up Staircase 16672",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "e3929eeb5eee",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3085,
+    "y": 3272,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3085,
+    "y": 9672,
+    "plane": 0
+   },
+   "label": "Climb-down Trapdoor 6435",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null
+  },
+  {
+   "id": "000c35d7a958",
+   "type": "FAIRY_RING",
+   "file": "src/main/resources/transports/fairy_rings.tsv",
+   "origin": {
+    "x": 2412,
+    "y": 4434,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3108,
+    "y": 3149,
+    "plane": 0
+   },
+   "label": "Configure Fairy ring 29560",
+   "teleport": false,
+   "construction": "paired",
+   "remappedFrom": null
+  },
+  {
+   "id": "051da7d773bd",
+   "type": "FAIRY_RING",
+   "file": "src/main/resources/transports/fairy_rings.tsv",
+   "origin": {
+    "x": 2412,
+    "y": 4434,
+    "plane": 0
+   },
+   "destination": {
+    "x": 2644,
+    "y": 3495,
+    "plane": 0
+   },
+   "label": "Configure Fairy ring 29560",
+   "teleport": false,
+   "construction": "paired",
+   "remappedFrom": null
+  }
+ ],
+ "details": {
+  "359b8674db83": {
+   "id": "359b8674db83",
+   "type": "TELEPORTATION_ITEM",
+   "file": "src/main/resources/transports/teleportation_items.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge tablet",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null,
+   "objectInfo": null,
+   "displayInfo": "Lumbridge tablet",
+   "duration": 4,
+   "consumable": true,
+   "maxWildernessLevel": 20,
+   "requirements": [
+    {
+     "kind": "item",
+     "name": "Lumbridge teleport"
+    }
+   ],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_items.tsv",
+     "section": "Varbit 4480 is DIARY_VARROCK_MEDIUM",
+     "line": 156,
+     "fields": {
+      "Destination": "3221 3218 0",
+      "menuOption menuTarget objectID": "",
+      "Skills": "",
+      "Items": "8008=1",
+      "Quests": "",
+      "Duration": "4",
+      "Display info": "Lumbridge tablet",
+      "Consumable": "T",
+      "Wilderness level": "20",
+      "Varbits": "",
+      "VarPlayers": ""
+     }
+    }
+   ]
+  },
+  "61ea0e0cf4dd": {
+   "id": "61ea0e0cf4dd",
+   "type": "TELEPORTATION_PORTAL_POH",
+   "file": "src/main/resources/transports/teleportation_portals_poh.tsv",
+   "origin": {
+    "x": 1858,
+    "y": 7051,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Enter Lumbridge Portal 13623",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Enter Lumbridge Portal 13623",
+   "displayInfo": "Lumbridge Portal",
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_portals_poh.tsv",
+     "section": "Varbit 4480 is DIARY_VARROCK_MEDIUM; the Varrock teleport toggle (varbit 4585) only picks the default destination",
+     "line": 83,
+     "fields": {
+      "Origin": "1858 7051 0",
+      "Destination": "3221 3218 0",
+      "menuOption menuTarget objectID": "Enter Lumbridge Portal 13623",
+      "Varbits": "",
+      "Duration": "1",
+      "Display info": "Lumbridge Portal"
+     }
+    }
+   ]
+  },
+  "811c9ef789de": {
+   "id": "811c9ef789de",
+   "type": "TELEPORTATION_PORTAL_POH",
+   "file": "src/main/resources/transports/teleportation_portals_poh.tsv",
+   "origin": {
+    "x": 1858,
+    "y": 7051,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Enter Respawn Portal 60798",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Enter Respawn Portal 60798",
+   "displayInfo": "Respawn Portal (Lumbridge)",
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [
+    "varbit 10528 EQUAL 0",
+    "varbit 12310 EQUAL 0",
+    "varbit 3910 EQUAL 0",
+    "varbit 621 EQUAL 0",
+    "varbit 668 EQUAL 0",
+    "varbit 9805 EQUAL 0"
+   ],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_portals_poh.tsv",
+     "section": "Varbit 4480 is DIARY_VARROCK_MEDIUM; the Varrock teleport toggle (varbit 4585) only picks the default destination",
+     "line": 103,
+     "fields": {
+      "Origin": "1858 7051 0",
+      "Destination": "3221 3218 0",
+      "menuOption menuTarget objectID": "Enter Respawn Portal 60798",
+      "Varbits": "668=0;3910=0;621=0;10528=0;12310=0;9805=0",
+      "Duration": "1",
+      "Display info": "Respawn Portal (Lumbridge)"
+     }
+    }
+   ]
+  },
+  "dd281f5d4c4b": {
+   "id": "dd281f5d4c4b",
+   "type": "TELEPORTATION_PORTAL_POH",
+   "file": "src/main/resources/transports/teleportation_portals_poh.tsv",
+   "origin": {
+    "x": 1858,
+    "y": 7051,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Enter Lumbridge Portal 13616",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Enter Lumbridge Portal 13616",
+   "displayInfo": "Lumbridge Portal",
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_portals_poh.tsv",
+     "section": "Varbit 4480 is DIARY_VARROCK_MEDIUM; the Varrock teleport toggle (varbit 4585) only picks the default destination",
+     "line": 82,
+     "fields": {
+      "Origin": "1858 7051 0",
+      "Destination": "3221 3218 0",
+      "menuOption menuTarget objectID": "Enter Lumbridge Portal 13616",
+      "Varbits": "",
+      "Duration": "1",
+      "Display info": "Lumbridge Portal"
+     }
+    }
+   ]
+  },
+  "fa7a339556ee": {
+   "id": "fa7a339556ee",
+   "type": "TELEPORTATION_PORTAL_POH",
+   "file": "src/main/resources/transports/teleportation_portals_poh.tsv",
+   "origin": {
+    "x": 1858,
+    "y": 7051,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Enter Lumbridge Portal 13630",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Enter Lumbridge Portal 13630",
+   "displayInfo": "Lumbridge Portal",
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_portals_poh.tsv",
+     "section": "Varbit 4480 is DIARY_VARROCK_MEDIUM; the Varrock teleport toggle (varbit 4585) only picks the default destination",
+     "line": 84,
+     "fields": {
+      "Origin": "1858 7051 0",
+      "Destination": "3221 3218 0",
+      "menuOption menuTarget objectID": "Enter Lumbridge Portal 13630",
+      "Varbits": "",
+      "Duration": "1",
+      "Display info": "Lumbridge Portal"
+     }
+    }
+   ]
+  },
+  "0ecad19a9ba0": {
+   "id": "0ecad19a9ba0",
+   "type": "TELEPORTATION_SPELL",
+   "file": "src/main/resources/transports/teleportation_spells.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Respawn Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null,
+   "objectInfo": null,
+   "displayInfo": "Respawn Teleport",
+   "duration": 4,
+   "consumable": false,
+   "maxWildernessLevel": 20,
+   "requirements": [
+    {
+     "kind": "skill",
+     "name": "34 Magic"
+    },
+    {
+     "kind": "item",
+     "name": "Law rune"
+    },
+    {
+     "kind": "item",
+     "name": "Soul rune"
+    }
+   ],
+   "varChecks": [
+    "varbit 10528 EQUAL 0",
+    "varbit 12310 EQUAL 0",
+    "varbit 3910 EQUAL 0",
+    "varbit 4070 EQUAL 3",
+    "varbit 621 EQUAL 0",
+    "varbit 668 EQUAL 0",
+    "varbit 9805 EQUAL 0"
+   ],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_spells.tsv",
+     "section": "Respawn Teleport - lands at the player's active respawn; one row per respawn gated on its *_SPAWN varbit (same convention as the Respawn Portal rows in teleportation_portals_poh.tsv)",
+     "line": 139,
+     "fields": {
+      "Destination": "3221 3218 0",
+      "Items": "LAW_RUNE=1&&SOUL_RUNE=1",
+      "Skills": "34 Magic",
+      "Quests": "",
+      "Duration": "4",
+      "Display info": "Respawn Teleport",
+      "Wilderness level": "20",
+      "Varbits": "4070=3;668=0;3910=0;621=0;10528=0;12310=0;9805=0",
+      "VarPlayers": ""
+     }
+    }
+   ]
+  },
+  "767361317ebe": {
+   "id": "767361317ebe",
+   "type": "TELEPORTATION_SPELL",
+   "file": "src/main/resources/transports/teleportation_spells.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null,
+   "objectInfo": null,
+   "displayInfo": "Lumbridge Teleport",
+   "duration": 4,
+   "consumable": false,
+   "maxWildernessLevel": 20,
+   "requirements": [
+    {
+     "kind": "skill",
+     "name": "31 Magic"
+    },
+    {
+     "kind": "item",
+     "name": "Air rune x3"
+    },
+    {
+     "kind": "item",
+     "name": "Earth rune"
+    },
+    {
+     "kind": "item",
+     "name": "Law rune"
+    }
+   ],
+   "varChecks": [
+    "varbit 4070 EQUAL 0"
+   ],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_spells.tsv",
+     "section": "Lumbridge Teleport",
+     "line": 9,
+     "fields": {
+      "Destination": "3221 3218 0",
+      "Items": "AIR_RUNE=3&&EARTH_RUNE=1&&LAW_RUNE=1",
+      "Skills": "31 Magic",
+      "Quests": "",
+      "Duration": "4",
+      "Display info": "Lumbridge Teleport",
+      "Wilderness level": "20",
+      "Varbits": "4070=0",
+      "VarPlayers": ""
+     }
+    }
+   ]
+  },
+  "31852aed89b2": {
+   "id": "31852aed89b2",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null,
+   "objectInfo": null,
+   "displayInfo": "Lumbridge Home Teleport",
+   "duration": 23,
+   "consumable": false,
+   "maxWildernessLevel": 20,
+   "requirements": [],
+   "varChecks": [
+    "varbit 4070 EQUAL 0",
+    "varplayer 4560 BIT_SET 1024",
+    "varplayer 892 COOLDOWN_MINUTES 30"
+   ],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+     "section": "Lumbridge Home Teleport (varp 4560 is a bitmask of enabled animation overrides, bit order = animation menu order: 1=Default 24t, 2=Runefest 21t, 4=Speedy 19t, 8=Armageddon 24t, 16=League I Twisted 24t, 32=League II Trailblazer 25t, 64=League III Shattered 20t, 128=League IV Trailblazer Reloaded 21t, 256=League V Raging Echoes 21t, 512=Annihilation 19t, 1024=League VI Demonic Pacts 23t; multiple enabled bits choose randomly; 892@30 is the 30-minute cooldown)",
+     "line": 15,
+     "fields": {
+      "Destination": "3221 3218 0",
+      "Items": "",
+      "Skills": "",
+      "Quests": "",
+      "Duration": "23",
+      "Display info": "Lumbridge Home Teleport",
+      "Wilderness level": "20",
+      "Varbits": "4070=0",
+      "VarPlayers": "4560&1024;892@30"
+     }
+    }
+   ]
+  },
+  "44ac954e5fe2": {
+   "id": "44ac954e5fe2",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null,
+   "objectInfo": null,
+   "displayInfo": "Lumbridge Home Teleport",
+   "duration": 21,
+   "consumable": false,
+   "maxWildernessLevel": 20,
+   "requirements": [],
+   "varChecks": [
+    "varbit 4070 EQUAL 0",
+    "varplayer 4560 BIT_SET 256",
+    "varplayer 892 COOLDOWN_MINUTES 30"
+   ],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+     "section": "Lumbridge Home Teleport (varp 4560 is a bitmask of enabled animation overrides, bit order = animation menu order: 1=Default 24t, 2=Runefest 21t, 4=Speedy 19t, 8=Armageddon 24t, 16=League I Twisted 24t, 32=League II Trailblazer 25t, 64=League III Shattered 20t, 128=League IV Trailblazer Reloaded 21t, 256=League V Raging Echoes 21t, 512=Annihilation 19t, 1024=League VI Demonic Pacts 23t; multiple enabled bits choose randomly; 892@30 is the 30-minute cooldown)",
+     "line": 13,
+     "fields": {
+      "Destination": "3221 3218 0",
+      "Items": "",
+      "Skills": "",
+      "Quests": "",
+      "Duration": "21",
+      "Display info": "Lumbridge Home Teleport",
+      "Wilderness level": "20",
+      "Varbits": "4070=0",
+      "VarPlayers": "4560&256;892@30"
+     }
+    }
+   ]
+  },
+  "4f3ec30cdd1e": {
+   "id": "4f3ec30cdd1e",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null,
+   "objectInfo": null,
+   "displayInfo": "Lumbridge Home Teleport",
+   "duration": 19,
+   "consumable": false,
+   "maxWildernessLevel": 20,
+   "requirements": [],
+   "varChecks": [
+    "varbit 4070 EQUAL 0",
+    "varplayer 4560 BIT_SET 512",
+    "varplayer 892 COOLDOWN_MINUTES 30"
+   ],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+     "section": "Lumbridge Home Teleport (varp 4560 is a bitmask of enabled animation overrides, bit order = animation menu order: 1=Default 24t, 2=Runefest 21t, 4=Speedy 19t, 8=Armageddon 24t, 16=League I Twisted 24t, 32=League II Trailblazer 25t, 64=League III Shattered 20t, 128=League IV Trailblazer Reloaded 21t, 256=League V Raging Echoes 21t, 512=Annihilation 19t, 1024=League VI Demonic Pacts 23t; multiple enabled bits choose randomly; 892@30 is the 30-minute cooldown)",
+     "line": 14,
+     "fields": {
+      "Destination": "3221 3218 0",
+      "Items": "",
+      "Skills": "",
+      "Quests": "",
+      "Duration": "19",
+      "Display info": "Lumbridge Home Teleport",
+      "Wilderness level": "20",
+      "Varbits": "4070=0",
+      "VarPlayers": "4560&512;892@30"
+     }
+    }
+   ]
+  },
+  "50affb0409dd": {
+   "id": "50affb0409dd",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null,
+   "objectInfo": null,
+   "displayInfo": "Lumbridge Home Teleport",
+   "duration": 25,
+   "consumable": false,
+   "maxWildernessLevel": 20,
+   "requirements": [],
+   "varChecks": [
+    "varbit 4070 EQUAL 0",
+    "varplayer 4560 BIT_SET 32",
+    "varplayer 892 COOLDOWN_MINUTES 30"
+   ],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+     "section": "Lumbridge Home Teleport (varp 4560 is a bitmask of enabled animation overrides, bit order = animation menu order: 1=Default 24t, 2=Runefest 21t, 4=Speedy 19t, 8=Armageddon 24t, 16=League I Twisted 24t, 32=League II Trailblazer 25t, 64=League III Shattered 20t, 128=League IV Trailblazer Reloaded 21t, 256=League V Raging Echoes 21t, 512=Annihilation 19t, 1024=League VI Demonic Pacts 23t; multiple enabled bits choose randomly; 892@30 is the 30-minute cooldown)",
+     "line": 10,
+     "fields": {
+      "Destination": "3221 3218 0",
+      "Items": "",
+      "Skills": "",
+      "Quests": "",
+      "Duration": "25",
+      "Display info": "Lumbridge Home Teleport",
+      "Wilderness level": "20",
+      "Varbits": "4070=0",
+      "VarPlayers": "4560&32;892@30"
+     }
+    }
+   ]
+  },
+  "6431450f6ead": {
+   "id": "6431450f6ead",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null,
+   "objectInfo": null,
+   "displayInfo": "Lumbridge Home Teleport",
+   "duration": 20,
+   "consumable": false,
+   "maxWildernessLevel": 20,
+   "requirements": [],
+   "varChecks": [
+    "varbit 4070 EQUAL 0",
+    "varplayer 4560 BIT_SET 64",
+    "varplayer 892 COOLDOWN_MINUTES 30"
+   ],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+     "section": "Lumbridge Home Teleport (varp 4560 is a bitmask of enabled animation overrides, bit order = animation menu order: 1=Default 24t, 2=Runefest 21t, 4=Speedy 19t, 8=Armageddon 24t, 16=League I Twisted 24t, 32=League II Trailblazer 25t, 64=League III Shattered 20t, 128=League IV Trailblazer Reloaded 21t, 256=League V Raging Echoes 21t, 512=Annihilation 19t, 1024=League VI Demonic Pacts 23t; multiple enabled bits choose randomly; 892@30 is the 30-minute cooldown)",
+     "line": 11,
+     "fields": {
+      "Destination": "3221 3218 0",
+      "Items": "",
+      "Skills": "",
+      "Quests": "",
+      "Duration": "20",
+      "Display info": "Lumbridge Home Teleport",
+      "Wilderness level": "20",
+      "Varbits": "4070=0",
+      "VarPlayers": "4560&64;892@30"
+     }
+    }
+   ]
+  },
+  "66cbf61ad6a4": {
+   "id": "66cbf61ad6a4",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null,
+   "objectInfo": null,
+   "displayInfo": "Lumbridge Home Teleport",
+   "duration": 21,
+   "consumable": false,
+   "maxWildernessLevel": 20,
+   "requirements": [],
+   "varChecks": [
+    "varbit 4070 EQUAL 0",
+    "varplayer 4560 BIT_SET 2",
+    "varplayer 892 COOLDOWN_MINUTES 30"
+   ],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+     "section": "Lumbridge Home Teleport (varp 4560 is a bitmask of enabled animation overrides, bit order = animation menu order: 1=Default 24t, 2=Runefest 21t, 4=Speedy 19t, 8=Armageddon 24t, 16=League I Twisted 24t, 32=League II Trailblazer 25t, 64=League III Shattered 20t, 128=League IV Trailblazer Reloaded 21t, 256=League V Raging Echoes 21t, 512=Annihilation 19t, 1024=League VI Demonic Pacts 23t; multiple enabled bits choose randomly; 892@30 is the 30-minute cooldown)",
+     "line": 6,
+     "fields": {
+      "Destination": "3221 3218 0",
+      "Items": "",
+      "Skills": "",
+      "Quests": "",
+      "Duration": "21",
+      "Display info": "Lumbridge Home Teleport",
+      "Wilderness level": "20",
+      "Varbits": "4070=0",
+      "VarPlayers": "4560&2;892@30"
+     }
+    }
+   ]
+  },
+  "6abe5ec6fdc5": {
+   "id": "6abe5ec6fdc5",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null,
+   "objectInfo": null,
+   "displayInfo": "Lumbridge Home Teleport",
+   "duration": 24,
+   "consumable": false,
+   "maxWildernessLevel": 20,
+   "requirements": [],
+   "varChecks": [
+    "varbit 4070 EQUAL 0",
+    "varplayer 4560 BIT_SET 1",
+    "varplayer 892 COOLDOWN_MINUTES 30"
+   ],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+     "section": "Lumbridge Home Teleport (varp 4560 is a bitmask of enabled animation overrides, bit order = animation menu order: 1=Default 24t, 2=Runefest 21t, 4=Speedy 19t, 8=Armageddon 24t, 16=League I Twisted 24t, 32=League II Trailblazer 25t, 64=League III Shattered 20t, 128=League IV Trailblazer Reloaded 21t, 256=League V Raging Echoes 21t, 512=Annihilation 19t, 1024=League VI Demonic Pacts 23t; multiple enabled bits choose randomly; 892@30 is the 30-minute cooldown)",
+     "line": 5,
+     "fields": {
+      "Destination": "3221 3218 0",
+      "Items": "",
+      "Skills": "",
+      "Quests": "",
+      "Duration": "24",
+      "Display info": "Lumbridge Home Teleport",
+      "Wilderness level": "20",
+      "Varbits": "4070=0",
+      "VarPlayers": "4560&1;892@30"
+     }
+    }
+   ]
+  },
+  "7885de1b7326": {
+   "id": "7885de1b7326",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null,
+   "objectInfo": null,
+   "displayInfo": "Lumbridge Home Teleport",
+   "duration": 21,
+   "consumable": false,
+   "maxWildernessLevel": 20,
+   "requirements": [],
+   "varChecks": [
+    "varbit 4070 EQUAL 0",
+    "varplayer 4560 BIT_SET 128",
+    "varplayer 892 COOLDOWN_MINUTES 30"
+   ],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+     "section": "Lumbridge Home Teleport (varp 4560 is a bitmask of enabled animation overrides, bit order = animation menu order: 1=Default 24t, 2=Runefest 21t, 4=Speedy 19t, 8=Armageddon 24t, 16=League I Twisted 24t, 32=League II Trailblazer 25t, 64=League III Shattered 20t, 128=League IV Trailblazer Reloaded 21t, 256=League V Raging Echoes 21t, 512=Annihilation 19t, 1024=League VI Demonic Pacts 23t; multiple enabled bits choose randomly; 892@30 is the 30-minute cooldown)",
+     "line": 12,
+     "fields": {
+      "Destination": "3221 3218 0",
+      "Items": "",
+      "Skills": "",
+      "Quests": "",
+      "Duration": "21",
+      "Display info": "Lumbridge Home Teleport",
+      "Wilderness level": "20",
+      "Varbits": "4070=0",
+      "VarPlayers": "4560&128;892@30"
+     }
+    }
+   ]
+  },
+  "ae772210c4b9": {
+   "id": "ae772210c4b9",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null,
+   "objectInfo": null,
+   "displayInfo": "Lumbridge Home Teleport",
+   "duration": 24,
+   "consumable": false,
+   "maxWildernessLevel": 20,
+   "requirements": [],
+   "varChecks": [
+    "varbit 4070 EQUAL 0",
+    "varplayer 4560 BIT_SET 8",
+    "varplayer 892 COOLDOWN_MINUTES 30"
+   ],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+     "section": "Lumbridge Home Teleport (varp 4560 is a bitmask of enabled animation overrides, bit order = animation menu order: 1=Default 24t, 2=Runefest 21t, 4=Speedy 19t, 8=Armageddon 24t, 16=League I Twisted 24t, 32=League II Trailblazer 25t, 64=League III Shattered 20t, 128=League IV Trailblazer Reloaded 21t, 256=League V Raging Echoes 21t, 512=Annihilation 19t, 1024=League VI Demonic Pacts 23t; multiple enabled bits choose randomly; 892@30 is the 30-minute cooldown)",
+     "line": 8,
+     "fields": {
+      "Destination": "3221 3218 0",
+      "Items": "",
+      "Skills": "",
+      "Quests": "",
+      "Duration": "24",
+      "Display info": "Lumbridge Home Teleport",
+      "Wilderness level": "20",
+      "Varbits": "4070=0",
+      "VarPlayers": "4560&8;892@30"
+     }
+    }
+   ]
+  },
+  "c01c513ff5ea": {
+   "id": "c01c513ff5ea",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null,
+   "objectInfo": null,
+   "displayInfo": "Lumbridge Home Teleport",
+   "duration": 24,
+   "consumable": false,
+   "maxWildernessLevel": 20,
+   "requirements": [],
+   "varChecks": [
+    "varbit 4070 EQUAL 0",
+    "varplayer 4560 BIT_SET 16",
+    "varplayer 892 COOLDOWN_MINUTES 30"
+   ],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+     "section": "Lumbridge Home Teleport (varp 4560 is a bitmask of enabled animation overrides, bit order = animation menu order: 1=Default 24t, 2=Runefest 21t, 4=Speedy 19t, 8=Armageddon 24t, 16=League I Twisted 24t, 32=League II Trailblazer 25t, 64=League III Shattered 20t, 128=League IV Trailblazer Reloaded 21t, 256=League V Raging Echoes 21t, 512=Annihilation 19t, 1024=League VI Demonic Pacts 23t; multiple enabled bits choose randomly; 892@30 is the 30-minute cooldown)",
+     "line": 9,
+     "fields": {
+      "Destination": "3221 3218 0",
+      "Items": "",
+      "Skills": "",
+      "Quests": "",
+      "Duration": "24",
+      "Display info": "Lumbridge Home Teleport",
+      "Wilderness level": "20",
+      "Varbits": "4070=0",
+      "VarPlayers": "4560&16;892@30"
+     }
+    }
+   ]
+  },
+  "e673c49f4bc0": {
+   "id": "e673c49f4bc0",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null,
+   "objectInfo": null,
+   "displayInfo": "Lumbridge Home Teleport",
+   "duration": 19,
+   "consumable": false,
+   "maxWildernessLevel": 20,
+   "requirements": [],
+   "varChecks": [
+    "varbit 4070 EQUAL 0",
+    "varplayer 4560 BIT_SET 4",
+    "varplayer 892 COOLDOWN_MINUTES 30"
+   ],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+     "section": "Lumbridge Home Teleport (varp 4560 is a bitmask of enabled animation overrides, bit order = animation menu order: 1=Default 24t, 2=Runefest 21t, 4=Speedy 19t, 8=Armageddon 24t, 16=League I Twisted 24t, 32=League II Trailblazer 25t, 64=League III Shattered 20t, 128=League IV Trailblazer Reloaded 21t, 256=League V Raging Echoes 21t, 512=Annihilation 19t, 1024=League VI Demonic Pacts 23t; multiple enabled bits choose randomly; 892@30 is the 30-minute cooldown)",
+     "line": 7,
+     "fields": {
+      "Destination": "3221 3218 0",
+      "Items": "",
+      "Skills": "",
+      "Quests": "",
+      "Duration": "19",
+      "Display info": "Lumbridge Home Teleport",
+      "Wilderness level": "20",
+      "Varbits": "4070=0",
+      "VarPlayers": "4560&4;892@30"
+     }
+    }
+   ]
+  },
+  "ea250f09f1d7": {
+   "id": "ea250f09f1d7",
+   "type": "TELEPORTATION_SPELL_HOME",
+   "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+   "origin": null,
+   "destination": {
+    "x": 3221,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Lumbridge Home Teleport",
+   "teleport": true,
+   "construction": "teleport",
+   "remappedFrom": null,
+   "objectInfo": null,
+   "displayInfo": "Lumbridge Home Teleport",
+   "duration": 24,
+   "consumable": false,
+   "maxWildernessLevel": 20,
+   "requirements": [],
+   "varChecks": [
+    "varbit 4070 EQUAL 0",
+    "varplayer 4560 EQUAL 0",
+    "varplayer 892 COOLDOWN_MINUTES 30"
+   ],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/teleportation_spells_home.tsv",
+     "section": "Lumbridge Home Teleport (varp 4560 is a bitmask of enabled animation overrides, bit order = animation menu order: 1=Default 24t, 2=Runefest 21t, 4=Speedy 19t, 8=Armageddon 24t, 16=League I Twisted 24t, 32=League II Trailblazer 25t, 64=League III Shattered 20t, 128=League IV Trailblazer Reloaded 21t, 256=League V Raging Echoes 21t, 512=Annihilation 19t, 1024=League VI Demonic Pacts 23t; multiple enabled bits choose randomly; 892@30 is the 30-minute cooldown)",
+     "line": 4,
+     "fields": {
+      "Destination": "3221 3218 0",
+      "Items": "",
+      "Skills": "",
+      "Quests": "",
+      "Duration": "24",
+      "Display info": "Lumbridge Home Teleport",
+      "Wilderness level": "20",
+      "Varbits": "4070=0",
+      "VarPlayers": "4560=0;892@30"
+     }
+    }
+   ]
+  },
+  "02cb89518a55": {
+   "id": "02cb89518a55",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3205,
+    "y": 3228,
+    "plane": 1
+   },
+   "destination": {
+    "x": 3205,
+    "y": 3228,
+    "plane": 0
+   },
+   "label": "Climb-down Staircase 16672",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-down Staircase 16672",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 75,
+     "fields": {
+      "Origin": "3205 3228 1",
+      "Destination": "3205 3228 0",
+      "menuOption menuTarget objectID": "Climb-down Staircase 16672",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "07f8b7e6582b": {
+   "id": "07f8b7e6582b",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 1866,
+    "y": 5323,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3213,
+    "y": 3221,
+    "plane": 0
+   },
+   "label": "Open Large door 12350",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Open Large door 12350",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 94,
+     "fields": {
+      "Origin": "1866 5323 0",
+      "Destination": "3213 3221 0",
+      "menuOption menuTarget objectID": "Open Large door 12350",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "3024590bdc43": {
+   "id": "3024590bdc43",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3213,
+    "y": 3221,
+    "plane": 0
+   },
+   "destination": {
+    "x": 1866,
+    "y": 5323,
+    "plane": 0
+   },
+   "label": "Open Large door 12349",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Open Large door 12349",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 93,
+     "fields": {
+      "Origin": "3213 3221 0",
+      "Destination": "1866 5323 0",
+      "menuOption menuTarget objectID": "Open Large door 12349",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "3d0f7e29328f": {
+   "id": "3d0f7e29328f",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3209,
+    "y": 9617,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3209,
+    "y": 3217,
+    "plane": 0
+   },
+   "label": "Climb-up Ladder 17385",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-up Ladder 17385",
+   "displayInfo": null,
+   "duration": 2,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 88,
+     "fields": {
+      "Origin": "3209 9617 0",
+      "Destination": "3209 3217 0",
+      "menuOption menuTarget objectID": "Climb-up Ladder 17385",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "2",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "3e43261582a9": {
+   "id": "3e43261582a9",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3206,
+    "y": 3208,
+    "plane": 1
+   },
+   "destination": {
+    "x": 3206,
+    "y": 3208,
+    "plane": 0
+   },
+   "label": "Climb-down Staircase 16672",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-down Staircase 16672",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 81,
+     "fields": {
+      "Origin": "3206 3208 1",
+      "Destination": "3206 3208 0",
+      "menuOption menuTarget objectID": "Climb-down Staircase 16672",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "4d9fcaf4c1a9": {
+   "id": "4d9fcaf4c1a9",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3213,
+    "y": 3221,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3212,
+    "y": 3221,
+    "plane": 0
+   },
+   "label": "Open Large door 12349",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Open Large door 12349",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 91,
+     "fields": {
+      "Origin": "3213 3221 0",
+      "Destination": "3212 3221 0",
+      "menuOption menuTarget objectID": "Open Large door 12349",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "4e569c3cd6e3": {
+   "id": "4e569c3cd6e3",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3212,
+    "y": 3222,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3213,
+    "y": 3222,
+    "plane": 0
+   },
+   "label": "Open Large door 12350",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Open Large door 12350",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 96,
+     "fields": {
+      "Origin": "3212 3222 0",
+      "Destination": "3213 3222 0",
+      "menuOption menuTarget objectID": "Open Large door 12350",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "4ebec9d0b842": {
+   "id": "4ebec9d0b842",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3205,
+    "y": 3209,
+    "plane": 1
+   },
+   "destination": {
+    "x": 3206,
+    "y": 3208,
+    "plane": 0
+   },
+   "label": "Climb-down Staircase 16672",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-down Staircase 16672",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 79,
+     "fields": {
+      "Origin": "3205 3209 1",
+      "Destination": "3206 3208 0",
+      "menuOption menuTarget objectID": "Climb-down Staircase 16672",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "5666a3a20c45": {
+   "id": "5666a3a20c45",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3213,
+    "y": 3222,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3212,
+    "y": 3222,
+    "plane": 0
+   },
+   "label": "Open Large door 12350",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Open Large door 12350",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 95,
+     "fields": {
+      "Origin": "3213 3222 0",
+      "Destination": "3212 3222 0",
+      "menuOption menuTarget objectID": "Open Large door 12350",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "5881a2a74da0": {
+   "id": "5881a2a74da0",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3034,
+    "y": 4793,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3221,
+    "y": 3219,
+    "plane": 0
+   },
+   "label": "Operate Appendage 27027",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Operate Appendage 27027",
+   "displayInfo": null,
+   "duration": 4,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Todo: The destionation of the passages is not 100% confirmed, but atleast they point into the the second ring of the abyss.",
+     "line": 5532,
+     "fields": {
+      "Origin": "3034 4793 0",
+      "Destination": "3221 3219 0",
+      "menuOption menuTarget objectID": "Operate Appendage 27027",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "4",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "6f58d1a7da72": {
+   "id": "6f58d1a7da72",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3210,
+    "y": 9616,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3210,
+    "y": 3216,
+    "plane": 0
+   },
+   "label": "Climb-up Ladder 17385",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-up Ladder 17385",
+   "displayInfo": null,
+   "duration": 2,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 87,
+     "fields": {
+      "Origin": "3210 9616 0",
+      "Destination": "3210 3216 0",
+      "menuOption menuTarget objectID": "Climb-up Ladder 17385",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "2",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "739bd18c6d2b": {
+   "id": "739bd18c6d2b",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3207,
+    "y": 3218,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3207,
+    "y": 3217,
+    "plane": 0
+   },
+   "label": "Open Door 12348",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Open Door 12348",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 97,
+     "fields": {
+      "Origin": "3207 3218 0",
+      "Destination": "3207 3217 0",
+      "menuOption menuTarget objectID": "Open Door 12348",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "9f6b2e39686f": {
+   "id": "9f6b2e39686f",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3212,
+    "y": 3221,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3213,
+    "y": 3221,
+    "plane": 0
+   },
+   "label": "Open Large door 12349",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Open Large door 12349",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 92,
+     "fields": {
+      "Origin": "3212 3221 0",
+      "Destination": "3213 3221 0",
+      "menuOption menuTarget objectID": "Open Large door 12349",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "ac5f046d0319": {
+   "id": "ac5f046d0319",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3208,
+    "y": 9616,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3208,
+    "y": 3216,
+    "plane": 0
+   },
+   "label": "Climb-up Ladder 17385",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-up Ladder 17385",
+   "displayInfo": null,
+   "duration": 2,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 90,
+     "fields": {
+      "Origin": "3208 9616 0",
+      "Destination": "3208 3216 0",
+      "menuOption menuTarget objectID": "Climb-up Ladder 17385",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "2",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "b529d146411b": {
+   "id": "b529d146411b",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3205,
+    "y": 3209,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3205,
+    "y": 3209,
+    "plane": 1
+   },
+   "label": "Climb-up Staircase 16671",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-up Staircase 16671",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 82,
+     "fields": {
+      "Origin": "3205 3209 0",
+      "Destination": "3205 3209 1",
+      "menuOption menuTarget objectID": "Climb-up Staircase 16671",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "b7ed7342ecb3": {
+   "id": "b7ed7342ecb3",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3205,
+    "y": 3228,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3206,
+    "y": 3229,
+    "plane": 1
+   },
+   "label": "Climb-up Staircase 16671",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-up Staircase 16671",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 72,
+     "fields": {
+      "Origin": "3205 3228 0",
+      "Destination": "3206 3229 1",
+      "menuOption menuTarget objectID": "Climb-up Staircase 16671",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "be89714a5a7e": {
+   "id": "be89714a5a7e",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3210,
+    "y": 3216,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3210,
+    "y": 9616,
+    "plane": 0
+   },
+   "label": "Climb-down Trapdoor 14880",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-down Trapdoor 14880",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 86,
+     "fields": {
+      "Origin": "3210 3216 0",
+      "Destination": "3210 9616 0",
+      "menuOption menuTarget objectID": "Climb-down Trapdoor 14880",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "d2a12892f2f2": {
+   "id": "d2a12892f2f2",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3206,
+    "y": 3229,
+    "plane": 1
+   },
+   "destination": {
+    "x": 3205,
+    "y": 3228,
+    "plane": 0
+   },
+   "label": "Climb-down Staircase 16672",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-down Staircase 16672",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 73,
+     "fields": {
+      "Origin": "3206 3229 1",
+      "Destination": "3205 3228 0",
+      "menuOption menuTarget objectID": "Climb-down Staircase 16672",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "d53f99859fd3": {
+   "id": "d53f99859fd3",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3206,
+    "y": 3208,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3205,
+    "y": 3209,
+    "plane": 1
+   },
+   "label": "Climb-up Staircase 16671",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-up Staircase 16671",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 80,
+     "fields": {
+      "Origin": "3206 3208 0",
+      "Destination": "3205 3209 1",
+      "menuOption menuTarget objectID": "Climb-up Staircase 16671",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "ec0dc4329057": {
+   "id": "ec0dc4329057",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3209,
+    "y": 9615,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3209,
+    "y": 3215,
+    "plane": 0
+   },
+   "label": "Climb-up Ladder 17385",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-up Ladder 17385",
+   "displayInfo": null,
+   "duration": 2,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 89,
+     "fields": {
+      "Origin": "3209 9615 0",
+      "Destination": "3209 3215 0",
+      "menuOption menuTarget objectID": "Climb-up Ladder 17385",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "2",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "f9d5dac71bdc": {
+   "id": "f9d5dac71bdc",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3207,
+    "y": 3217,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3207,
+    "y": 3218,
+    "plane": 0
+   },
+   "label": "Open Door 12348",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Open Door 12348",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 98,
+     "fields": {
+      "Origin": "3207 3217 0",
+      "Destination": "3207 3218 0",
+      "menuOption menuTarget objectID": "Open Door 12348",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "3c8ed254f588": {
+   "id": "3c8ed254f588",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3205,
+    "y": 3228,
+    "plane": 1
+   },
+   "destination": {
+    "x": 3206,
+    "y": 3229,
+    "plane": 2
+   },
+   "label": "Climb-up Staircase 16672",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-up Staircase 16672",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 78,
+     "fields": {
+      "Origin": "3205 3228 1",
+      "Destination": "3206 3229 2",
+      "menuOption menuTarget objectID": "Climb-up Staircase 16672",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "5b5a8de278e1": {
+   "id": "5b5a8de278e1",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3205,
+    "y": 3209,
+    "plane": 2
+   },
+   "destination": {
+    "x": 3206,
+    "y": 3208,
+    "plane": 1
+   },
+   "label": "Climb-down Staircase 16673",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-down Staircase 16673",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 84,
+     "fields": {
+      "Origin": "3205 3209 2",
+      "Destination": "3206 3208 1",
+      "menuOption menuTarget objectID": "Climb-down Staircase 16673",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "6270c9433787": {
+   "id": "6270c9433787",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3206,
+    "y": 3229,
+    "plane": 2
+   },
+   "destination": {
+    "x": 3205,
+    "y": 3228,
+    "plane": 1
+   },
+   "label": "Climb-down Staircase 16673",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-down Staircase 16673",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 77,
+     "fields": {
+      "Origin": "3206 3229 2",
+      "Destination": "3205 3228 1",
+      "menuOption menuTarget objectID": "Climb-down Staircase 16673",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "da881b818ce7": {
+   "id": "da881b818ce7",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3205,
+    "y": 3209,
+    "plane": 1
+   },
+   "destination": {
+    "x": 3205,
+    "y": 3209,
+    "plane": 2
+   },
+   "label": "Climb-up Staircase 16672",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-up Staircase 16672",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 83,
+     "fields": {
+      "Origin": "3205 3209 1",
+      "Destination": "3205 3209 2",
+      "menuOption menuTarget objectID": "Climb-up Staircase 16672",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "e5961fa057b4": {
+   "id": "e5961fa057b4",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3206,
+    "y": 3208,
+    "plane": 1
+   },
+   "destination": {
+    "x": 3205,
+    "y": 3209,
+    "plane": 2
+   },
+   "label": "Climb-up Staircase 16672",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-up Staircase 16672",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Lumbridge",
+     "line": 85,
+     "fields": {
+      "Origin": "3206 3208 1",
+      "Destination": "3205 3209 2",
+      "menuOption menuTarget objectID": "Climb-up Staircase 16672",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "e3929eeb5eee": {
+   "id": "e3929eeb5eee",
+   "type": "TRANSPORT",
+   "file": "src/main/resources/transports/transports.tsv",
+   "origin": {
+    "x": 3085,
+    "y": 3272,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3085,
+    "y": 9672,
+    "plane": 0
+   },
+   "label": "Climb-down Trapdoor 6435",
+   "teleport": false,
+   "construction": "row",
+   "remappedFrom": null,
+   "objectInfo": "Climb-down Trapdoor 6435",
+   "displayInfo": null,
+   "duration": 1,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "row",
+     "file": "src/main/resources/transports/transports.tsv",
+     "section": "Draynor Sewers",
+     "line": 210,
+     "fields": {
+      "Origin": "3085 3272 0",
+      "Destination": "3085 9672 0",
+      "menuOption menuTarget objectID": "Climb-down Trapdoor 6435",
+      "Skills": "",
+      "Items": "",
+      "Quests": "",
+      "Varbits": "",
+      "VarPlayers": "",
+      "Duration": "1",
+      "Display info": ""
+     }
+    }
+   ]
+  },
+  "000c35d7a958": {
+   "id": "000c35d7a958",
+   "type": "FAIRY_RING",
+   "file": "src/main/resources/transports/fairy_rings.tsv",
+   "origin": {
+    "x": 2412,
+    "y": 4434,
+    "plane": 0
+   },
+   "destination": {
+    "x": 3108,
+    "y": 3149,
+    "plane": 0
+   },
+   "label": "Configure Fairy ring 29560",
+   "teleport": false,
+   "construction": "paired",
+   "remappedFrom": null,
+   "objectInfo": "Configure Fairy ring 29560",
+   "displayInfo": "D I S",
+   "duration": 5,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "origin",
+     "file": "src/main/resources/transports/fairy_rings.tsv",
+     "section": "",
+     "line": 2,
+     "fields": {
+      "Origin": "2412 4434 0",
+      "Destination": "",
+      "menuOption menuTarget objectID": "Configure Fairy ring 29560",
+      "Skills": "",
+      "Quests": "",
+      "Varbits": "",
+      "Duration": "5",
+      "Display info": ""
+     }
+    },
+    {
+     "role": "destination",
+     "file": "src/main/resources/transports/fairy_rings.tsv",
+     "section": "Player-owned house",
+     "line": 107,
+     "fields": {
+      "Origin": "",
+      "Destination": "3108 3149 0",
+      "menuOption menuTarget objectID": "",
+      "Skills": "",
+      "Quests": "",
+      "Varbits": "",
+      "Duration": "5",
+      "Display info": "D I S"
+     }
+    }
+   ]
+  },
+  "051da7d773bd": {
+   "id": "051da7d773bd",
+   "type": "FAIRY_RING",
+   "file": "src/main/resources/transports/fairy_rings.tsv",
+   "origin": {
+    "x": 2412,
+    "y": 4434,
+    "plane": 0
+   },
+   "destination": {
+    "x": 2644,
+    "y": 3495,
+    "plane": 0
+   },
+   "label": "Configure Fairy ring 29560",
+   "teleport": false,
+   "construction": "paired",
+   "remappedFrom": null,
+   "objectInfo": "Configure Fairy ring 29560",
+   "displayInfo": "A L S",
+   "duration": 5,
+   "consumable": false,
+   "maxWildernessLevel": -1,
+   "requirements": [],
+   "varChecks": [],
+   "sources": [
+    {
+     "role": "origin",
+     "file": "src/main/resources/transports/fairy_rings.tsv",
+     "section": "",
+     "line": 2,
+     "fields": {
+      "Origin": "2412 4434 0",
+      "Destination": "",
+      "menuOption menuTarget objectID": "Configure Fairy ring 29560",
+      "Skills": "",
+      "Quests": "",
+      "Varbits": "",
+      "Duration": "5",
+      "Display info": ""
+     }
+    },
+    {
+     "role": "destination",
+     "file": "src/main/resources/transports/fairy_rings.tsv",
+     "section": "POH fairy ring (controlled by usePohFairyRing setting)",
+     "line": 75,
+     "fields": {
+      "Origin": "",
+      "Destination": "2644 3495 0",
+      "menuOption menuTarget objectID": "",
+      "Skills": "",
+      "Quests": "",
+      "Varbits": "",
+      "Duration": "5",
+      "Display info": "A L S"
+     }
+    }
+   ]
+  }
+ }
+}

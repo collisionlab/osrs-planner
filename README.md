@@ -25,6 +25,8 @@ Tests: `gradle :service:test` and `npm test`.
 | `src/` | Frontend (React, TypeScript, Vite) |
 | `service/` | Route service (Javalin): `/v1` API, `/live`, `/ready`, `/metrics`, `/version`; serves the built frontend when `FRONTEND_DIR` is set |
 | `service/src/main/java/shortestpath/routeapi/` | Route API contract (moved from tooling's `:routing`) |
+| `service/src/main/java/shortestpath/workbench/` | The workbench's API: pull request reviews, the transport catalogue, provenance |
+| `src/features/workbench/` | The workbench pages, served on `workbench.` hosts |
 | `schemas/` | The route API and account contracts (`route-api-v1`, `account-v1`) |
 | `tooling/` | shortest-path-tooling (submodule), pinned to upstream `master` |
 | `Dockerfile` | The release image |
@@ -106,6 +108,33 @@ planner fixes to `pin/tooling`; the job leaves a branch with other people's comm
 with `gh workflow run bump-tooling -R collisionlab/osrs-planner`.
 
 The planner owns its contracts in `schemas/`: `route-api-v1` and the `account-v1` it references.
+
+## Workbench
+
+Tools for people working on the plugin's data, on `workbench.collisionlab.world` (any `workbench.`
+host): the **transport review** of a pull request (`/github/<owner>/<repo>/pull/<n>`), and the
+**transport explorer** (`/transports`). Both draw over the inset map through a small feature overlay
+(`src/map/insets/features.ts`): edges, tiles and counted areas, each with the key of the item it
+belongs to. The overlay's *anchors* (a review unit's rows, the explorer's selected transport) decide
+which areas are laid out as insets and where the view opens, and collision is drawn around them;
+other features are drawn only where their tiles already are on the map. A route stays a route: the
+workbench never builds a `RoutePlan` to draw transports.
+
+The explorer reads the plugin the service bundles. `TransportCatalog` loads each transport file
+through the plugin's own `ResourceLoader.addTransportsFromContents` and applies its house remapping,
+which is exactly `PluginResources.transports()` (`TransportCatalogTest` checks the two match), and
+traces every effective transport to the rows it came from: one row, an origin row paired with a
+destination row (fairy rings and other networks), or a teleport's row (no origin is made up). The
+API answers a view at a time, `GET /api/workbench/v1/transports?view=plane,x1,y1,x2,y2;...` (a box
+per area drawn), listing at most 800 transports and otherwise counting them by area; also `/meta`,
+`/search?q=` (object id, `x y plane`, or text) and `/<id>`. URLs keep the selection, place, type
+filter and search (`?t=…&at=x,y,plane&z=…&types=…&q=…`).
+
+Every page says where its layers come from. The service records the tooling and plugin commits it
+was built with (`TOOLING_REV`/`PLUGIN_REV` in the image build, else git); collision comes from the
+tiles release's `collision/<version>/manifest.json`, which names the tooling commit that dumped it.
+When the two tooling commits differ the footer says so rather than implying the walls drawn are the
+plugin's; a review's collision is never from the pull request, and its footer says that too.
 
 ## Route insets
 

@@ -25,9 +25,10 @@ import { surfaceLayer } from "./tactical";
 import { regionTerrain, type TerrainTiles } from "./terrain";
 import { PastedTerrainSource } from "./PastedTerrainSource";
 import { RegionFeatures } from "./RegionFeatures";
-import { collisionStyle, doorStyle, endpointPixels, reviewMarkStyle, routeFeatureStyle, routeMarkerOverlay, type ReviewTone } from "./routeStyles";
-import type { CollisionMap } from "./collision";
+import { collisionStyle, doorStyle, endpointPixels, featureStyle, routeFeatureStyle, routeMarkerOverlay } from "./routeStyles";
 import { regionContour } from "./contour";
+import { edgeLinks, featurePoints, featuresOf, keysHit, type FeatureOverlay, type MapFeature } from "./features";
+import { visibleBoxes, type WorldBox } from "./projection";
 
 export function segmentPoints(segment: NonNullable<OsrsMapProps["route"]>["segments"][number]): WorldPoint[] {
   return segment.kind === "walk" ? segment.path : segment.kind === "bank" ? [segment.location] : [segment.from, segment.to];
@@ -54,26 +55,19 @@ export interface AreaOptions {
   planes?: Record<string, number>;
   /** An inset's plane button was clicked. */
   onPlane?(regionId: string, plane: number): void;
-  /** Transport rows under review (the workbench), drawn over the route that carries them (see features/workbench/review.ts). */
-  review?: ReviewOptions;
+  /** Features drawn over the map besides the route (the workbench's tools; see features.ts). */
+  overlay?: FeatureOverlay;
+  /** Items under a click, by their features' keys. */
+  onSelectFeatures?(keys: string[]): void;
+  /** The world tiles in view, a box per area drawn, after each move. */
+  onView?(boxes: WorldBox[], resolution: number): void;
 }
 
-export interface ReviewOptions {
-  /** The colour of each route segment, by index: an added, removed or changed row. */
-  tones: Record<number, ReviewTone>;
-  /** Tiles to outline: each row's origin and fill its destination. */
-  marks: { point: WorldPoint; tone: ReviewTone; role: "origin" | "destination" }[];
-  /** Blocked tiles and walls around the marks, when zoomed in far enough to see single tiles. */
-  collision?: CollisionMap;
-  /** Names for the areas these points are in, where the inset release hasn't named them. */
-  names?: { point: WorldPoint; name: string }[];
-}
-
-/** The coarsest view a review opens at: 8 px a game tile, where collision is drawn. */
-const REVIEW_MAX_RESOLUTION = 4;
-/** The fewest tiles across a review is first shown with. */
-const REVIEW_FIT_TILES = 24;
-/** Tiles of collision drawn around each review mark. */
+/** The coarsest view anchors open at: 8 px a game tile, where collision is drawn. */
+const ANCHOR_MAX_RESOLUTION = 4;
+/** The fewest tiles across anchors are first shown with. */
+const ANCHOR_FIT_TILES = 24;
+/** Tiles of collision drawn around each anchor's tiles. */
 export const COLLISION_RADIUS = 20;
 
 export function createComposition(target: HTMLElement, releaseAssets: InsetAssets, props: OsrsMapProps,
@@ -81,11 +75,12 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   terrainTiles: TerrainTiles, report: (message: string) => void, initialView?: { center: Coordinate; resolution: number },
   areas: AreaOptions = {}) {
   const { route, start, destination } = props;
-  const assets = route ? { ...releaseAssets, catalogue: withRouteFloors(releaseAssets.catalogue, route.segments.flatMap(segmentPoints)) }
-    : releaseAssets;
+  const anchors = areas.overlay?.anchors || [];
+  const anchorPoints = anchors.flatMap(featurePoints);
+  const walked = [...(route?.segments.flatMap(segmentPoints) || []), ...anchorPoints];
+  const assets = walked.length ? { ...releaseAssets, catalogue: withRouteFloors(releaseAssets.catalogue, walked) } : releaseAssets;
   const classify = catalogueClassifier(assets.catalogue, { detachUpperFloors: true });
-  const points = [start?.coordinate, destination?.coordinate, ...(route?.segments.flatMap(segmentPoints) || [])]
-    .filter((point): point is WorldPoint => !!point);
+  const points = [start?.coordinate, destination?.coordinate, ...walked].filter((point): point is WorldPoint => !!point);
   const touched = new Set(points.map(classify));
   // A shown area keeps its entrance placement once an endpoint is put in it; a route that really
   // crosses into it is laid out first, so its own crossing wins.
@@ -117,7 +112,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   const hidden = new Set(groups.filter(group => group.plane !== group.lead.plane).map(group => group.lead.id));
   const groupExtent = (group: typeof groups[number], offset: Coordinate) => regionExtent({ ...group.lead, bounds: group.bounds }, offset);
   const placements = layoutRegions(groups.map(group => ({ ...group.lead, bounds: group.bounds })),
-    [...decomposed.transitions.filter(t => t.kind === "region"), ...entrances], surfacePoints, 40 * 8,
+    [...decomposed.transitions.filter(t => t.kind === "region"), ...entrances, ...edgeLinks(anchors, classify)], surfacePoints, 40 * 8,
     new Set(shapes.filter(isDetachedUpperFloor).map(shape => shape.id)));
   // Unknown coordinates remain visible in their original world position.
   if (touched.has("unmapped") && !placements.has("unmapped")) placements.set("unmapped", { offset: [0, 0], anchored: false });
@@ -172,15 +167,14 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     else {
       const coordinates = step.kind === "walk" ? step.path.map(projected) : [projected(step.source.from), projected(step.source.to)];
       const feature = new Feature(new LineString(coordinates));
-      feature.setProperties({ role: step.kind, segmentIndex: step.segmentIndex, tone: areas.review?.tones[step.segmentIndex] });
+      feature.setProperties({ role: step.kind, segmentIndex: step.segmentIndex });
       routeSource.addFeature(feature); owned.add(section.regionId, feature);
     }
   }
   for (const crossing of decomposed.transitions) {
     if (hidden.has(crossing.fromRegion) || hidden.has(crossing.toRegion)) continue;
     const feature = new Feature(new LineString([projected(crossing.source.from), projected(crossing.source.to)]));
-    feature.setProperties({ role: crossing.source.kind,
-      segmentIndex: crossing.segmentIndex, tone: areas.review?.tones[crossing.segmentIndex] });
+    feature.setProperties({ role: crossing.source.kind, segmentIndex: crossing.segmentIndex });
     routeSource.addFeature(feature); owned.addLink(crossing.fromRegion, crossing.toRegion, feature.getGeometry()!);
   }
   if (start) addPoint(start.coordinate, "start");
@@ -205,46 +199,78 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     const line = new LineString([projected(crossing.source.from), projected(crossing.source.to)]);
     entranceSource.addFeature(new Feature(line)); owned.addLink(crossing.fromRegion, crossing.toRegion, line);
   }
-  const reviewSource = new VectorSource();
-  map.addLayer(new VectorLayer({ source: reviewSource, zIndex: 99, updateWhileInteracting: true, updateWhileAnimating: true, style: reviewMarkStyle }));
+  let overlay = areas.overlay;
+  const featureSource = new VectorSource();
+  const featureLayer = new VectorLayer({ source: featureSource, zIndex: 99, updateWhileInteracting: true, updateWhileAnimating: true,
+    style: (feature, resolution) => featureStyle(feature, overlay?.selected, resolution) });
+  map.addLayer(featureLayer);
   const collisionSource = new VectorSource();
-  map.addLayer(new VectorLayer({ source: collisionSource, zIndex: 60, maxResolution: REVIEW_MAX_RESOLUTION + .01, updateWhileInteracting: true, updateWhileAnimating: true,
+  map.addLayer(new VectorLayer({ source: collisionSource, zIndex: 60, maxResolution: ANCHOR_MAX_RESOLUTION + .01, updateWhileInteracting: true, updateWhileAnimating: true,
     style: collisionStyle }));
   /** A tile's square on the map, drawn where its region is placed. */
   const tileRing = (point: WorldPoint, inset = 0) => {
     const [cx, cy] = projected(point), half = 16 - inset;
     return [[cx - half, cy - half], [cx + half, cy - half], [cx + half, cy + half], [cx - half, cy + half], [cx - half, cy - half]];
   };
-  for (const mark of areas.review?.marks || []) {
-    if (hidden.has(classify(mark.point))) continue;
-    const feature = new Feature(new Polygon([tileRing(mark.point, mark.role === "origin" ? 2 : 0)]));
-    feature.setProperties({ tone: mark.tone, role: mark.role });
-    reviewSource.addFeature(feature); owned.add(classify(mark.point), feature);
-  }
-  const collision = areas.review?.collision;
-  if (collision) {
+  // Features of the overlay that aren't anchors are only drawn on terrain already shown (filled in once
+  // every region is placed): an edge into an area nobody opened isn't drawn floating over the map.
+  let drawable: (point: WorldPoint) => boolean = () => false;
+  /** Draw (or redraw) the overlay's features and the collision around its anchors' tiles. */
+  const drawOverlay = () => {
+    featureSource.clear(); collisionSource.clear();
+    owned.remove(target => !!target.get("overlay"));
+    if (!overlay) return;
+    const anchored = new Set<MapFeature>(overlay.anchors);
+    const add = (source: VectorSource, region: string, feature: Feature) => {
+      feature.set("overlay", true); source.addFeature(feature); owned.add(region, feature);
+    };
+    for (const item of overlay.features) {
+      const ends = featurePoints(item);
+      if (ends.some(point => hidden.has(classify(point))) || (!anchored.has(item) && !ends.every(drawable))) continue;
+      let feature: Feature;
+      if (item.kind === "edge") {
+        feature = new Feature(new LineString([projected(item.from), projected(item.to)]));
+        feature.setProperties({ dashed: item.dashed });
+      } else if (item.kind === "point") {
+        feature = new Feature(new Polygon([tileRing(item.point, item.role === "origin" ? 2 : 0)]));
+        feature.set("role", item.role);
+      } else {
+        const [x1, y1, x2, y2] = item.bounds;
+        const [a, b] = [projected({ x: x1, y: y1, plane: item.plane }), projected({ x: x2, y: y2, plane: item.plane })];
+        feature = new Feature(new Polygon([[[a[0] - 16, a[1] - 16], [b[0] + 16, a[1] - 16], [b[0] + 16, b[1] + 16], [a[0] - 16, b[1] + 16], [a[0] - 16, a[1] - 16]]]));
+        feature.set("label", item.label);
+      }
+      feature.setProperties({ key: item.key, kind: item.kind, tone: item.tone });
+      if (item.kind === "edge" && classify(item.from) !== classify(item.to)) {
+        // An edge between two insets follows each end's inset.
+        const line = feature.getGeometry() as LineString;
+        line.set("overlay", true); feature.set("overlay", true); featureSource.addFeature(feature);
+        owned.addLink(classify(item.from), classify(item.to), line);
+      } else add(featureSource, classify(ends[0]), feature);
+    }
+    const collision = overlay.collision;
+    if (!collision) return;
     const drawn = new Set<string>();
-    for (const mark of areas.review?.marks || []) {
-      const { x: mx, y: my, plane } = mark.point;
+    for (const centre of overlay.anchors.filter(item => item.kind !== "region").flatMap(featurePoints)) {
+      const { x: mx, y: my, plane } = centre;
       for (let x = mx - COLLISION_RADIUS; x <= mx + COLLISION_RADIUS; x++) for (let y = my - COLLISION_RADIUS; y <= my + COLLISION_RADIUS; y++) {
         const point = { x, y, plane }, key = `${x},${y},${plane}`, region = classify(point);
-        if (drawn.has(key) || hidden.has(region) || region !== classify(mark.point)) continue;
+        if (drawn.has(key) || hidden.has(region) || region !== classify(centre)) continue;
         drawn.add(key);
         const tile = collision.tile(point);
         if (!tile) continue;
         const [cx, cy] = projected(point);
-        const add = (feature: Feature) => { collisionSource.addFeature(feature); owned.add(region, feature); };
-        if (tile.blocked) { const f = new Feature(new Polygon([tileRing(point)])); f.set("kind", "blocked"); add(f); continue; }
+        if (tile.blocked) { const f = new Feature(new Polygon([tileRing(point)])); f.set("kind", "blocked"); add(collisionSource, region, f); continue; }
         // Each closed edge once, from the tile north or east of it; walls drawn heavier than objects.
         if (!tile.north && !collision.tile({ x, y: y + 1, plane })?.blocked) {
-          const f = new Feature(new LineString([[cx - 16, cy + 16], [cx + 16, cy + 16]])); f.set("kind", tile.wallNorth ? "wall" : "edge"); add(f);
+          const f = new Feature(new LineString([[cx - 16, cy + 16], [cx + 16, cy + 16]])); f.set("kind", tile.wallNorth ? "wall" : "edge"); add(collisionSource, region, f);
         }
         if (!tile.east && !collision.tile({ x: x + 1, y, plane })?.blocked) {
-          const f = new Feature(new LineString([[cx + 16, cy - 16], [cx + 16, cy + 16]])); f.set("kind", tile.wallEast ? "wall" : "edge"); add(f);
+          const f = new Feature(new LineString([[cx + 16, cy - 16], [cx + 16, cy + 16]])); f.set("kind", tile.wallEast ? "wall" : "edge"); add(collisionSource, region, f);
         }
       }
     }
-  }
+  };
   const doorSource = new VectorSource();
   const doorLayer = new VectorLayer({ source: doorSource, zIndex: 95, maxResolution: 8.01, style: doorStyle });
   map.addLayer(doorLayer);
@@ -295,7 +321,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     }
     return (next: Coordinate) => { const bounds = regionExtent(shape, next); source.moveTo(bounds); imageLayer.setExtent(bounds); };
   };
-  const provisionalNames = new Map((areas.review?.names || []).map(({ point, name }) => [classify(point), name] as const));
+  const provisionalNames = new Map((overlay?.names || []).map(({ point, name }) => [classify(point), name] as const));
   /** An inset: its floor's terrain, and a label to drag it by with a button per plane its area has. */
   const drawGroup = (group: typeof groups[number]) => {
     const placement = placements.get(group.lead.id)!;
@@ -360,7 +386,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
         placement.offset = [original[0] + next[0] - origin[0], original[1] + next[1] - origin[1]];
         if (!frame) frame = requestAnimationFrame(() => { frame = 0; update(); });
       };
-      label.onpointerup = label.onpointercancel = () => { stopDrag(); update(); };
+      label.onpointerup = label.onpointercancel = () => { stopDrag(); update(); reportView(); };
     });
   };
   groups.forEach(drawGroup);
@@ -372,6 +398,32 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   const picked = new Map(groups.flatMap(group => group.members.map(member => [member.id, placements.get(group.lead.id)!] as const)));
   upper.forEach(shape => picked.set(shape.id, { offset: [0, 0], anchored: true }));
   hitPlacements = picked;
+  drawable = point => {
+    const region = classify(point);
+    if (region === "main-world") return point.plane === 0 || upper.some(shape => contains(shape, point.x, point.y, point.plane));
+    return picked.has(region);
+  };
+  drawOverlay();
+  // The world tiles in view: the surface's, and each drawn floor's where its inset is now.
+  const surfaceWorld = createEmpty();
+  for (const [plane, x, y, width, height] of assets.catalogue.surfaceRects) if (plane === 0) extend(surfaceWorld, [x, y, x + width - 1, y + height - 1]);
+  const viewBoxes = (): WorldBox[] => {
+    const extent = view.calculateExtent(map.getSize());
+    const areasDrawn = [
+      ...(isEmpty(surfaceWorld) ? [] : [{ plane: 0, bounds: surfaceWorld as [number, number, number, number], offset: [0, 0] }]),
+      ...[...picked].map(([id, placement]) => { const shape = regionById.get(id) || upper.find(other => other.id === id)!;
+        return { plane: shape.plane, bounds: shape.bounds, offset: placement.offset }; }),
+    ];
+    return visibleBoxes(extent, areasDrawn);
+  };
+  let viewTimer = 0;
+  const reportView = () => {
+    if (!areas.onView) return;
+    clearTimeout(viewTimer);
+    viewTimer = window.setTimeout(() => { if (!disposed && map.getSize()) areas.onView?.(viewBoxes(), view.getResolution() ?? 1); }, 120);
+  };
+  map.on("moveend", reportView);
+  cleanup.push(() => clearTimeout(viewTimer));
   for (const door of areas.doors || []) {
     // Entrances under a pasted inset would look like part of it.
     const at = projected(door.point), under = pickWorld(at, assets, picked);
@@ -394,23 +446,24 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     if (!isEmpty(extent)) view.fit(extent, { padding: [70, 70, 70, 70], maxZoom: 9 });
   };
   /**
-   * Fit the review marks closely enough to see single tiles and their collision (8 px a tile or
-   * more), with at least {@link REVIEW_FIT_TILES} tiles around them for context.
+   * Fit the anchors closely enough to see single tiles and their collision (8 px a tile or more),
+   * with at least {@link ANCHOR_FIT_TILES} tiles around them for context.
    */
-  const fitReview = () => {
-    const marks = (areas.review?.marks || []).filter(mark => !hidden.has(classify(mark.point)));
+  const fitAnchors = () => {
+    const marks = (overlay?.anchors || []).filter(item => item.kind === "point").map(item => item as Extract<MapFeature, { kind: "point" }>)
+      .filter(mark => !hidden.has(classify(mark.point)));
     if (!marks.length) { fit(); return; }
     const around = (points: WorldPoint[]) => {
       const extent = createEmpty();
       points.forEach(point => { const at = projected(point); extend(extent, [...at, ...at]); });
-      const [x1, y1, x2, y2] = extent, half = REVIEW_FIT_TILES * 16, cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
+      const [x1, y1, x2, y2] = extent, half = ANCHOR_FIT_TILES * 16, cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
       return [Math.min(x1, cx - half), Math.min(y1, cy - half), Math.max(x2, cx + half), Math.max(y2, cy + half)];
     };
     const padding = [90, 70, 70, 70];
     view.fit(around(marks.map(mark => mark.point)), { padding, maxZoom: 10 });
     // Too far apart to see single tiles (an area placed beside a distant entrance): start at the
     // first origin's end; the row table moves to the other.
-    if ((view.getResolution() ?? 1) > REVIEW_MAX_RESOLUTION) {
+    if ((view.getResolution() ?? 1) > ANCHOR_MAX_RESOLUTION) {
       const first = marks.find(mark => mark.role === "origin") || marks[0];
       view.fit(around(marks.filter(mark => classify(mark.point) === classify(first.point)).map(mark => mark.point)), { padding, maxZoom: 10 });
     }
@@ -449,25 +502,25 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     const door = map.forEachFeatureAtPixel(event.pixel, feature => feature, { layerFilter: candidate => candidate === doorLayer, hitTolerance: 4 });
     if (door) { areas.onDoor?.(door.get("door")); return; }
     const hit = map.forEachFeatureAtPixel(event.pixel, feature => feature, { layerFilter: candidate => candidate === routes, hitTolerance: 6 });
-    if (hit) {
-      const index = hit.get("segmentIndex");
-      if (typeof index === "number") callbacks().onSelectSegment?.(index);
-      return;
-    }
+    if (hit && typeof hit.get("segmentIndex") === "number") { callbacks().onSelectSegment?.(hit.get("segmentIndex")); return; }
+    const items = keysHit(map.getFeaturesAtPixel(event.pixel, { layerFilter: candidate => candidate === featureLayer, hitTolerance: 6 })
+      .map(feature => ({ key: feature.get("key") })));
+    if (items.length && areas.onSelectFeatures) { areas.onSelectFeatures(items); return; }
     callbacks().onPick(pickWorld(event.coordinate, assets, picked, 0));
   });
   map.on("pointermove", event => {
     if (event.dragging) return;
     const door = map.forEachFeatureAtPixel(event.pixel, feature => feature, { layerFilter: candidate => candidate === doorLayer, hitTolerance: 4 });
-    const hit = door || map.forEachFeatureAtPixel(event.pixel, feature => feature, { layerFilter: candidate => candidate === routes, hitTolerance: 4 });
+    const hit = door || map.forEachFeatureAtPixel(event.pixel, feature => feature, { layerFilter: candidate => candidate === routes || (candidate === featureLayer && !!areas.onSelectFeatures), hitTolerance: 4 });
     target.style.cursor = hit ? "pointer" : "";
     target.title = door ? `${door.get("name")} — click to ${door.get("open") ? "hide" : "show"}` : "";
   });
   const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => map.updateSize()) : undefined;
   observer?.observe(target);
   if (initialView) { view.setCenter(initialView.center); view.setResolution(initialView.resolution); }
-  else if (areas.review) fitReview();
+  else if (anchors.length) fitAnchors();
   else fit();
+  reportView();
   return {
     fit,
     fitRegion,
@@ -493,8 +546,34 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     },
     /** Centre a game tile where it is drawn, close enough to see its collision. */
     showTile(point: WorldPoint) { view.animate({ center: projected(point), resolution: Math.min(view.getResolution() ?? 2, 2), duration: 250 }); },
+    /** How many overlay features of each kind are drawn (for end-to-end tests of bounded views). */
+    featureCount() {
+      const counts: Record<string, number> = { edge: 0, point: 0, region: 0 };
+      featureSource.forEachFeature(feature => { counts[feature.get("kind")]++; });
+      return counts;
+    },
     /** Where a world tile is drawn, in pixels from the map's top left (for end-to-end tests). */
     pixel(point: WorldPoint) { return map.getPixelFromCoordinate(projected(point)); },
+    /** Replace the overlay's features and selection, keeping the layout (its anchors must be the same). */
+    update(next?: FeatureOverlay) { overlay = next; drawOverlay(); },
+    /** Bring the overlay's anchors into view, close enough to see their collision. */
+    fitAnchors,
+    /** Highlight an item's features and bring them into view. */
+    selectFeature(key?: string, show = true) {
+      if (overlay) overlay = { ...overlay, selected: key };
+      featureLayer.changed();
+      const shown = featuresOf(overlay?.features || [], key).flatMap(featurePoints).filter(point => !hidden.has(classify(point)) && drawable(point));
+      if (show && shown.length) fitPoints(shown.map(projected), 10);
+    },
+    /** Show a rectangle of world tiles on one plane (on the surface, or an inset that shows it). */
+    showBox(box: WorldBox) {
+      const a = projected({ x: box.x1, y: box.y1, plane: box.plane }), b = projected({ x: box.x2, y: box.y2, plane: box.plane });
+      view.fit([Math.min(a[0], b[0]) - 16, Math.min(a[1], b[1]) - 16, Math.max(a[0], b[0]) + 16, Math.max(a[1], b[1]) + 16], { padding: [70, 70, 70, 70], maxZoom: 10, duration: 250 });
+    },
+    /** Centre a world tile (where it is drawn) at a zoom level. */
+    centre(point: WorldPoint, zoom?: number) { view.setCenter(projected(point)); if (zoom !== undefined) view.setZoom(zoom); },
+    /** The world tile at the centre of the view, and the zoom level. */
+    centreTile() { return { point: pickWorld(view.getCenter()!, assets, picked, 0), zoom: Math.round(view.getZoom() ?? 7) }; },
     select(index?: number) {
       selected = index; routes.changed();
       if (index !== undefined && route?.segments[index]) fitPoints(segmentPoints(route.segments[index]).map(projected), 10);

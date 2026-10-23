@@ -25,12 +25,15 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 import org.slf4j.LoggerFactory;
 import shortestpath.accounts.canonical.CanonicalAccounts;
 import shortestpath.routeapi.AccountJson;
 import shortestpath.routeapi.Catalog;
 import shortestpath.routeapi.RouteApi;
+import shortestpath.workbench.Provenance;
 import shortestpath.workbench.Reviews;
+import shortestpath.workbench.TransportCatalog;
 import shortestpath.workbench.Workbench;
 
 /**
@@ -55,10 +58,34 @@ public final class ServiceMain {
         Reviews reviews = Workbench.fromEnvironment();
         app(mapper, engine, reviews).start(port);
         reviews.start(Workbench.REFRESH);
+        Thread catalog = new Thread(transports::get, "transport-catalog");
+        catalog.setDaemon(true);
+        catalog.start();
     }
 
     static Javalin app(ObjectMapper mapper, RoutingEngine engine) {
         return app(mapper, engine, Workbench.fromEnvironment());
+    }
+
+    /** The transport explorer's catalogue, built on first use (or by {@link #main} in the background). */
+    private static final Supplier<TransportCatalog> transports = memoize(() -> TransportCatalog.load(ItemCatalog::name));
+
+    private static <T> Supplier<T> memoize(Supplier<T> supplier) {
+        return new Supplier<>() {
+            private volatile T value;
+
+            @Override
+            public T get() {
+                if (value == null) {
+                    synchronized (this) {
+                        if (value == null) {
+                            value = supplier.get();
+                        }
+                    }
+                }
+                return value;
+            }
+        };
     }
 
     static Javalin app(ObjectMapper mapper, RoutingEngine engine, Reviews reviews) {
@@ -165,6 +192,7 @@ public final class ServiceMain {
         });
         reviews.bindTo(metrics);
         Workbench.routes(app, reviews);
+        Workbench.transportRoutes(app, transports, Provenance.bundled());
         app.exception(Reviews.NotServed.class, (error, ctx) -> error(ctx, 404, error.getMessage()));
         app.exception(Reviews.NotFound.class, (error, ctx) -> error(ctx, 404, error.getMessage()));
         app.exception(IllegalArgumentException.class, (error, ctx) -> error(ctx, 400, error.getMessage()));

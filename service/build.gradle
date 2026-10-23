@@ -44,11 +44,38 @@ def generateRouteItemNames = tasks.register('generateRouteItemNames', JavaExec) 
     } as CommandLineArgumentProvider)
 }
 
+// Which plugin data the service bundles, for the workbench's provenance (shortestpath.workbench.Provenance):
+// the tooling submodule's commit and the shortest-path commit it pins. The image build passes them as
+// TOOLING_REV and PLUGIN_REV; elsewhere git answers, and "unknown" when neither can.
+def revision = { String variable, String dir ->
+    def given = providers.environmentVariable(variable)
+    def asked = providers.exec {
+        commandLine 'git', '-C', rootProject.file(dir).path, 'rev-parse', 'HEAD'
+        ignoreExitValue = true
+    }.standardOutput.asText.map { it.trim() ?: 'unknown' }
+    given.orElse(asked).orElse('unknown')
+}
+def provenanceDir = layout.buildDirectory.dir('generated/workbench-provenance')
+def generateProvenance = tasks.register('generateWorkbenchProvenance') {
+    def tooling = revision('TOOLING_REV', 'tooling')
+    def plugin = revision('PLUGIN_REV', 'tooling/shortest-path')
+    inputs.property('tooling', tooling)
+    inputs.property('plugin', plugin)
+    outputs.dir(provenanceDir)
+    doLast {
+        def file = provenanceDir.get().file('workbench-provenance.properties').asFile
+        file.parentFile.mkdirs()
+        file.text = "tooling.repository=osrs-pathfinding/shortest-path-tooling\ntooling.rev=${tooling.get()}\n" +
+            "plugin.repository=Skretzo/shortest-path\nplugin.rev=${plugin.get()}\n"
+    }
+}
+
 // The API contracts the planner owns.
 def schemasDir = rootProject.file('schemas')
 
 processResources {
     from(generateRouteItemNames)
+    from(generateProvenance)
     from(schemasDir) { into 'schemas' }
 }
 
