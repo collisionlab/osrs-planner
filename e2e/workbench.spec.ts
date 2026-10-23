@@ -79,6 +79,11 @@ test("reviews a pull request's transport rows on the inset map", async ({ page }
   // The first change (in Tears of Guthix, plane 2) asked the release's collision layer for its square.
   await collision;
 
+  // The map's style can be switched here too, on any screen.
+  const style = page.getByRole("group", { name: "Map style" });
+  await style.getByRole("button", { name: "Standard" }).click();
+  await expect(style.getByRole("button", { name: "Standard" })).toHaveAttribute("aria-pressed", "true");
+
   // The landing tile of the way in can be shown on its own, with collision around it.
   await rows.getByRole("button", { name: "4127 5508 0" }).first().click();
   await expect(page.locator(".wb-rows tr.selected")).toHaveCount(1);
