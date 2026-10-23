@@ -22,6 +22,8 @@ COPY . .
 RUN gradle --no-daemon :service:installDist
 
 FROM eclipse-temurin:21-jre-jammy
+# The workbench reads pull requests with git (shortestpath.workbench.GitSource).
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
 RUN useradd --system --uid 10001 --create-home planner
 WORKDIR /app
 COPY --from=service --chown=planner:planner /src/service/build/install/osrs-planner/ ./

@@ -5,7 +5,7 @@ import { mapLayers, insetPin, type MapStyle } from "../layers";
 import tiles from "../../../tiles.json";
 import { loadInsetAssets, loadInsetEntrances, loadPlaneLinks, upperFloorDoors, type PlaneLink, type InsetArea, type InsetAssets, type InsetDoor, type InsetEntrances } from "./assets";
 import { AreaPicker } from "./AreaPicker";
-import { createComposition } from "./composition";
+import { createComposition, type ReviewOptions } from "./composition";
 import "ol/ol.css";
 import "../routeMarkers.css";
 import "./styles.css";
@@ -16,7 +16,9 @@ const samePoint = (a?: WorldPoint, b?: WorldPoint) => a?.x === b?.x && a?.y === 
 const routeMatches = ({ route, start, destination }: OsrsMapProps) =>
   !route || (samePoint(route.start.coordinate, start?.coordinate) && samePoint(route.destination.coordinate, destination?.coordinate));
 
-export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): void }) {
+export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): void; review?: ReviewOptions;
+  /** A tile to move the view to; a new object moves it again. */
+  focusTile?: { point: WorldPoint } }) {
   const target = useRef<HTMLDivElement>(null);
   // After an endpoint drag the map is rebuilt for the new route; keep the view where the user left
   // it until the route for the new endpoints is shown, instead of fitting the whole route again.
@@ -93,7 +95,8 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
       if (keepView.current && routeMatches(props)) keepView.current = false;
       const instance = createComposition(target.current, assets, props, () => callbacks.current, layer,
         terrain, setStatus, previous,
-        { shown, doors, onDoor: door => toggleDoor.current(door), planes, onPlane: (regionId, plane) => choosePlane.current(regionId, plane) });
+        { shown, doors, onDoor: door => toggleDoor.current(door), planes, onPlane: (regionId, plane) => choosePlane.current(regionId, plane),
+          review: props.review });
       composition.current = instance;
       // End-to-end tests find tiles on the map through this; it isn't in production builds.
       if (import.meta.env.DEV) (window as unknown as { insetMap?: typeof instance }).insetMap = instance;
@@ -101,9 +104,10 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
       instance.select(callbacks.current.selectedSegment);
       return () => { lastView.current = instance.view(); composition.current = undefined; instance.dispose(); };
     } catch (error) { setError(String(error)); }
-  }, [assets, props.route, props.start, props.destination, props.style, shown, doors, planes]);
+  }, [assets, props.route, props.start, props.destination, props.style, shown, doors, planes, props.review]);
   useEffect(() => { composition.current?.select(props.selectedSegment); }, [props.selectedSegment]);
   useEffect(() => { composition.current?.preview(props.previewRoute); }, [props.previewRoute]);
+  useEffect(() => { if (props.focusTile) composition.current?.showTile(props.focusTile.point); }, [props.focusTile]);
   return <>
     <div ref={target} className="route-map inset-map" tabIndex={0} aria-label="Route map with movable insets" />
     <div className="inset-actions">
