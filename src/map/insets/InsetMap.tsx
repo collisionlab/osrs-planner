@@ -6,7 +6,8 @@ import tiles from "../../../tiles.json";
 import { loadInsetAssets, loadInsetEntrances, loadPlaneLinks, upperFloorDoors, type PlaneLink, type InsetArea, type InsetAssets, type InsetDoor, type InsetEntrances } from "./assets";
 import { AreaPicker } from "./AreaPicker";
 import { createComposition } from "./composition";
-import { anchorsKey, type FeatureOverlay } from "./features";
+import { anchorsKey, layoutKey as overlayLayoutKey, type FeatureOverlay } from "./features";
+import { catalogueClassifier } from "./preview";
 import type { WorldBox } from "./projection";
 import "ol/ol.css";
 import "../routeMarkers.css";
@@ -33,6 +34,8 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
   focusBox?: WorldBox;
   /** Whether selecting an item brings it into view (the default). */
   fitSelection?: boolean;
+  /** Whether new anchors are brought into view (the default); read when the overlay changes. */
+  fitAnchors?: boolean;
   /** Called with the composition once built, for tools that drive the view (and tests). */
   onReady?(map: ReturnType<typeof createComposition>): void }) {
   const target = useRef<HTMLDivElement>(null);
@@ -97,7 +100,9 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
   const areasChanged = useRef(false);
   useEffect(() => { areasChanged.current = true; }, [shown, doors, planes]);
   // An overlay is laid out by its anchors (and the names they give areas); new features alone are redrawn.
-  const layoutKey = useMemo(() => anchorsKey(props.overlay) + JSON.stringify(props.overlay?.names || []), [props.overlay]);
+  const classify = useMemo(() => assets && catalogueClassifier(assets.catalogue, { detachUpperFloors: true }), [assets]);
+  const layoutKey = useMemo(() => classify ? overlayLayoutKey(props.overlay, classify) : "", [props.overlay, classify]);
+  const drawnAnchors = useRef("");
   const overlay = useRef(props.overlay);
   overlay.current = props.overlay;
   useEffect(() => {
@@ -121,6 +126,7 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
           onView: props.onView && ((boxes, resolution) => callbacks.current.onView?.(boxes, resolution)) });
       composition.current = instance;
       if (!previous && props.initialCentre && !props.route && !overlay.current?.anchors.length) instance.centre(props.initialCentre.point, props.initialCentre.zoom);
+      drawnAnchors.current = anchorsKey(overlay.current);
       props.onReady?.(instance);
       // End-to-end tests find tiles on the map through this; it isn't in production builds.
       if (import.meta.env.DEV) (window as unknown as { insetMap?: typeof instance }).insetMap = instance;
@@ -129,7 +135,13 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
       return () => { lastView.current = instance.view(); composition.current = undefined; instance.dispose(); };
     } catch (error) { setError(String(error)); }
   }, [assets, props.route, props.start, props.destination, props.style, shown, doors, planes, layoutKey]);
-  useEffect(() => { composition.current?.update(props.overlay); }, [props.overlay]);
+  useEffect(() => {
+    const instance = composition.current;
+    if (!instance) return;
+    instance.update(props.overlay);
+    const anchors = anchorsKey(props.overlay);
+    if (anchors !== drawnAnchors.current) { drawnAnchors.current = anchors; if (props.fitAnchors ?? true) instance.fitAnchors(); }
+  }, [props.overlay]);
   useEffect(() => { composition.current?.selectFeature(props.overlay?.selected, props.fitSelection ?? true); }, [props.overlay?.selected]);
   useEffect(() => { if (props.focusBox) composition.current?.showBox(props.focusBox); }, [props.focusBox]);
   useEffect(() => { composition.current?.select(props.selectedSegment); }, [props.selectedSegment]);
@@ -138,7 +150,8 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
   return <>
     <div ref={target} className="route-map inset-map" tabIndex={0} aria-label="Route map with movable insets" />
     <div className="inset-actions">
-      <button type="button" onClick={() => composition.current?.fit()}>Fit route</button>
+      {props.overlay ? <button type="button" onClick={() => composition.current?.fitAnchors()}>{props.overlay.anchors.length ? "Fit selection" : "Fit"}</button>
+        : <button type="button" onClick={() => composition.current?.fit()}>Fit route</button>}
       <button type="button" onClick={() => composition.current?.reset()}>Reset insets</button>
     </div>
     {assets && <AreaPicker areas={entrances?.areas} shown={shown} onShow={area => show(area.regionId)} onHide={area => hide(shown.filter(other => other.name === area.name).map(other => other.regionId))} />}

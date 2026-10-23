@@ -450,7 +450,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
    * with at least {@link ANCHOR_FIT_TILES} tiles around them for context.
    */
   const fitAnchors = () => {
-    const marks = anchors.filter(item => item.kind === "point").map(item => item as Extract<MapFeature, { kind: "point" }>)
+    const marks = (overlay?.anchors || []).filter(item => item.kind === "point").map(item => item as Extract<MapFeature, { kind: "point" }>)
       .filter(mark => !hidden.has(classify(mark.point)));
     if (!marks.length) { fit(); return; }
     const around = (points: WorldPoint[]) => {
@@ -546,10 +546,18 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     },
     /** Centre a game tile where it is drawn, close enough to see its collision. */
     showTile(point: WorldPoint) { view.animate({ center: projected(point), resolution: Math.min(view.getResolution() ?? 2, 2), duration: 250 }); },
+    /** How many overlay features of each kind are drawn (for end-to-end tests of bounded views). */
+    featureCount() {
+      const counts: Record<string, number> = { edge: 0, point: 0, region: 0 };
+      featureSource.forEachFeature(feature => { counts[feature.get("kind")]++; });
+      return counts;
+    },
     /** Where a world tile is drawn, in pixels from the map's top left (for end-to-end tests). */
     pixel(point: WorldPoint) { return map.getPixelFromCoordinate(projected(point)); },
     /** Replace the overlay's features and selection, keeping the layout (its anchors must be the same). */
     update(next?: FeatureOverlay) { overlay = next; drawOverlay(); },
+    /** Bring the overlay's anchors into view, close enough to see their collision. */
+    fitAnchors,
     /** Highlight an item's features and bring them into view. */
     selectFeature(key?: string, show = true) {
       if (overlay) overlay = { ...overlay, selected: key };

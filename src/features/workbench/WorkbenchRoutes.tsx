@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Route, Routes, useNavigate } from "react-router-dom";
+import { Link, Route, Routes, useNavigate } from "react-router-dom";
 import { OpenPullList } from "./OpenPulls";
 import { ReviewPage } from "./ReviewPage";
+import { TransportExplorer } from "./TransportExplorer";
 import "./workbench.css";
 
 /**
@@ -18,6 +19,7 @@ export function WorkbenchRoutes() {
   }, []);
   return <Routes>
     <Route path="/" element={<WorkbenchHome />} />
+    <Route path="/transports" element={<TransportExplorer />} />
     <Route path="/github/:owner/:repo/pull/:number" element={<ReviewPage />} />
     <Route path="/github/:owner/:repo/pull/:number/files" element={<ReviewPage />} />
     <Route path="/github/:owner/:repo/pull/:number/files/:range" element={<ReviewPage />} />
@@ -53,6 +55,8 @@ function WorkbenchHome({ missing }: { missing?: boolean }) {
       <p className="wb-hint">Or swap the host in any GitHub URL: <code>github.com/…/pull/844</code> → <code>{window.location.host}/github/…/pull/844</code>. Branches without a pull request work too, as <code>…/compare/master...my-branch</code>.</p>
       {error && <p role="alert">{error}</p>}
       <OpenPullList />
+      <h1>Transport explorer</h1>
+      <p>Every transport the plugin builds from its data, on the map: what each needs, and the rows it came from. <Link to="/transports">Open the explorer</Link></p>
     </main>
   </div>;
 }

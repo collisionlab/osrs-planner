@@ -62,5 +62,20 @@ export function edgeLinks(features: MapFeature[], classify: (point: WorldPoint) 
   });
 }
 
-/** A stable description of the anchors, to tell whether a new overlay needs the insets laid out again. */
+/** A stable description of the anchors' tiles, to tell whether a new overlay is about something else. */
 export const anchorsKey = (overlay?: FeatureOverlay) => overlay ? JSON.stringify(overlay.anchors.map(featurePoints)) : "";
+
+/**
+ * What the insets are laid out from: the areas the anchors reach beyond the ground floor of the
+ * surface, the crossings into them, and the names given to areas. Anchors that move within those areas only need redrawing.
+ */
+export function layoutKey(overlay: FeatureOverlay | undefined, classify: (point: WorldPoint) => string) {
+  if (!overlay) return "";
+  const areas = new Set(overlay.anchors.flatMap(featurePoints).map(point => {
+    const region = classify(point);
+    return region === "main-world" && point.plane === 0 ? "" : `${region}/${point.plane}`;
+  }).filter(Boolean));
+  // An area is placed beside the crossing that enters it, so a different crossing lays out again.
+  const crossings = edgeLinks(overlay.anchors, classify).map(link => featurePoints({ kind: "edge", key: "", from: link.source.from, to: link.source.to, tone: "object" }));
+  return JSON.stringify([[...areas].sort(), crossings, overlay.names || []]);
+}

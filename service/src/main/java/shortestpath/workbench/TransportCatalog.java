@@ -16,9 +16,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.IntFunction;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import shortestpath.WorldPointUtil;
 import shortestpath.poh.PohService;
@@ -291,16 +293,18 @@ public final class TransportCatalog {
     /** The catalogue of these transport files, by {@link TransportType} name; for tests. */
     static TransportCatalog build(Map<String, String> contentsByType, IntFunction<String> itemName) {
         Map<Integer, Set<Transport>> all = new HashMap<>();
-        Map<Transport, String> fileOf = new IdentityHashMap<>();
+        // Each file's transports in the order the plugin made them: rows in file order, then pairings.
+        Map<String, List<Transport>> byFile = new LinkedHashMap<>();
         Map<String, List<TransportDiff.Row>> rowsByFile = new HashMap<>();
         for (Map.Entry<String, String> file : contentsByType.entrySet()) {
             TransportType type = TransportType.valueOf(file.getKey());
             String path = RESOURCES + type.getResourcePath();
             Map<Integer, Set<Transport>> own = new HashMap<>();
             ResourceLoader.addTransportsFromContents(own, file.getValue(), type, type.hasRadiusThreshold() ? type.getRadiusThreshold() : 0);
+            List<Transport> made = byFile.computeIfAbsent(path, key -> new ArrayList<>());
             own.forEach((origin, transports) -> {
                 all.computeIfAbsent(origin, key -> new LinkedHashSet<>()).addAll(transports);
-                transports.forEach(transport -> fileOf.put(transport, path));
+                made.addAll(transports);
             });
             rowsByFile.put(path, TransportDiff.parse(path, file.getValue()));
         }
@@ -309,12 +313,14 @@ public final class TransportCatalog {
         PohService.remapPohDestinations(all);
 
         List<Entry> entries = new ArrayList<>();
-        for (Set<Transport> set : all.values()) {
-            for (Transport transport : set) {
+        for (Map.Entry<String, List<Transport>> file : byFile.entrySet()) {
+            // Rows already matched, so transports that look alike (one teleport with several sets of
+            // requirements) take one row each, in order.
+            Set<TransportDiff.Row> used = Collections.newSetFromMap(new IdentityHashMap<>());
+            for (Transport transport : file.getValue()) {
                 int original = before.get(transport);
                 Point remappedFrom = original != transport.getDestination() ? Point.unpack(original) : null;
-                String file = fileOf.get(transport);
-                entries.add(trace(transport, file, Point.unpack(original), remappedFrom, rowsByFile.get(file)));
+                entries.add(trace(transport, file.getKey(), Point.unpack(original), remappedFrom, rowsByFile.get(file.getKey()), used));
             }
         }
         entries.sort(Comparator.comparing((Entry entry) -> entry.file).thenComparing(entry -> entry.sources.isEmpty() ? 0 : entry.sources.get(0).line)
@@ -323,19 +329,19 @@ public final class TransportCatalog {
     }
 
     /** Matches a transport to the rows the plugin built it from. */
-    private static Entry trace(Transport transport, String file, Point destination, Point remappedFrom, List<TransportDiff.Row> rows) {
+    private static Entry trace(Transport transport, String file, Point destination, Point remappedFrom, List<TransportDiff.Row> rows,
+            Set<TransportDiff.Row> used) {
         Point origin = Point.unpack(transport.getOrigin());
         String object = Objects.toString(transport.getObjectInfo(), ""), info = Objects.toString(transport.getDisplayInfo(), "");
         List<Source> sources = new ArrayList<>();
         String construction;
         if (origin == null) {
             construction = "teleport";
-            rows.stream().filter(row -> row.origin == null && destination.same(row.destination) && matches(row, object, info))
-                .findFirst().ifPresent(row -> sources.add(new Source("row", row)));
+            first(rows, used, row -> row.origin == null && destination.same(row.destination) && matches(row, object, info))
+                .ifPresent(row -> sources.add(new Source("row", row)));
         } else {
-            TransportDiff.Row direct = rows.stream()
-                .filter(row -> origin.same(row.origin) && destination.same(row.destination) && matches(row, object, info))
-                .findFirst().orElse(null);
+            TransportDiff.Row direct = first(rows, used, row -> origin.same(row.origin) && destination.same(row.destination) && matches(row, object, info))
+                .orElse(null);
             if (direct != null) {
                 construction = "row";
                 sources.add(new Source("row", direct));
@@ -350,8 +356,24 @@ public final class TransportCatalog {
             }
         }
         Entry entry = new Entry(transport, file, remappedFrom, construction, sources);
-        entry.id = id(transport.getType().name(), file, origin, destination, object, info);
+        entry.id = id(transport.getType().name(), file, origin, destination, object, info,
+            sources.stream().map(source -> source.fields.toString()).collect(Collectors.joining("\u0000")));
         return entry;
+    }
+
+    /** The first row passing {@code test} not yet taken by another transport (which it then takes), else the first. */
+    private static Optional<TransportDiff.Row> first(List<TransportDiff.Row> rows, Set<TransportDiff.Row> used,
+            Predicate<TransportDiff.Row> test) {
+        TransportDiff.Row fallback = null;
+        for (TransportDiff.Row row : rows) {
+            if (test.test(row)) {
+                if (used.add(row)) {
+                    return Optional.of(row);
+                }
+                fallback = fallback == null ? row : fallback;
+            }
+        }
+        return Optional.ofNullable(fallback);
     }
 
     private static boolean matches(TransportDiff.Row row, String object, String info) {
@@ -367,11 +389,14 @@ public final class TransportCatalog {
         return row.fields.containsKey(name) && row.fields.get(name).isEmpty();
     }
 
-    /** Stable for the same transport across loads: its type, file, ends and labels. */
-    static String id(String type, String file, Point origin, Point destination, String object, String info) {
+    /**
+     * Stable for the same transport across loads and edits elsewhere in its file: its type, file, ends,
+     * labels, and the contents of the rows it came from (which tell apart one teleport's variants).
+     */
+    static String id(String type, String file, Point origin, Point destination, String object, String info, String rows) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(String.join("\u0000", type, file, String.valueOf(origin), String.valueOf(destination), object, info)
+            byte[] hash = digest.digest(String.join("\u0000", type, file, String.valueOf(origin), String.valueOf(destination), object, info, rows)
                 .getBytes(StandardCharsets.UTF_8));
             StringBuilder hex = new StringBuilder();
             for (int i = 0; i < 6; i++) {

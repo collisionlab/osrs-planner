@@ -64,6 +64,15 @@ class TransportCatalogTest {
             }
             assertEquals(entry.file, entry.sources.get(0).file);
         }
+        // Transports that look alike (a teleport with several sets of requirements) each have their own row and id.
+        Map<String, List<TransportCatalog.Entry>> alike = bundled.entries().stream().collect(Collectors.groupingBy(entry ->
+            entry.file + key(entry.transport)));
+        for (List<TransportCatalog.Entry> group : alike.values()) {
+            if (group.size() > 1 && group.get(0).construction.equals("teleport")) {
+                assertEquals(group.size(), group.stream().map(entry -> entry.sources.get(0).line).distinct().count(), group.get(0).transport.toString());
+            }
+        }
+        assertEquals(bundled.size(), bundled.entries().stream().map(entry -> entry.id).distinct().count());
         // Fairy rings are a network: each ring's origin row paired with every other ring's destination row.
         TransportCatalog.Entry ring = bundled.entries().stream().filter(entry -> entry.transport.getType().name().equals("FAIRY_RING")).findFirst().orElseThrow();
         assertEquals("paired", ring.construction);
@@ -97,7 +106,8 @@ class TransportCatalogTest {
         assertEquals("1858 7051 0", house.destination.toString());
         assertEquals("1900 7060 0", house.remappedFrom.toString());
         assertEquals("House", house.sources.get(0).section);
-        assertEquals(TransportCatalog.id("TRANSPORT", house.file, house.origin, house.remappedFrom, "Enter Portal 9", ""), house.id);
+        assertEquals(TransportCatalog.id("TRANSPORT", house.file, house.origin, house.remappedFrom, "Enter Portal 9", "",
+            house.sources.get(0).fields.toString()), house.id);
     }
 
     @Test

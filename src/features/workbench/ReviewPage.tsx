@@ -8,6 +8,7 @@ import { diffLineUrl, githubUrl, loadHeads, loadReview, parseSource, row, source
   type Review, type ReviewUnit, type RowChange } from "./api";
 import type { WorldPoint } from "../../domain/contracts";
 import { OpenPullPicker } from "./OpenPulls";
+import { loadCollisionManifest, type CollisionManifest } from "./provenance";
 import { changeOfKey, unitOverlay, unitPoints } from "./review";
 import "./workbench.css";
 
@@ -144,6 +145,8 @@ export function ReviewPage() {
   }, [index, units]);
   useEffect(() => { document.title = source ? `Review ${sourceLabel(source)} · Workbench` : "Workbench"; }, [source]);
   const [style, setStyle] = useState(savedStyle);
+  const [collisionManifest, setCollisionManifest] = useState<CollisionManifest>();
+  useEffect(() => { const abort = new AbortController(); loadCollisionManifest(abort.signal).then(setCollisionManifest, () => {}); return () => abort.abort(); }, []);
   const styles = Object.entries(mapLayers) as [MapStyle, MapLayer][];
   const counts = review?.counts;
   return <div className="wb-page">
@@ -190,6 +193,10 @@ export function ReviewPage() {
       {review && <span>Comparing <a href={`https://github.com/${review.repository}/commit/${review.mergeBase}`}>{short(review.mergeBase)}</a> (merge base)
         → <a href={`https://github.com/${review.repository}/commit/${review.head}`}>{short(review.head)}</a></span>}
       <span>Tiles and collision {tiles.version}</span>
+      {/* The pull request's rows are drawn over collision from the tiles release, never from the pull request. */}
+      <span className="wb-prov differs" title="Collision comes from the tiles release, not from this pull request">
+        Collision dumped by {collisionManifest?.dumperSource ? `${collisionManifest.dumperSource.repository.split("/")[1]}@${collisionManifest.dumperSource.rev.slice(0, 7)}` : "an unknown commit"}
+        {collisionManifest?.cacheId !== undefined ? ` from cache ${collisionManifest.cacheId}` : ""}, not from this pull request</span>
       {insetPin && <span>Insets {insetPin.version.slice(0, 12)}</span>}
     </footer>
   </div>;

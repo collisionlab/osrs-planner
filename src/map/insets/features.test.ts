@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { anchorsKey, edgeLinks, featurePoints, featuresOf, keysHit, type MapFeature } from "./features";
+import { anchorsKey, edgeLinks, featurePoints, featuresOf, keysHit, layoutKey, type MapFeature } from "./features";
 
 const p = (x: number, y: number, plane = 0) => ({ x, y, plane });
 const door: MapFeature = { kind: "edge", key: "door", from: p(10, 10), to: p(12, 10), tone: "object" };
@@ -32,5 +32,14 @@ describe("map features", () => {
     expect(anchorsKey(base)).toBe(anchorsKey({ ...base, features: [door], selected: "door" }));
     expect(anchorsKey(base)).not.toBe(anchorsKey({ ...base, anchors: [cave] }));
     expect(anchorsKey(undefined)).toBe("");
+  });
+
+  it("lays the insets out again only when the anchors reach other areas, or enter one elsewhere", () => {
+    const on = (anchors: MapFeature[]) => layoutKey({ features: anchors, anchors }, classify);
+    const otherDoor: MapFeature = { ...door, from: p(40, 40), to: p(41, 40) };
+    expect(on([door])).toBe(on([otherDoor]));
+    expect(on([door])).not.toBe(on([cave]));
+    expect(on([cave])).not.toBe(on([{ ...cave, from: p(11, 10) }]));
+    expect(on([{ ...landing, point: p(20, 20, 1) }])).not.toBe(on([landing]));
   });
 });
