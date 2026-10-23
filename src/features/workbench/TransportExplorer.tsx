@@ -20,53 +20,53 @@ const point = (p?: WorldPoint | null) => p ? `${p.x} ${p.y} ${p.plane}` : "anywh
 const LUMBRIDGE = { point: { x: 3222, y: 3218, plane: 0 }, zoom: 8 };
 /** Listed in the side panel at most; the map shows all of them. */
 const LISTED = 200;
-const CONSTRUCTION: Record<TransportSummary["construction"], string> = {
-  row: "One row", paired: "Paired: an origin row with a destination row", teleport: "Teleport: usable from anywhere",
-};
 
 function TypeSwatch({ type, teleport }: { type: string; teleport: boolean }) {
   return <i className="wb-swatch" style={{ background: TONES[toneOf({ type, teleport })] }} />;
 }
 
-function SummaryButton({ summary, selected, onSelect }: { summary: TransportSummary; selected: boolean; onSelect(): void }) {
+/** One row of the list: a transport, or several the same in all but their requirements. */
+function SummaryButton({ group, selected, onSelect }: { group: TransportSummary[]; selected: boolean; onSelect(): void }) {
+  const summary = group[0];
   return <button type="button" aria-current={selected} onClick={onSelect}>
-    <span className="wb-unit-title"><TypeSwatch type={summary.type} teleport={summary.teleport} />{summary.label || typeName(summary.type)}</span>
-    <span className="wb-unit-meta"><span>{point(summary.origin)} → {point(summary.destination)}</span><span>{typeName(summary.type)}</span></span>
+    <span className="wb-unit-title"><TypeSwatch type={summary.type} teleport={summary.teleport} />{summary.label || typeName(summary.type)}
+      {group.length > 1 && <small className="wb-count" title={`${group.length} transports with these ends, differing in what they need`}>×{group.length}</small>}</span>
+    <span className="wb-unit-meta">{point(summary.origin)} → {point(summary.destination)}</span>
   </button>;
+}
+
+/** Transports with the same label, type and ends: listed once. */
+function grouped(list: TransportSummary[]) {
+  const groups = new Map<string, TransportSummary[]>();
+  for (const summary of list) {
+    const key = [summary.label, summary.type, point(summary.origin), point(summary.destination)].join("|");
+    groups.set(key, [...groups.get(key) || [], summary]);
+  }
+  return [...groups.values()];
 }
 
 function Detail({ detail, meta, onShow }: { detail: TransportDetail; meta?: TransportMeta; onShow(point: WorldPoint): void }) {
   const tile = (p: WorldPoint | null) => p ? <button type="button" className="wb-tile" title="Show on the map" onClick={() => onShow(p)}>{point(p)}</button> : <i>anywhere</i>;
+  const needs = [...detail.requirements.map(requirement => <span key={requirement.kind + requirement.name} className={`wb-chip ${requirement.kind}`}>{requirement.name}</span>),
+    ...detail.varChecks.map(check => <span key={check} className="wb-chip var">{check}</span>)];
   return <section className="wb-detail" aria-label="Transport">
-    <h2><TypeSwatch type={detail.type} teleport={detail.teleport} />{detail.label || typeName(detail.type)} <small>{typeName(detail.type)} · {detail.id}</small></h2>
-    <div className="wb-columns">
-      <div>
-        <h3>Effective transport <small>as the plugin builds it</small></h3>
-        <dl className="wb-facts">
-          <dt>From</dt><dd className="wb-mono">{tile(detail.origin)}</dd>
-          <dt>To</dt><dd className="wb-mono">{tile(detail.destination)}{detail.remappedFrom && <span className="wb-note"> (the row says {point(detail.remappedFrom)}; the plugin moves house destinations to its landing tile)</span>}</dd>
-          <dt>Built from</dt><dd>{CONSTRUCTION[detail.construction]}</dd>
-          {detail.objectInfo && <><dt>Action</dt><dd>{detail.objectInfo}</dd></>}
-          {detail.displayInfo && <><dt>Display info</dt><dd>{detail.displayInfo}</dd></>}
-          <dt>Duration</dt><dd>{detail.duration} ticks{detail.consumable ? " · consumable" : ""}{detail.maxWildernessLevel >= 0 ? ` · up to wilderness level ${detail.maxWildernessLevel}` : ""}</dd>
-          <dt>Requirements</dt><dd>{detail.requirements.length || detail.varChecks.length
-            ? <>{detail.requirements.map(requirement => <span key={requirement.kind + requirement.name} className={`wb-chip ${requirement.kind}`}>{requirement.name}</span>)}
-              {detail.varChecks.map(check => <span key={check} className="wb-chip var">{check}</span>)}</> : "none"}</dd>
-        </dl>
-      </div>
-      <div>
-        <h3>Source rows <small>as written</small></h3>
-        {detail.sources.length ? <table className="wb-rows wb-sources">
-          <thead><tr><th>Row</th><th>Columns</th></tr></thead>
-          <tbody>{detail.sources.map(source => <tr key={source.role + source.line}>
-            <td className="wb-mono">{source.role !== "row" && <b>{source.role} </b>}
-              <a href={meta ? sourceUrl(meta.plugin, source) : undefined} target="_blank" rel="noreferrer">{source.file.split("/").at(-1)}:{source.line}</a>
-              {source.section && <div className="wb-note">{source.section}</div>}</td>
-            <td className="wb-details">{Object.entries(source.fields).filter(([, value]) => value).map(([name, value]) => <span key={name}><b>{name}</b> {value}</span>)}</td>
-          </tr>)}</tbody>
-        </table> : <p className="wb-note">No source row matched this transport.</p>}
-      </div>
-    </div>
+    <h2><TypeSwatch type={detail.type} teleport={detail.teleport} />{detail.label || typeName(detail.type)} <small>{typeName(detail.type)}</small></h2>
+    <dl className="wb-facts">
+      <dt>From → to</dt><dd className="wb-mono">{tile(detail.origin)} → {tile(detail.destination)}
+        {detail.remappedFrom && <span className="wb-note"> (row says {point(detail.remappedFrom)}; moved to the house landing)</span>}</dd>
+      {detail.objectInfo && <><dt>Action</dt><dd>{detail.objectInfo}</dd></>}
+      <dt>Takes</dt><dd>{detail.duration} ticks{detail.consumable ? " · consumable" : ""}{detail.maxWildernessLevel >= 0 ? ` · wilderness ≤ ${detail.maxWildernessLevel}` : ""}</dd>
+      <dt>Needs</dt><dd>{needs.length ? needs : "nothing"}</dd>
+      <dt>{detail.sources.length === 1 ? "Row" : "Rows"}</dt><dd>{detail.sources.length ? detail.sources.map(source =>
+        <details key={source.role + source.line} className="wb-source">
+          <summary><a href={meta ? sourceUrl(meta.plugin, source) : undefined} target="_blank" rel="noreferrer">{source.file.split("/").at(-1)}:{source.line}</a>
+            {source.role !== "row" && ` (${source.role})`}{source.section && <span className="wb-note"> · {source.section}</span>}</summary>
+          <div className="wb-details">{Object.entries(source.fields).filter(([, value]) => value).map(([name, value]) => <span key={name}><b>{name}</b> {value}</span>)}</div>
+        </details>) : "no source row matched"}</dd>
+    </dl>
+    <p className="wb-legend" aria-label="Collision legend" title="The pathfinder's collision around this transport's ends, when zoomed in">
+      Collision: <span className="wb-key boundary" /> edge of walkable ground <span className="wb-key wall" /> wall or door <span className="wb-key edge" /> closed by an object
+    </p>
   </section>;
 }
 
@@ -137,24 +137,38 @@ export function TransportExplorer() {
   // A link that names a place opens there, not on its transport.
   const fitNext = useRef(!state.at);
   const select = (id: string | undefined, fit: boolean) => { fitNext.current = fit; update({ selected: id }); };
-  const [here, setHere] = useState<{ ids: string[] }>();
+  // From the list: the map moves only when the transport isn't already in view.
+  const choose = (summary: TransportSummary) => {
+    const ends = [summary.origin, summary.destination].filter((p): p is WorldPoint => !!p);
+    const inView = ends.every(p => viewBoxes?.some(box => p.plane === box.plane && p.x >= box.x1 && p.x <= box.x2 && p.y >= box.y1 && p.y <= box.y2));
+    select(summary.id, !inView);
+  };
+  // A tile clicked on the map: every transport arriving at or leaving it, and those under the click.
+  const [here, setHere] = useState<{ tile: WorldPoint; keys: string[]; transports?: TransportSummary[] }>();
   const [focusBox, setFocusBox] = useState<WorldBox>();
   // A tile clicked on the map, for the routing layers to inspect.
   const [picked, setPicked] = useState<WorldPoint>();
   const routing = useRoutingLayers(picked, setFocusBox);
   const overlay = useMemo(() => transportOverlay && { ...transportOverlay, routing: routing.overlay }, [transportOverlay, routing.overlay]);
   const [focusTile, setFocusTile] = useState<{ point: WorldPoint }>();
-  const onSelectFeatures = (keys: string[]) => {
+  const onSelectFeatures = (keys: string[], point?: WorldPoint) => {
     const cluster = keys.find(key => key.startsWith("cluster:"));
     if (cluster) {
       const counted = view?.clusters[Number(cluster.slice(8))];
       if (counted) setFocusBox({ plane: counted.plane, x1: counted.x1 - 4, y1: counted.y1 - 4, x2: counted.x2 + 4, y2: counted.y2 + 4 });
       return;
     }
-    if (keys.length === 1) { setHere(undefined); select(keys[0], false); return; }
-    // Several transports under the click (one tile, many destinations): list them to choose from.
-    setHere({ ids: keys });
-    select(keys.includes(state.selected || "") ? state.selected : keys[0], false);
+    if (point) lookAt(point, keys);
+    if (keys.length === 1) select(keys[0], false);
+  };
+  const lookAt = (tile: WorldPoint, keys: string[] = []) => {
+    setPicked(tile);
+    setHere({ tile, keys });
+    const at = (p: WorldPoint | null) => !!p && p.x === tile.x && p.y === tile.y && p.plane === tile.plane;
+    loadView([{ plane: tile.plane, x1: tile.x, y1: tile.y, x2: tile.x, y2: tile.y }], state.types).then(found => {
+      const transports = found.transports.filter(summary => at(summary.origin) || at(summary.destination));
+      setHere(current => current?.tile === tile ? { ...current, transports } : current);
+    }, reason => setError(String(reason instanceof Error ? reason.message : reason)));
   };
 
   const [query, setQuery] = useState(state.query || "");
@@ -180,7 +194,20 @@ export function TransportExplorer() {
     update({ types: next.length === all.length ? undefined : all.filter(other => next.includes(other)) });
   };
 
-  const listed = (here ? view?.transports.filter(summary => here.ids.includes(summary.id)) : results ?? view?.transports) || [];
+  const listed = (results ?? view?.transports) || [];
+  const groups = useMemo(() => grouped(listed), [listed]);
+  // At a clicked tile: what arrives, what leaves, and what was under the click besides.
+  const atTile = useMemo(() => {
+    if (!here?.transports) return undefined;
+    const same = (p: WorldPoint | null) => !!p && p.x === here.tile.x && p.y === here.tile.y && p.plane === here.tile.plane;
+    const known = new Set(here.transports.map(summary => summary.id));
+    return {
+      arriving: grouped(here.transports.filter(summary => same(summary.destination))),
+      leaving: grouped(here.transports.filter(summary => same(summary.origin) && !same(summary.destination))),
+      under: grouped(view?.transports.filter(summary => here.keys.includes(summary.id) && !known.has(summary.id)) || []),
+    };
+  }, [here, view]);
+  const shownGroups = atTile ? [...atTile.arriving, ...atTile.leaving, ...atTile.under] : groups;
   const lines = provenance(meta, collisionManifest);
   const mapRef = useRef<{ centreTile(): { point: WorldPoint; zoom: number } }>(undefined);
   // After each move: what's in view, and where the map is (for the URL).
@@ -191,13 +218,13 @@ export function TransportExplorer() {
   };
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.target instanceof HTMLInputElement || event.metaKey || event.ctrlKey || !listed.length) return;
-      const index = listed.findIndex(summary => summary.id === state.selected);
-      if (event.key === "j") select(listed[Math.min(index + 1, listed.length - 1)].id, true);
-      else if (event.key === "k") select(listed[Math.max(index - 1, 0)].id, true);
+      if (event.target instanceof HTMLInputElement || event.metaKey || event.ctrlKey || !shownGroups.length) return;
+      const index = shownGroups.findIndex(group => group.some(summary => summary.id === state.selected));
+      const next = event.key === "j" ? shownGroups[Math.min(index + 1, shownGroups.length - 1)] : event.key === "k" ? shownGroups[Math.max(index - 1, 0)] : undefined;
+      if (next) choose(next[0]);
     };
     addEventListener("keydown", onKey); return () => removeEventListener("keydown", onKey);
-  }, [listed, state.selected]);
+  }, [shownGroups, state.selected]);
 
   return <div className="wb-page">
     <header className="wb-header">
@@ -224,19 +251,33 @@ export function TransportExplorer() {
             <i className="wb-swatch" style={{ background: TONES[toneOfType(type)] }} />{typeName(type.type)} <small>{type.count}</small>
           </label>)}
         </details>
-        <p className="wb-list-heading" role="status">{here ? <>{here.ids.length} transports at this spot <button type="button" className="wb-link" onClick={() => setHere(undefined)}>show all in view</button></>
-          : results ? <>{results.length}{results.length === 50 ? "+" : ""} found for “{state.query}” <button type="button" className="wb-link" onClick={() => { setResults(undefined); setQuery(""); update({ query: undefined }); }}>clear</button></>
-          : !view ? "Loading…" : view.clusters.length ? `${view.total.toLocaleString()} transports in view; zoom in (or click a count) to list them`
-          : `${view.total} in view${loading ? " (updating…)" : ""}`}</p>
-        <ol>{listed.slice(0, LISTED).map(summary => <li key={summary.id}>
-          <SummaryButton summary={summary} selected={summary.id === state.selected} onSelect={() => select(summary.id, true)} />
-        </li>)}</ol>
-        {listed.length > LISTED && <p className="wb-note">and {listed.length - LISTED} more on the map</p>}
+        {here ? <>
+          <p className="wb-list-heading" role="status">At <span className="wb-mono">{point(here.tile)}</span>{" "}
+            <button type="button" className="wb-link" onClick={() => setHere(undefined)}>back to all in view</button></p>
+          {!atTile ? <p className="wb-note" role="status">Loading…</p> : <>
+            {([["Arriving here", atTile.arriving], ["Leaving here", atTile.leaving], ["Under the click", atTile.under]] as const)
+              .filter(([, list]) => list.length).map(([title, list]) => <section key={title} aria-label={title}>
+                <h3 className="wb-list-section">{title} <small>{list.reduce((n, group) => n + group.length, 0)}</small></h3>
+                <ol>{list.map(group => <li key={group[0].id}>
+                  <SummaryButton group={group} selected={group.some(summary => summary.id === state.selected)} onSelect={() => choose(group[0])} />
+                </li>)}</ol>
+              </section>)}
+            {!atTile.arriving.length && !atTile.leaving.length && !atTile.under.length && <p className="wb-note">No transport arrives at or leaves this tile.</p>}
+          </>}
+        </> : <>
+          <p className="wb-list-heading" role="status">{results ? <>{results.length}{results.length === 50 ? "+" : ""} found for “{state.query}” <button type="button" className="wb-link" onClick={() => { setResults(undefined); setQuery(""); update({ query: undefined }); }}>clear</button></>
+            : !view ? "Loading…" : view.clusters.length ? `${view.total.toLocaleString()} in view; zoom in to list them`
+            : `${view.total} in view${loading ? " (updating…)" : ""}`}</p>
+          <ol>{groups.slice(0, LISTED).map(group => <li key={group[0].id}>
+            <SummaryButton group={group} selected={group.some(summary => summary.id === state.selected)} onSelect={() => choose(group[0])} />
+          </li>)}</ol>
+          {groups.length > LISTED && <p className="wb-note">and {groups.length - LISTED} more on the map</p>}
+        </>}
       </nav>
       <main className="wb-main">
         <section className="wb-map">
           {insetPin ? <Suspense fallback={<div className="route-map" role="status">Loading inset map…</div>}>
-            <InsetMap overlay={overlay} style={style} insets onPick={point => { setHere(undefined); setPicked(point); }}
+            <InsetMap overlay={overlay} style={style} insets onPick={point => lookAt(point)}
               onRoutingCrossing={routing.selectCrossing} onFallback={() => {}}
               onSelectFeatures={onSelectFeatures} onView={recordView} fitSelection={false} fitAnchors={fitNext.current}
               initialCentre={state.at ?? LUMBRIDGE} focusBox={focusBox} focusTile={focusTile}
@@ -249,15 +290,14 @@ export function TransportExplorer() {
         </section>
         <div className="wb-below-map">
           {selected ? <Detail detail={selected} meta={meta} onShow={p => setFocusTile({ point: p })} />
-            : <section className="wb-detail wb-hint-panel"><p className="wb-note">Click a transport on the map or in the list to see where it comes from. Teleports, which leave from anywhere, show only where they land.</p></section>}
+            : <section className="wb-detail wb-hint-panel"><p className="wb-note">Click a tile to see every transport arriving there or leaving it, or a transport for its details.</p></section>}
           <div className="wb-detail">{routing.panel}</div>
         </div>
       </main>
     </div>
     <footer className="wb-footer wb-provenance">
-      {lines.map(line => <span key={line.subject} className={`wb-prov ${line.status}`} title={line.status === "differs" ? "Not made from the same revision" : undefined}>
-        <b>{line.subject}</b> {line.text}</span>)}
-      {routing.provenance && <span className="wb-prov ok"><b>Routing</b> {routing.provenance}, verified against these tiles</span>}
+      {lines.map(line => <span key={line.subject} className={`wb-prov ${line.status}`} title={line.text}><b>{line.subject}</b> {line.label}</span>)}
+      {routing.provenance && <span className="wb-prov ok" title="Verified against these tiles"><b>Routing</b> {routing.provenance}</span>}
     </footer>
   </div>;
 }

@@ -282,15 +282,28 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
         if (drawn.has(key) || hidden.has(region) || region !== classify(centre)) continue;
         drawn.add(key);
         const tile = collision.tile(point);
-        if (!tile) continue;
+        if (!tile || tile.blocked) continue;
+        // Lines only, from walkable tiles: where walkable ground ends, and closed edges between two
+        // walkable tiles (walls heavy, objects dashed). Blocked ground isn't painted.
         const [cx, cy] = projected(point);
-        if (tile.blocked) { const f = new Feature(new Polygon([tileRing(point)])); f.set("kind", "blocked"); add(collisionSource, region, f); continue; }
-        // Each closed edge once, from the tile north or east of it; walls drawn heavier than objects.
-        if (!tile.north && !collision.tile({ x, y: y + 1, plane })?.blocked) {
-          const f = new Feature(new LineString([[cx - 16, cy + 16], [cx + 16, cy + 16]])); f.set("kind", tile.wallNorth ? "wall" : "edge"); add(collisionSource, region, f);
-        }
-        if (!tile.east && !collision.tile({ x: x + 1, y, plane })?.blocked) {
-          const f = new Feature(new LineString([[cx + 16, cy - 16], [cx + 16, cy + 16]])); f.set("kind", tile.wallEast ? "wall" : "edge"); add(collisionSource, region, f);
+        const line = (kind: string, ax: number, ay: number, bx: number, by: number) => {
+          const f = new Feature(new LineString([[cx + ax, cy + ay], [cx + bx, cy + by]]));
+          f.set("kind", kind);
+          add(collisionSource, region, f);
+        };
+        const sides = [
+          { open: tile.north, wall: tile.wallNorth, next: { x, y: y + 1, plane }, ends: [-16, 16, 16, 16], owned: true },
+          { open: tile.east, wall: tile.wallEast, next: { x: x + 1, y, plane }, ends: [16, -16, 16, 16], owned: true },
+          { open: tile.south, wall: false, next: { x, y: y - 1, plane }, ends: [-16, -16, 16, -16], owned: false },
+          { open: tile.west, wall: false, next: { x: x - 1, y, plane }, ends: [-16, -16, -16, 16], owned: false },
+        ];
+        for (const side of sides) {
+          if (side.open) continue;
+          const next = collision.tile(side.next);
+          const [ax, ay, bx, by] = side.ends;
+          if (!next || next.blocked) line("boundary", ax, ay, bx, by);
+          // A closed edge between walkable tiles is drawn once, from the tile south or west of it.
+          else if (side.owned) line(side.wall ? "wall" : "edge", ax, ay, bx, by);
         }
       }
     }

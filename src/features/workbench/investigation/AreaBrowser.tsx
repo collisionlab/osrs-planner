@@ -22,7 +22,9 @@ export function AreaBrowser({ areas, filter, onFilter, selected, onSelect, gaps,
     <form className="wb-search" role="search" onSubmit={event => event.preventDefault()}>
       <input aria-label="Search areas" placeholder="Name, area key or region id" value={filter.text || ""} onChange={event => set({ text: event.target.value || undefined })} />
     </form>
-    <div className="wb-area-filters">
+    <details className="wb-filters" open={!!(filter.status || filter.plane !== undefined || filter.flag)}>
+      <summary>Filters</summary>
+      <div className="wb-area-filters">
       <label>Status <select aria-label="Status" value={filter.status || ""} onChange={event => set({ status: (event.target.value || undefined) as AreaStatus | undefined })}>
         <option value="">any</option><option value="named">named</option><option value="descriptive">descriptive</option><option value="provisional">provisional</option>
       </select></label>
@@ -37,18 +39,18 @@ export function AreaBrowser({ areas, filter, onFilter, selected, onSelect, gaps,
         <option value="multi-floor">multi-floor</option><option value="evidence">name candidates or evidence issues</option>
         <option value="topology">possible topology gaps</option>
       </select></label>
-    </div>
-    <p className="wb-list-heading" role="status">{matches.length.toLocaleString()} of {areas.length.toLocaleString()} areas · {ordered}</p>
+      </div>
+    </details>
+    <p className="wb-list-heading" role="status" title={`Of ${areas.length.toLocaleString()}; ${ordered}`}>{matches.length.toLocaleString()} areas</p>
     <ol>{matches.slice(0, LISTED).map(area => <li key={area.id}>
       <button type="button" aria-current={area.id === selected} onClick={() => onSelect(area)}>
         <span className="wb-unit-title">{area.name}</span>
         <span className="wb-unit-meta">
-          <span>{area.status} · {area.regionIds.length} region{area.regionIds.length === 1 ? "" : "s"} · plane{area.planes.length > 1 ? "s" : ""} {area.planes.join(",")}</span>
-          <span className="wb-counts">
-            {!area.entrance && <span className="wb-flag" title="No known entrance">no entrance</span>}
-            {hasTopologyGap(area, gaps) && <span className="wb-flag gap" title="Possible topology gap">gap</span>}
-            {area.issues.length > 0 && <span className="wb-flag issue" title={area.issues.map(issue => issue.message).join("\n")}>{area.issues.length} issue{area.issues.length === 1 ? "" : "s"}</span>}
-          </span>
+          <span>{area.regionIds.length} region{area.regionIds.length === 1 ? "" : "s"} · plane{area.planes.length > 1 ? "s" : ""} {area.planes.join(",")}</span>
+          {/* One flag at most: the most pressing. */}
+          {hasTopologyGap(area, gaps) ? <span className="wb-flag gap" title="Possible topology gap">gap</span>
+            : area.issues.length > 0 ? <span className="wb-flag issue" title={area.issues.map(issue => issue.message).join("\n")}>{area.issues.length} issue{area.issues.length === 1 ? "" : "s"}</span>
+            : !area.entrance ? <span className="wb-flag" title="No known entrance">no entrance</span> : null}
         </span>
       </button>
     </li>)}</ol>
