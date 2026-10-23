@@ -47,6 +47,11 @@ final class GitSource {
         return repository;
     }
 
+    /** Clones the repository if it isn't yet, so the first review doesn't wait for it. */
+    synchronized void warm() {
+        ensureClone();
+    }
+
     /** What a remote ref points at now, or {@code null}; asks GitHub, fetches nothing. */
     synchronized String remoteHead(String ref) {
         ensureClone();
