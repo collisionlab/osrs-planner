@@ -45,6 +45,7 @@ export interface OverlayRegion {
 }
 
 export interface FeatureOverlay {
+  routing?: import("./routing").RoutingOverlay;
   features: MapFeature[];
   /**
    * The features this view is about: their areas are laid out as insets (an edge into an area puts it

@@ -1,3 +1,4 @@
+import { useRoutingLayers } from "./RoutingPanel";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import tiles from "../../../../tiles.json";
@@ -158,9 +159,12 @@ export function InsetInvestigation() {
   }, [looked, collision]);
   const collisionReady = collisionFor === JSON.stringify(looked);
 
-  const overlay = useMemo(() => data && investigationOverlay({ data, area, plane, mode: state.mode, region: state.region, item: state.item,
+  const routing = useRoutingLayers(inspected, setFocusBox);
+  const baseOverlay = useMemo(() => data && investigationOverlay({ data, area, plane, mode: state.mode, region: state.region, item: state.item,
     beside: !!state.beside, topology, candidate, transports, draft, inspected, classify,
     collision: collisionReady ? collision : undefined }), [data, area, plane, state.mode, state.region, state.item, state.beside, topology, checks, candidate, transports, draft, inspected, classify, collisionReady, collision]);
+
+  const overlay = useMemo(() => baseOverlay ? { ...baseOverlay, routing: routing.overlay } : undefined, [baseOverlay, routing.overlay]);
 
   const mapRef = useRef<MapHandle>(undefined);
   const onPick = (point: WorldPoint) => {
@@ -213,7 +217,7 @@ export function InsetInvestigation() {
       <section className="wb-map wb-insets-map" aria-label="Map">
         {insetPin ? assets && <Suspense fallback={<div className="route-map" role="status">Loading inset map…</div>}>
           <InsetMap assets={assets} areaPicker={false} overlay={overlay || undefined} style={style} insets onPick={onPick} onFallback={() => {}}
-            onSelectFeatures={onSelectFeatures} keepView fitAnchors={false} fitSelection={false}
+            onSelectFeatures={onSelectFeatures} onRoutingCrossing={routing.selectCrossing} keepView fitAnchors={false} fitSelection={false}
             initialCentre={state.at ?? LUMBRIDGE} focusRegions={focusRegions} focusTile={focusTile} focusBox={focusBox}
             onPlane={(_, next) => choosePlane(next)} onView={() => { const at = mapRef.current?.centreTile(); if (at) update({ at }); }}
             onReady={instance => { mapRef.current = instance; }} />
@@ -238,6 +242,7 @@ export function InsetInvestigation() {
         </div>
       </section>
       <aside className="wb-side-panel" aria-label="Details">
+        {routing.panel}
         {area && data ? <>
           <div className="wb-panel-head">
             <h2>{area.name}</h2>

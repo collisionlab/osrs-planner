@@ -59,7 +59,7 @@ export function tileUrl(tileCoordinate: number[]) {
 }
 
 /** A rectangle of world tiles on one plane, inclusive. */
-export interface WorldBox { plane: number; x1: number; y1: number; x2: number; y2: number }
+export interface WorldBox { plane: number; x1: number; y1: number; x2: number; y2: number; /** Tile identifying the placement when bounds corners fall outside an irregular region. */ reference?: WorldPoint }
 
 /**
  * The world tiles a map extent shows, a box per area drawn: each area's tiles (`bounds`, inclusive
