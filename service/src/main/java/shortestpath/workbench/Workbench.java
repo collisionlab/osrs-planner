@@ -4,8 +4,15 @@ import io.javalin.Javalin;
 import io.javalin.http.Context;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,6 +40,69 @@ public final class Workbench {
         List<String> repositories = List.of(env.getOrDefault("WORKBENCH_REPOS", "Skretzo/shortest-path").split(","));
         Path cache = Path.of(env.getOrDefault("WORKBENCH_CACHE", System.getProperty("java.io.tmpdir") + "/workbench"));
         return new Reviews(repositories, cache, "https://github.com/", "https://api.github.com/", env.get("GITHUB_TOKEN"));
+    }
+
+    /** The transport explorer's routes: the bundled plugin's effective transports, a view at a time. */
+    public static void transportRoutes(Javalin app, Supplier<TransportCatalog> catalog, Provenance provenance) {
+        String transports = "/workbench/v1/transports";
+        String cache = "public, max-age=300";
+        app.get(transports + "/meta", ctx -> {
+            TransportCatalog loaded = catalog.get();
+            Map<String, Object> meta = new LinkedHashMap<>();
+            meta.put("apiVersion", "workbench-transports-v1");
+            meta.put("plugin", provenance.plugin);
+            meta.put("tooling", provenance.tooling);
+            meta.put("total", loaded.size());
+            meta.put("viewLimit", TransportCatalog.VIEW_LIMIT);
+            meta.put("types", loaded.types());
+            ctx.header("Cache-Control", cache).json(meta);
+        });
+        app.get(transports + "/search", ctx ->
+            ctx.header("Cache-Control", cache).json(catalog.get().search(Objects.toString(ctx.queryParam("q"), ""), types(ctx))));
+        // Transports with an end in the view: ?view=plane,x1,y1,x2,y2;... (a box per area drawn).
+        app.get(transports, ctx -> ctx.header("Cache-Control", cache)
+            .json(catalog.get().view(boxes(ctx.queryParam("view")), types(ctx), TransportCatalog.VIEW_LIMIT)));
+        app.get(transports + "/{id}", ctx -> {
+            String id = ctx.pathParam("id");
+            if (!id.matches("^[0-9a-f]{12}(-\\d{1,4})?$")) {
+                throw new IllegalArgumentException("not a transport id: " + id);
+            }
+            ctx.header("Cache-Control", cache).json(catalog.get().detail(id));
+        });
+    }
+
+    /** At most this many boxes a view, each at most this many tiles a side. */
+    static final int MAX_BOXES = 24, MAX_BOX_SIDE = 4096;
+
+    static List<TransportCatalog.Box> boxes(String view) {
+        if (view == null || view.isBlank()) {
+            throw new IllegalArgumentException("expected view=plane,x1,y1,x2,y2;...");
+        }
+        List<TransportCatalog.Box> boxes = new ArrayList<>();
+        for (String part : view.split(";")) {
+            String[] numbers = part.split(",");
+            if (numbers.length != 5 || !part.matches("^-?\\d{1,6}(,-?\\d{1,6}){4}$")) {
+                throw new IllegalArgumentException("not a box: " + part);
+            }
+            int[] n = Arrays.stream(numbers).mapToInt(Integer::parseInt).toArray();
+            TransportCatalog.Box box = new TransportCatalog.Box(n[0], n[1], n[2], n[3], n[4]);
+            if (box.plane < 0 || box.plane > 3 || box.x2 - box.x1 > MAX_BOX_SIDE || box.y2 - box.y1 > MAX_BOX_SIDE) {
+                throw new IllegalArgumentException("box out of range: " + part);
+            }
+            boxes.add(box);
+        }
+        if (boxes.size() > MAX_BOXES) {
+            throw new IllegalArgumentException("at most " + MAX_BOXES + " boxes");
+        }
+        return boxes;
+    }
+
+    private static Set<String> types(Context ctx) {
+        String types = ctx.queryParam("types");
+        if (types == null || types.isBlank()) {
+            return Set.of();
+        }
+        return Arrays.stream(types.split(",")).map(String::trim).filter(type -> type.matches("^[A-Z_]{1,40}$")).collect(Collectors.toSet());
     }
 
     public static void routes(Javalin app, Reviews reviews) {
@@ -87,6 +157,8 @@ public final class Workbench {
             return "pulls";
         } else if (path.contains("/compare/")) {
             return "compare";
+        } else if (path.contains("/transports")) {
+            return path.endsWith("/transports") ? "transports" : path.endsWith("{id}") ? "transport" : path.substring(path.lastIndexOf('/') + 1);
         }
         return "other";
     }
