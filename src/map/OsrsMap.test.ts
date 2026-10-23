@@ -2,6 +2,7 @@ import { CRS, map as leafletMap } from "leaflet";
 import { describe, expect, it } from "vitest";
 import tiles from "../../tiles.json";
 import { defaultStyle, fromLatLng, mapLayers, segmentPoints, toLatLng } from "./OsrsMap";
+import { pinnedLayers } from "./layers";
 
 describe("route map coordinates", () => {
   it("maps a picked tile back to the same tile", () => {
@@ -22,6 +23,16 @@ describe("map styles", () => {
   it("serves the tactical style at the pinned tiles version", () => {
     expect(mapLayers.tactical?.url).toBe(`https://tiles.collisionlab.world/tactical/${tiles.version}/{z}/{x}/{y}.png`);
     expect(mapLayers.tactical?.maxNativeZoom).toBe(8);
+  });
+
+  it("offers blueprint only when the pinned tiles have it", () => {
+    const pin = { base: "https://tiles.example", version: "1-abc", styles: ["standard", "tactical", "blueprint"] };
+    const layers = pinnedLayers(pin);
+    expect(Object.keys(layers)).toEqual(["standard", "tactical", "blueprint"]);
+    expect(layers.blueprint?.url).toBe("https://tiles.example/blueprint/1-abc/{z}/{x}/{y}.png");
+    expect(layers.blueprint?.maxNativeZoom).toBe(8);
+    expect(Object.keys(pinnedLayers({ ...pin, styles: ["standard", "tactical"] }))).toEqual(["standard", "tactical"]);
+    expect(mapLayers.blueprint === undefined).toBe(!tiles.styles.includes("blueprint"));
   });
 
   it("defaults to the tactical style", () => {

@@ -1,9 +1,9 @@
 import tiles from "../../tiles.json";
-// Both layers share Explv's layout (TMS, zoom 8 = 4px per game tile), so a
-// style is only a different URL. Tactical comes from tiles.collisionlab.world
-// at the version pinned in tiles.json; it stops at zoom 8 and Leaflet scales
-// it up beyond that.
-export type MapStyle = "standard" | "tactical";
+// Every layer shares Explv's layout (TMS, zoom 8 = 4px per game tile), so a
+// style is only a different URL. Tactical and Blueprint come from
+// tiles.collisionlab.world at the version pinned in tiles.json, each only when
+// that version has it; they stop at zoom 8 and the map scales them up beyond.
+export type MapStyle = "standard" | "tactical" | "blueprint";
 
 export interface MapLayer {
   label: string;
@@ -12,21 +12,33 @@ export interface MapLayer {
   attribution: string;
 }
 
-export const mapLayers: Partial<Record<MapStyle, MapLayer>> = {
-  standard: {
-    label: "Standard",
-    url: "https://raw.githubusercontent.com/Explv/osrs_map_tiles/master/0/{z}/{x}/{y}.png",
-    attribution: 'Map tiles: <a href="https://github.com/Explv/osrs_map_tiles">Explv</a> / Jagex',
-  },
-  ...(tiles.styles.includes("tactical") && {
-    tactical: {
-      label: "Tactical",
-      url: `${tiles.base}/tactical/${tiles.version}/{z}/{x}/{y}.png`,
+const PINNED_STYLES: { style: MapStyle; label: string }[] = [
+  { style: "tactical", label: "Tactical" },
+  { style: "blueprint", label: "Blueprint" },
+];
+
+/** The selectable layers for a tiles pin: Standard always, each pinned style when the pin has it. */
+export function pinnedLayers(pin: { base: string; version: string; styles: string[] }) {
+  const layers: Partial<Record<MapStyle, MapLayer>> = {
+    standard: {
+      label: "Standard",
+      url: "https://raw.githubusercontent.com/Explv/osrs_map_tiles/master/0/{z}/{x}/{y}.png",
+      attribution: 'Map tiles: <a href="https://github.com/Explv/osrs_map_tiles">Explv</a> / Jagex',
+    },
+  };
+  for (const { style, label } of PINNED_STYLES) {
+    if (!pin.styles.includes(style)) continue;
+    layers[style] = {
+      label,
+      url: `${pin.base}/${style}/${pin.version}/{z}/{x}/{y}.png`,
       maxNativeZoom: 8,
       attribution: 'Map tiles: <a href="https://github.com/collisionlab/osrs-tiles">collisionlab</a> / Jagex',
-    },
-  }),
-};
+    };
+  }
+  return layers;
+}
+
+export const mapLayers = pinnedLayers(tiles);
 
 const STYLE_KEY = "osrs-planner.map-style";
 
