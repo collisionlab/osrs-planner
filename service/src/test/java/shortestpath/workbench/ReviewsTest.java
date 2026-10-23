@@ -26,7 +26,7 @@ class ReviewsTest {
 
     @TempDir
     static Path temp;
-    static String remote, base, head, master;
+    static String remote, base, head, master, docs;
 
     @BeforeAll
     static void repository() throws IOException {
@@ -46,12 +46,16 @@ class ReviewsTest {
         git(work, "checkout", "-q", "master");
         write(work, "README.md", "master\n");
         master = commit(work, "Unrelated");
-        git(work, "push", "-q", bare.toString(), "master", "feature:refs/pull/7/head");
+        // A pull request that touches no transports, which the open list leaves out.
+        git(work, "checkout", "-q", "-b", "docs", base);
+        write(work, "README.md", "docs\n");
+        docs = commit(work, "Docs");
+        git(work, "push", "-q", bare.toString(), "master", "feature:refs/pull/7/head", "docs:refs/pull/8/head");
         remote = temp.resolve("remote").toUri().toString();
     }
 
     static Reviews reviews() {
-        return new Reviews(List.of("Owner/repo"), temp.resolve("cache-" + System.nanoTime()), remote);
+        return new Reviews(List.of("Owner/repo"), temp.resolve("cache-" + System.nanoTime()), remote, null);
     }
 
     @Test
@@ -71,13 +75,45 @@ class ReviewsTest {
     }
 
     @Test
-    void clonesAheadOfTheFirstRequest() throws InterruptedException {
-        Path cache = temp.resolve("cache-warm");
-        new Reviews(List.of("Owner/repo"), cache, remote).warm();
-        for (int i = 0; i < 100 && !Files.isDirectory(cache.resolve("Owner/repo.git/objects")); i++) {
-            Thread.sleep(50);
+    void listsOpenPullRequestsThatChangeTransportsAndAsksGitHubWithTheLastETag() {
+        List<String> asked = new ArrayList<>();
+        Javalin github = Javalin.create().get("/repos/Owner/repo/pulls", ctx -> {
+            asked.add(ctx.header("If-None-Match"));
+            if ("\"v1\"".equals(ctx.header("If-None-Match"))) {
+                ctx.status(304);
+                return;
+            }
+            ctx.header("ETag", "\"v1\"").contentType("application/json").result("["
+                + pull(7, head, "master", false) + "," + pull(8, docs, "master", false) + "," + pull(9, head, "release", true) + "]");
+        }).start(0);
+        try {
+            Path cache = temp.resolve("cache-list");
+            Reviews reviews = new Reviews(List.of("Owner/repo"), cache, remote, new GitHubPulls("http://localhost:" + github.port() + "/", null));
+            assertNull(reviews.openPulls("Owner/repo").refreshedAt);
+            reviews.refresh();
+            assertTrue(Files.isDirectory(cache.resolve("Owner/repo.git/objects")));
+            Reviews.PullList list = reviews.openPulls("owner/repo");
+            assertEquals(1, list.pulls.size());
+            Reviews.PullSummary pull = list.pulls.get(0);
+            assertEquals(7, pull.number);
+            assertEquals("Pull 7", pull.title);
+            assertEquals("someone", pull.author);
+            assertEquals(master, pull.base);
+            assertEquals(head, pull.head);
+            assertEquals(1, pull.units);
+            assertEquals(1, pull.counts.get("added"));
+            reviews.refresh();
+            assertEquals(1, reviews.openPulls("Owner/repo").pulls.size());
+            assertEquals(java.util.Arrays.asList(null, "\"v1\""), asked);
+        } finally {
+            github.stop();
         }
-        assertTrue(Files.isDirectory(cache.resolve("Owner/repo.git/objects")));
+    }
+
+    private static String pull(int number, String sha, String base, boolean draft) {
+        return "{\"number\":" + number + ",\"title\":\"Pull " + number + "\",\"draft\":" + draft
+            + ",\"user\":{\"login\":\"someone\"},\"base\":{\"ref\":\"" + base + "\"},\"head\":{\"sha\":\"" + sha
+            + "\"},\"updated_at\":\"2026-10-23T00:00:00Z\"}";
     }
 
     @Test
@@ -87,7 +123,7 @@ class ReviewsTest {
         assertEquals(1, review.units.size());
         assertNull(review.pull);
         assertThrows(Reviews.NotServed.class, () -> reviews.heads("Other/repo", 7));
-        assertThrows(Reviews.NotFound.class, () -> reviews.heads("Owner/repo", 8));
+        assertThrows(Reviews.NotFound.class, () -> reviews.heads("Owner/repo", 99));
         assertThrows(IllegalArgumentException.class, () -> reviews.compare("Owner/repo", "--upload-pack=x", head));
         assertThrows(IllegalArgumentException.class, () -> reviews.pull("Owner/repo", 7, "master", head));
     }
@@ -114,6 +150,7 @@ class ReviewsTest {
             assertEquals(head, mapper.readTree(client.get("/workbench/v1/github/Owner/repo/pull/7/heads").body().string()).get("head").asText());
             assertEquals(404, client.get("/workbench/v1/github/Owner/repo/compare/master...no-such-branch").code());
             assertEquals(404, client.get("/workbench/v1/github/Other/repo/pull/7").code());
+            assertEquals(200, client.get("/workbench/v1/github/Owner/repo/pulls").code());
         });
     }
 

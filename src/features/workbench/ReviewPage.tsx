@@ -7,6 +7,7 @@ import { COLLISION_RADIUS } from "../../map/insets/composition";
 import { diffLineUrl, githubUrl, loadHeads, loadReview, parseSource, row, sourceLabel, sourcePath,
   type Review, type ReviewUnit, type RowChange } from "./api";
 import type { WorldPoint } from "../../domain/contracts";
+import { OpenPullPicker } from "./OpenPulls";
 import { segmentIndex, unitMap } from "./review";
 import "./workbench.css";
 
@@ -145,7 +146,8 @@ export function ReviewPage() {
   return <div className="wb-page">
     <header className="wb-header">
       <span className="wb-brand">Workbench</span>
-      <span className="wb-tool">Transport review</span>
+      <Link className="wb-tool" to="/">Transport review</Link>
+      {source && <OpenPullPicker owner={source.owner} repo={source.repo} current={source.kind === "pull" ? source.number : undefined} />}
       {source && <a className="wb-source" href={review ? githubUrl(review) : undefined} target="_blank" rel="noreferrer">{sourceLabel(source)}</a>}
       {review?.headSubject && <span className="wb-title">{review.headSubject}</span>}
       {counts && units.length > 0 && <span className="wb-summary">{units.length} changes · <span className="added">+{counts.added}</span> <span className="removed">−{counts.removed}</span> <span className="changed">~{counts.changed}</span> rows</span>}

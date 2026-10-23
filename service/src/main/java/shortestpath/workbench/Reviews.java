@@ -4,10 +4,15 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -51,33 +56,112 @@ public final class Reviews {
         }
     }
 
+    /** An open pull request that changes transports or destinations, as the workbench lists it. */
+    public static final class PullSummary {
+        public final int number;
+        public final String title, author, updatedAt;
+        public final boolean draft;
+        /** The range its review compares, as {@link #pull} takes it. */
+        public final String base, head;
+        public final Map<String, Integer> counts;
+        public final int units;
+
+        PullSummary(GitHubPulls.OpenPull pull, Review review) {
+            this.number = pull.number;
+            this.title = pull.title;
+            this.author = pull.author;
+            this.updatedAt = pull.updatedAt;
+            this.draft = pull.draft;
+            this.base = review.base;
+            this.head = review.head;
+            this.counts = review.counts;
+            this.units = review.units.size();
+        }
+    }
+
+    /** A repository's open pull requests that change transports, as of {@code refreshedAt} (ISO 8601; null before the first listing). */
+    public static final class PullList {
+        public final String repository;
+        public final String refreshedAt;
+        public final List<PullSummary> pulls;
+
+        PullList(String repository, String refreshedAt, List<PullSummary> pulls) {
+            this.repository = repository;
+            this.refreshedAt = refreshedAt;
+            this.pulls = pulls;
+        }
+    }
+
     private final Map<String, GitSource> sources = new LinkedHashMap<>();
+    private final GitHubPulls github;
+    private final Map<String, PullList> open = new ConcurrentHashMap<>();
     private final Cache<String, Review> reviews = Caffeine.newBuilder().maximumSize(256).build();
     private final Cache<String, Heads> heads = Caffeine.newBuilder().maximumSize(256).expireAfterWrite(Duration.ofMinutes(1)).build();
 
-    /** {@code repositories} are {@code owner/name}, the only ones served; {@code remote} as in {@link GitSource}. */
-    public Reviews(List<String> repositories, Path cache, String remote) {
+    /**
+     * {@code repositories} are {@code owner/name}, the only ones served; {@code remote} as in {@link GitSource};
+     * {@code github} lists open pull requests, or is null for no list.
+     */
+    Reviews(List<String> repositories, Path cache, String remote, GitHubPulls github) {
+        this.github = github;
         for (String repository : repositories) {
             sources.put(repository.toLowerCase(), new GitSource(repository, cache, remote));
         }
     }
 
     /**
-     * Clones each repository in the background, so the first review after a deploy (a new container,
-     * an empty cache) doesn't wait for it. A failure only logs: the first request clones instead.
+     * Clones each repository and lists its open pull requests in the background, then lists them again
+     * every {@code every}, so the first review after a deploy (a new container, an empty cache) doesn't
+     * wait for the clone and the list's reviews are ready before anyone opens them. Failures only log:
+     * a request clones by itself, and the list stays as it last was.
      */
-    public void warm() {
-        Thread thread = new Thread(() -> {
-            for (GitSource source : sources.values()) {
-                try {
-                    source.warm();
-                } catch (RuntimeException e) {
-                    LoggerFactory.getLogger(Reviews.class).warn("could not clone {} ahead of requests", source.repository(), e);
+    public void start(Duration every) {
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "workbench-refresh");
+            thread.setDaemon(true);
+            return thread;
+        });
+        scheduler.scheduleWithFixedDelay(this::refresh, 0, every.toMillis(), TimeUnit.MILLISECONDS);
+    }
+
+    /** Clones each repository if it isn't yet, and lists its open pull requests again. */
+    void refresh() {
+        for (GitSource source : sources.values()) {
+            try {
+                source.warm();
+                if (github != null) {
+                    open.put(source.repository().toLowerCase(), listOpen(source));
                 }
+            } catch (RuntimeException e) {
+                LoggerFactory.getLogger(Reviews.class).warn("could not refresh {}", source.repository(), e);
             }
-        }, "workbench-warm");
-        thread.setDaemon(true);
-        thread.start();
+        }
+    }
+
+    private PullList listOpen(GitSource source) {
+        String branch = source.defaultBranch();
+        String base = source.remoteHead("refs/heads/" + branch);
+        List<PullSummary> pulls = new ArrayList<>();
+        for (GitHubPulls.OpenPull pull : github.open(source.repository())) {
+            if (!pull.baseRef.equals(branch) || !GitSource.SHA.matcher(pull.head).matches()) {
+                continue;
+            }
+            try {
+                Review review = pull(source.repository(), pull.number, base, pull.head);
+                if (!review.units.isEmpty()) {
+                    pulls.add(new PullSummary(pull, review));
+                }
+            } catch (RuntimeException e) {
+                LoggerFactory.getLogger(Reviews.class).warn("could not review {}#{}", source.repository(), pull.number, e);
+            }
+        }
+        return new PullList(source.repository(), Instant.now().toString(), pulls);
+    }
+
+    /** The open pull requests that change transports, as last listed. */
+    public PullList openPulls(String repository) {
+        GitSource source = source(repository);
+        return open.getOrDefault(source.repository().toLowerCase(), new PullList(source.repository(), null, List.of()));
     }
 
     /** The served repository's canonical name, or {@code null}. */
