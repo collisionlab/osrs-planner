@@ -2,7 +2,9 @@
 .wb-page { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; height: 100dvh; color: var(--text); background: var(--ink); font: 13px/1.4 system-ui, sans-serif; }
 .wb-header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; padding: 8px 16px; background: var(--panel); border-bottom: 2px solid var(--orange); }
 .wb-brand { color: var(--ink); background: var(--orange); padding: 2px 6px; font: 10px var(--pixel); text-transform: uppercase; letter-spacing: .04em; }
-.wb-tool { font: 11px var(--pixel); color: var(--muted); }
+.wb-tool { font: 11px var(--pixel); color: var(--muted); text-decoration: none; }
+a.wb-tool:hover { color: var(--orange); }
+.wb-picker { max-width: 36ch; padding: 2px 4px; color: var(--text); background: var(--ink); border: 1px solid var(--line); font: inherit; }
 .wb-source { color: var(--cyan); font-weight: 600; }
 .wb-title { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40ch; }
 .wb-summary, .wb-keys { color: var(--muted); }
@@ -50,6 +52,15 @@
 .wb-home button { padding: 8px 14px; color: var(--ink); background: var(--orange); border: 0; font: 11px var(--pixel); cursor: pointer; }
 .wb-hint { color: var(--muted); }
 .wb-hint code { color: var(--text); }
+.wb-open { margin-top: 28px; }
+.wb-open h2 { margin: 0 0 8px; font-size: 14px; }
+.wb-open ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.wb-open a { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 10px; padding: 8px 4px; color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line); }
+.wb-open a:hover { background: var(--panel); }
+.wb-open-number { color: var(--cyan); font: 12px ui-monospace, monospace; }
+.wb-open-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wb-open-meta { grid-column: 2 / -1; color: var(--muted); font: 11px ui-monospace, monospace; }
+.wb-draft { padding: 0 5px; color: var(--muted); border: 1px solid var(--line); font-size: 11px; }
 @media (max-width: 760px) {
   .wb-page { height: auto; min-height: 100dvh; }
   .wb-body { grid-template-columns: 1fr; }

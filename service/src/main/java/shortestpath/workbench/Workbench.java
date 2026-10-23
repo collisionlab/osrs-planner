@@ -3,6 +3,7 @@ package shortestpath.workbench;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -19,16 +20,25 @@ public final class Workbench {
 
     private Workbench() { }
 
-    /** Configured from the environment: {@code WORKBENCH_REPOS} (comma separated) and {@code WORKBENCH_CACHE}. */
+    /** How often the open pull requests are listed again. */
+    public static final Duration REFRESH = Duration.ofMinutes(5);
+
+    /**
+     * Configured from the environment: {@code WORKBENCH_REPOS} (comma separated), {@code WORKBENCH_CACHE},
+     * and optionally {@code GITHUB_TOKEN}, which only raises GitHub's rate limit for listing pull requests.
+     */
     public static Reviews fromEnvironment() {
         Map<String, String> env = System.getenv();
         List<String> repositories = List.of(env.getOrDefault("WORKBENCH_REPOS", "Skretzo/shortest-path").split(","));
         Path cache = Path.of(env.getOrDefault("WORKBENCH_CACHE", System.getProperty("java.io.tmpdir") + "/workbench"));
-        return new Reviews(repositories, cache, "https://github.com/");
+        return new Reviews(repositories, cache, "https://github.com/", new GitHubPulls("https://api.github.com/", env.get("GITHUB_TOKEN")));
     }
 
     public static void routes(Javalin app, Reviews reviews) {
         String github = "/workbench/v1/github/{owner}/{repo}";
+        // The open pull requests that change transports, listed again every few minutes.
+        app.get(github + "/pulls", ctx ->
+            ctx.header("Cache-Control", "public, max-age=60").json(reviews.openPulls(repository(ctx, reviews))));
         // The review a link names: never changes, so it is cached for good everywhere.
         app.get(github + "/pull/{number}/files/{range}", ctx -> {
             Matcher range = PULL_RANGE.matcher(ctx.pathParam("range"));

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
+import { OpenPullList } from "./OpenPulls";
 import { ReviewPage } from "./ReviewPage";
 import "./workbench.css";
 
@@ -51,6 +52,7 @@ function WorkbenchHome({ missing }: { missing?: boolean }) {
       </form>
       <p className="wb-hint">Or swap the host in any GitHub URL: <code>github.com/…/pull/844</code> → <code>{window.location.host}/github/…/pull/844</code>. Branches without a pull request work too, as <code>…/compare/master...my-branch</code>.</p>
       {error && <p role="alert">{error}</p>}
+      <OpenPullList />
     </main>
   </div>;
 }

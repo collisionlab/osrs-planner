@@ -99,6 +99,30 @@ export const loadReview = (source: ReviewSource, signal: AbortSignal) => get<Rev
 export const loadHeads = (source: ReviewSource & { kind: "pull" }, signal: AbortSignal) =>
   get<{ base: string; head: string }>(`/github/${source.owner}/${source.repo}/pull/${source.number}/heads`, signal);
 
+/** An open pull request that changes transports or destinations, with the range its review compares. */
+export interface OpenPull {
+  number: number;
+  title: string;
+  author: string;
+  draft: boolean;
+  updatedAt: string;
+  base: string;
+  head: string;
+  counts: Record<ChangeKind, number>;
+  units: number;
+}
+/** As the service last listed them (every few minutes); `refreshedAt` is null until its first listing. */
+export interface OpenPulls { repository: string; refreshedAt: string | null; pulls: OpenPull[] }
+
+export const loadOpenPulls = (owner: string, repo: string, signal: AbortSignal) =>
+  get<OpenPulls>(`/github/${owner}/${repo}/pulls`, signal);
+
+/** The review of an open pull request as listed, pinned to the push the list saw. */
+export function openPullPath(repository: string, pull: OpenPull): string {
+  const [owner, repo] = repository.split("/");
+  return sourcePath({ kind: "pull", owner, repo, number: pull.number, range: { base: pull.base, head: pull.head } });
+}
+
 /** The pull request, or the compare range, on GitHub. */
 export function githubUrl(review: Review): string {
   return review.pull !== null ? `https://github.com/${review.repository}/pull/${review.pull}`

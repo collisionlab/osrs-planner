@@ -54,7 +54,7 @@ public final class ServiceMain {
         int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
         Reviews reviews = Workbench.fromEnvironment();
         app(mapper, engine, reviews).start(port);
-        reviews.warm();
+        reviews.start(Workbench.REFRESH);
     }
 
     static Javalin app(ObjectMapper mapper, RoutingEngine engine) {
