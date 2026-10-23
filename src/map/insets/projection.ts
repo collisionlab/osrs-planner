@@ -57,3 +57,22 @@ export function tileUrl(tileCoordinate: number[]) {
   const [z, x, xyzY] = tileCoordinate;
   return `https://raw.githubusercontent.com/Explv/osrs_map_tiles/master/0/${z}/${x}/${2 ** z - xyzY - 1}.png`;
 }
+
+/** A rectangle of world tiles on one plane, inclusive. */
+export interface WorldBox { plane: number; x1: number; y1: number; x2: number; y2: number }
+
+/**
+ * The world tiles a map extent shows, a box per area drawn: each area's tiles (`bounds`, inclusive
+ * min and exclusive max as the inset catalogue keeps them) are drawn moved by `offset`, so the part
+ * in view is the extent moved back, clipped to the area.
+ */
+export function visibleBoxes(extent: number[], areas: { plane: number; bounds: [number, number, number, number]; offset: Coordinate }[]): WorldBox[] {
+  const boxes: WorldBox[] = [];
+  for (const { plane, bounds, offset } of areas) {
+    const a = mapToWorld([extent[0] - offset[0], extent[1] - offset[1]], plane);
+    const b = mapToWorld([extent[2] - offset[0], extent[3] - offset[1]], plane);
+    const box = { plane, x1: Math.max(a.x, bounds[0]), y1: Math.max(a.y, bounds[1]), x2: Math.min(b.x, bounds[2]), y2: Math.min(b.y, bounds[3]) };
+    if (box.x1 <= box.x2 && box.y1 <= box.y2) boxes.push(box);
+  }
+  return boxes;
+}

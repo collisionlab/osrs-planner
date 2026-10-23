@@ -1,6 +1,6 @@
 import type { Coordinate } from "ol/coordinate";
 import type { Region } from "./geometry";
-import type { RouteTransition } from "./routeSections";
+import type { WorldPoint } from "../../domain/contracts";
 import { worldToMap } from "./projection";
 
 export interface Placement {
@@ -8,6 +8,19 @@ export interface Placement {
   anchored: boolean;
   parent?: string;
   segmentIndex?: number;
+}
+
+/**
+ * A crossing between two areas that places one beside the other: a route's transport or walk across
+ * (a `RouteTransition` is one), a shown area's entrance, or an edge drawn on the map. Teleports place
+ * nothing: where they land says nothing about where they leave from.
+ */
+export interface RegionLink {
+  fromRegion: string;
+  toRegion: string;
+  /** The route segment that crosses, if a route does. */
+  segmentIndex?: number;
+  source: { kind: string; from: WorldPoint; to: WorldPoint };
 }
 
 export function regionExtent(region: Region, offset: Coordinate = [0, 0]): number[] {
@@ -22,7 +35,7 @@ export function regionExtent(region: Region, offset: Coordinate = [0, 0]): numbe
  * `besideFootprint` regions (upper floors) are placed beside where they really are, whatever the
  * route used to reach them: a glider landing on a platform says nothing about where it is.
  */
-export function layoutRegions(regions: Region[], transitions: RouteTransition[], surfaceRoute: Coordinate[], gap: number,
+export function layoutRegions(regions: Region[], transitions: RegionLink[], surfaceRoute: Coordinate[], gap: number,
   besideFootprint: Set<string> = new Set()): Map<string, Placement> {
   const placements = new Map<string, Placement>([["main-world", { offset: [0, 0], anchored: true }]]);
   const shapes = new Map(regions.map(region => [region.id, region]));
