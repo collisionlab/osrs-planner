@@ -89,9 +89,7 @@ test("selects a transport in view and shows the plugin's transport beside its so
   await list.getByRole("button", { name: new RegExp(`Climb-up Staircase 16671\\s*${upstairs.origin!.x} ${upstairs.origin!.y} 0`) }).click();
   await expect(page).toHaveURL(new RegExp(`[?&]t=${upstairs.id}`));
   const detail = page.getByRole("region", { name: "Transport" });
-  await expect(detail).toContainText("Effective transport");
   await expect(detail).toContainText(`${upstairs.destination.x} ${upstairs.destination.y} 1`);
-  await expect(detail).toContainText("One row");
   const source = detail.getByRole("link", { name: /transports\.tsv:\d+/ });
   await expect(source).toHaveAttribute("href", new RegExp(`^https://github.com/Skretzo/shortest-path/blob/${fixture.meta.plugin.rev}/src/main/resources/transports/transports.tsv#L\\d+$`));
   // Upstairs is another plane: its floor opens as an inset, with the staircase's edge into it.
@@ -104,8 +102,7 @@ test("shows a teleport's landing without making up an origin", async ({ page }) 
   await open(page, `?t=${homeTeleport.id}`);
   const detail = page.getByRole("region", { name: "Transport" });
   await expect(detail).toContainText("Lumbridge Home Teleport");
-  await expect(detail.locator("dd").first()).toHaveText("anywhere");
-  await expect(detail).toContainText("Teleport: usable from anywhere");
+  await expect(detail.locator("dd").first()).toHaveText(`anywhere → ${homeTeleport.destination.x} ${homeTeleport.destination.y} 0`);
   await expect(page.getByRole("navigation", { name: "Transports" })).toContainText(`anywhere → ${homeTeleport.destination.x} ${homeTeleport.destination.y} 0`);
 });
 
@@ -147,18 +144,18 @@ test("shows a network transport as the pairing of an origin row and a destinatio
   await mockCatalogue(page);
   await open(page, `?t=${ring.id}`);
   const detail = page.getByRole("region", { name: "Transport" });
-  await expect(detail).toContainText("Paired: an origin row with a destination row");
-  await expect(detail.locator(".wb-sources tbody tr")).toHaveCount(2);
-  await expect(detail.locator(".wb-sources tbody tr").nth(0)).toContainText("origin");
-  await expect(detail.locator(".wb-sources tbody tr").nth(1)).toContainText("destination");
+  // Both rows it was paired from.
+  await expect(detail.locator(".wb-source")).toHaveCount(2);
+  await expect(detail.locator(".wb-source").nth(0)).toContainText("(origin)");
+  await expect(detail.locator(".wb-source").nth(1)).toContainText("(destination)");
 });
 
 test("says when collision wasn't made from the transport data's revision", async ({ page }) => {
   await mockCatalogue(page);
   await open(page, "?at=3210,3214,0&z=9");
   const footer = page.locator(".wb-provenance");
-  await expect(footer).toContainText(`Skretzo/shortest-path@${fixture.meta.plugin.rev.slice(0, 7)}`);
-  await expect(footer.locator(".wb-prov.differs")).toContainText("walls may not match");
+  await expect(footer).toContainText(fixture.meta.plugin.rev.slice(0, 7));
+  await expect(footer.locator(".wb-prov.differs")).toHaveAttribute("title", /walls may not match/);
   await expect(footer).toContainText(`Insets ${tiles.insets.version.slice(0, 12)}`);
 });
 

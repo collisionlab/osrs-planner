@@ -13,6 +13,8 @@ export async function loadCollisionManifest(signal?: AbortSignal): Promise<Colli
 export interface ProvenanceLine {
   /** What it is about: transport data, collision, insets. */
   subject: string;
+  /** A few characters for the footer; `text` says it in full. */
+  label: string;
   text: string;
   /** `ok`: consistent; `differs`: made from a different revision than what it is shown with; `unknown`. */
   status: "ok" | "differs" | "unknown";
@@ -29,18 +31,18 @@ const short = (rev?: string) => rev && /^[0-9a-f]{7,}$/.test(rev) ? rev.slice(0,
 export function provenance(data: { plugin: Revision; tooling: Revision } | undefined, collision: CollisionManifest | undefined,
   dataLabel = "Transport data"): ProvenanceLine[] {
   const lines: ProvenanceLine[] = [];
-  lines.push(data ? { subject: dataLabel, status: data.plugin.rev === "unknown" ? "unknown" : "ok",
+  lines.push(data ? { subject: dataLabel, status: data.plugin.rev === "unknown" ? "unknown" : "ok", label: short(data.plugin.rev),
     text: `${data.plugin.repository}@${short(data.plugin.rev)} (via ${data.tooling.repository.split("/")[1]}@${short(data.tooling.rev)})` }
-    : { subject: dataLabel, status: "unknown", text: "unknown" });
+    : { subject: dataLabel, status: "unknown", label: "unknown", text: "unknown" });
   const dumper = collision?.dumperSource;
-  if (!dumper) lines.push({ subject: "Collision", status: "unknown", text: `tiles ${tiles.version}; its source is unknown` });
+  if (!dumper) lines.push({ subject: "Collision", status: "unknown", label: tiles.version, text: `tiles ${tiles.version}; its source is unknown` });
   else {
     const same = !!data && data.tooling.rev === dumper.rev;
-    lines.push({ subject: "Collision", status: data && data.tooling.rev !== "unknown" ? same ? "ok" : "differs" : "unknown",
+    lines.push({ subject: "Collision", status: data && data.tooling.rev !== "unknown" ? same ? "ok" : "differs" : "unknown", label: tiles.version,
       text: `tiles ${tiles.version}, dumped by ${dumper.repository.split("/")[1]}@${short(dumper.rev)} from cache ${collision?.cacheId ?? "?"}`
         + (same ? "" : data && data.tooling.rev !== "unknown" ? ` — not the commit ${dataLabel.toLowerCase()} came from, so walls may not match the plugin's` : "") });
   }
-  lines.push(insetPin ? { subject: "Insets", status: insetPin.tileVersion === tiles.version ? "ok" : "differs",
-    text: `${insetPin.version.slice(0, 12)} for tiles ${insetPin.tileVersion}` } : { subject: "Insets", status: "unknown", text: "none pinned" });
+  lines.push(insetPin ? { subject: "Insets", status: insetPin.tileVersion === tiles.version ? "ok" : "differs", label: insetPin.version.slice(0, 12),
+    text: `${insetPin.version.slice(0, 12)} for tiles ${insetPin.tileVersion}` } : { subject: "Insets", status: "unknown", label: "none", text: "none pinned" });
   return lines;
 }

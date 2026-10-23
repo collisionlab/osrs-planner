@@ -107,7 +107,7 @@ export function useRoutingLayers(inspected: WorldPoint | undefined, focus: (box:
   </section>;
 
   /** For the page footer, beside the other releases. */
-  const provenance = data ? `${data.manifest.version.slice(0, 12)}, plugin ${data.manifest.plugin.revision.slice(0, 7)}` : undefined;
+  const provenance = data ? data.manifest.version.slice(0, 12) : undefined;
   const selectCrossing = (selectedCrossing: RoutingCrossing) => choose({ selectedCrossing, selectedComponent: undefined });
   return { overlay, panel, provenance, selectCrossing };
 }

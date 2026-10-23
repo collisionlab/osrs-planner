@@ -260,17 +260,16 @@ export function InsetInvestigation() {
             : <LabellingPanel data={data} area={area} region={state.region} item={state.item} plugin={data.plugin ?? meta?.plugin} onItem={item => update({ item })}
               onShow={showPoint} onRegion={chooseRegion} onArea={id => { const next = data.byId.get(id); if (next) chooseArea(next); }}
               correction={correction} onCorrection={setCorrection} picking={picking} onPicking={setPicking} shows={point => !!mapRef.current?.shows(point)} />}
-        </> : <>{routing.panel}<div className="wb-panel-body"><p className="wb-note">Choose an area to investigate. Areas with outstanding issues come first; provisional ones are regions nobody has named.</p>
-          {data && <p className="wb-note">{data.investigations.state === "loaded" ? "Worklist: investigations.json." : `${data.investigations.reason}`}</p>}
-          <p className="wb-note">Topology: {topologyState.state === "loaded" ? `report by ${topologyState.report.generator.repository}@${topologyState.report.generator.rev.slice(0, 7)}` : topologyState.state === "loading" ? "loading…" : topologyState.reason}</p></div></>}
+        </> : <><div className="wb-panel-body"><p className="wb-note">Choose an area to investigate, or click the map.</p></div>{routing.panel}</>}
       </aside>
     </div>
     <footer className="wb-footer wb-provenance">
-      {lines.map(line => <span key={line.subject} className={`wb-prov ${line.status}`}><b>{line.subject}</b> {line.text}</span>)}
-      <span className={`wb-prov ${topologyState.state === "loaded" ? checks?.verified ? "ok" : "differs" : "unknown"}`}><b>Topology</b> {topologyState.state === "loaded"
-        ? `${topologyState.report.generator.repository.split("/").at(-1)}@${topologyState.report.generator.rev.slice(0, 7)}, cache ${topologyState.report.collision.cacheId}${checks?.verified ? "" : " — unverified against this page"}`
-        : topologyState.state === "loading" ? "loading" : "unavailable"}</span>
-      {routing.provenance && <span className="wb-prov ok"><b>Routing</b> {routing.provenance}, verified against these tiles</span>}
+      {lines.map(line => <span key={line.subject} className={`wb-prov ${line.status}`} title={line.text}><b>{line.subject}</b> {line.label}</span>)}
+      {topologyState.state === "loaded" ? <span className={`wb-prov ${checks?.verified ? "ok" : "differs"}`}
+        title={`${topologyState.report.generator.repository}@${topologyState.report.generator.rev.slice(0, 7)}, cache ${topologyState.report.collision.cacheId}${checks?.verified ? "" : " — unverified against this page"}`}>
+        <b>Topology</b> {topologyState.report.generator.rev.slice(0, 7)}{checks?.verified ? "" : " (unverified against this page)"}</span>
+        : <span className="wb-prov unknown" title={topologyState.state === "loading" ? undefined : topologyState.reason}><b>Topology</b> {topologyState.state === "loading" ? "loading" : "unavailable"}</span>}
+      {routing.provenance && <span className="wb-prov ok" title="Verified against these tiles"><b>Routing</b> {routing.provenance}</span>}
     </footer>
   </div>;
 }
