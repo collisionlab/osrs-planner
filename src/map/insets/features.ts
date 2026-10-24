@@ -22,8 +22,11 @@ export type MapFeature =
   /**
    * From one tile to another, with an arrowhead at `to`; dashed for a removed row. A `hop` joins two
    * neighbouring tiles (a door) and is drawn as a bar across the edge between them, without its tiles.
+   * A `spoke` joins a station to its network's hub: a light line without an arrowhead.
    */
-  | { kind: "edge"; key: string; from: WorldPoint; to: WorldPoint; tone: FeatureTone; dashed?: boolean; hop?: boolean }
+  | { kind: "edge"; key: string; from: WorldPoint; to: WorldPoint; tone: FeatureTone; dashed?: boolean; hop?: boolean; spoke?: boolean }
+  /** A network's hub, where its stations' spokes meet: a labelled node, not a tile. */
+  | { kind: "hub"; key: string; point: WorldPoint; tone: FeatureTone; label: string }
   /** A tile: an origin is outlined, a destination filled. */
   | { kind: "point"; key: string; point: WorldPoint; tone: FeatureTone; role: "origin" | "destination" }
   /** A rectangle of tiles (inclusive), labelled; `key` selects it like any feature. */
@@ -67,7 +70,7 @@ export interface FeatureOverlay {
 
 export function featurePoints(feature: MapFeature): WorldPoint[] {
   if (feature.kind === "edge") return [feature.from, feature.to];
-  if (feature.kind === "point") return [feature.point];
+  if (feature.kind === "point" || feature.kind === "hub") return [feature.point];
   // A mask's tiles are the catalogue's; it places nothing and fits nothing by itself.
   if (feature.kind === "mask") return [];
   const [x1, y1, x2, y2] = feature.bounds;

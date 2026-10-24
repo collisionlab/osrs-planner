@@ -10,9 +10,9 @@ import type { WorldBox } from "../../map/insets/projection";
 import { TONES } from "../../map/insets/routeStyles";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "./provenance";
 import { useRoutingLayers } from "./RoutingPanel";
-import { EXPLORER_LAYERS, loadDetail, loadMeta, loadView, parseTile, readState, searchTransports, sourceUrl, toneOf, toneOfType,
-  TRANSPORTS_MAX_RESOLUTION, typeName, viewOverlay, writeState, type ExplorerState, type TransportDetail, type TransportMeta, type TransportSummary,
-  type TransportView } from "./transports";
+import { EXPLORER_LAYERS, loadDetail, loadMeta, loadView, parseTile, readState, searchTransports, sourceUrl, stationOf, toneOf, toneOfType,
+  TRANSPORTS_MAX_RESOLUTION, typeName, viewOverlay, writeState, type ExplorerState, type TransportDetail, type TransportMeta, type TransportNetwork,
+  type TransportSummary, type TransportView } from "./transports";
 import "./workbench.css";
 
 const InsetMap = lazy(() => import("../../map/insets/InsetMap").then(module => ({ default: module.InsetMap })));
@@ -136,8 +136,10 @@ export function TransportExplorer() {
   const selected = detail?.id === state.selected ? detail : undefined;
   // Drawn against the boxes the view was asked for, so features never outrun the data behind them.
   const [viewBoxes, setViewBoxes] = useState<WorldBox[]>();
-  const transportOverlay = useMemo(() => viewOverlay(view, selected, collisionFor === selected?.id ? collision : undefined, viewBoxes),
-    [view, selected, collisionFor, collision, viewBoxes]);
+  // A network picked by its hub or a spoke: its stations are listed.
+  const [network, setNetwork] = useState<TransportNetwork>();
+  const transportOverlay = useMemo(() => viewOverlay(view, selected, collisionFor === selected?.id ? collision : undefined, viewBoxes, network?.id),
+    [view, selected, collisionFor, collision, viewBoxes, network]);
 
   // A selection from the list, a search or a link brings it into view; one picked on the map doesn't.
   // A link that names a place opens there, not on its transport.
@@ -158,8 +160,18 @@ export function TransportExplorer() {
   const overlay = useMemo(() => transportOverlay && { ...transportOverlay, routing: routing.overlay }, [transportOverlay, routing.overlay]);
   const [focusTile, setFocusTile] = useState<{ point: WorldPoint }>();
   const onSelectFeatures = (keys: string[], point?: WorldPoint) => {
-    if (point) lookAt(point, keys);
-    if (keys.length === 1) select(keys[0], false);
+    // A station's tiles stand for every transport there: the tile is looked at.
+    const station = keys.map(stationOf).find(Boolean);
+    const transports = keys.filter(key => !key.includes(":"));
+    const hub = keys.find(key => key.startsWith("network:"));
+    if (!station && !transports.length && hub) {
+      const picked = view?.networks?.find(each => `network:${each.id}` === hub);
+      if (picked) { setNetwork(picked); setHere(undefined); select(undefined, false); }
+      return;
+    }
+    setNetwork(undefined);
+    if (station || point) lookAt(station ?? point!, transports);
+    if (transports.length === 1) select(transports[0], false);
   };
   const lookAt = (tile: WorldPoint, keys: string[] = []) => {
     setPicked(tile);
@@ -263,7 +275,16 @@ export function TransportExplorer() {
           <input aria-label="Search transports" placeholder="Object id, x y plane, or text" value={query} onChange={event => setQuery(event.target.value)} />
           <button type="submit">Find</button>
         </form>
-        {here ? <>
+        {network && !here ? <>
+          <p className="wb-list-heading" role="status">{network.name} <small>{network.stations.length} stations</small>{" "}
+            <button type="button" className="wb-link" onClick={() => setNetwork(undefined)}>back to all in view</button></p>
+          <ol>{network.stations.map(({ point: station, name }) => <li key={point(station)}>
+            <button type="button" onClick={() => { setNetwork(undefined); setFocusBox({ plane: station.plane, x1: station.x - 8, y1: station.y - 8, x2: station.x + 8, y2: station.y + 8 }); lookAt(station); }}>
+              <span className="wb-unit-title"><TypeSwatch type={network.type} teleport={false} />{name || "Station"}</span>
+              <span className="wb-unit-meta">{point(station)}</span>
+            </button>
+          </li>)}</ol>
+        </> : here ? <>
           <p className="wb-list-heading" role="status">At <span className="wb-mono">{point(here.tile)}</span>{" "}
             <button type="button" className="wb-link" onClick={() => setHere(undefined)}>back to all in view</button></p>
           {!atTile ? <p className="wb-note" role="status">Loading…</p> : <>

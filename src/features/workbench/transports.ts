@@ -33,6 +33,21 @@ export interface TransportSummary {
   construction: "row" | "paired" | "teleport";
   /** Where the row said it went, before the plugin moved it to the house's landing tile. */
   remappedFrom: WorldPoint | null;
+  /** The network it joins (see `TransportNetwork`), if any (not from an older service). */
+  network?: string | null;
+}
+
+/**
+ * Stations joined by one type of transport, such as the fairy rings or a line of minecarts: drawn
+ * as each station joined to `hub`, not to every other station.
+ */
+export interface TransportNetwork {
+  id: string;
+  type: string;
+  name: string;
+  hub: WorldPoint;
+  /** A tile of each station, and its name (what transports arriving there call it; may be empty). */
+  stations: { point: WorldPoint; name: string }[];
 }
 
 export interface TransportSource {
@@ -56,8 +71,8 @@ export interface TransportDetail extends TransportSummary {
   sources: TransportSource[];
 }
 
-/** The transports with an end in view; listed when at most `viewLimit`, else only counted (`total`). */
-export interface TransportView { total: number; transports: TransportSummary[] }
+/** The transports with an end in view, listed when at most `viewLimit`, else only counted (`total`); and their networks. */
+export interface TransportView { total: number; transports: TransportSummary[]; networks?: TransportNetwork[] }
 
 /**
  * The coarsest map resolution (map units a screen pixel) transports are drawn at: a tile 4 pixels
@@ -120,17 +135,47 @@ export function transportFeatures(summary: TransportSummary, inView?: WorldBox[]
   return features;
 }
 
+const tileKey = (point: WorldPoint) => `${point.x},${point.y},${point.plane}`;
+/** A network's features' key: its hub and spokes select it. */
+export const networkKey = (id: string) => `network:${id}`;
+/** A network station's tiles' key, which selects the tile. */
+export const stationKey = (point: WorldPoint) => `station:${tileKey(point)}`;
+export function stationOf(key: string): WorldPoint | undefined {
+  const match = /^station:(\d+),(\d+),(\d)$/.exec(key);
+  return match ? { x: Number(match[1]), y: Number(match[2]), plane: Number(match[3]) } : undefined;
+}
+
 /**
  * The overlay for a view: each listed transport (what of it is in view), plus the whole selected
  * transport (whether or not it is in view), which the map lays out and draws collision around.
+ * A network's transports are their tiles, each drawn once, and each station in view has a spoke to
+ * the network's hub, wherever that is; `network` is a selected network.
  */
 export function viewOverlay(view: TransportView | undefined, selected: TransportSummary | undefined, collision?: CollisionMap,
-  inView?: WorldBox[]): FeatureOverlay {
+  inView?: WorldBox[], network?: string): FeatureOverlay {
   const features: MapFeature[] = [];
-  for (const summary of view?.transports || []) if (summary.id !== selected?.id) features.push(...transportFeatures(summary, inView));
+  const shown = (point: WorldPoint) => !inView || inView.some(box => inBox(point, box));
+  const networks = new Map((view?.networks || []).map(each => [each.id, each]));
+  const tiles = new Set<string>();
+  for (const summary of view?.transports || []) {
+    if (summary.id === selected?.id) continue;
+    if (!summary.network || !networks.has(summary.network)) { features.push(...transportFeatures(summary, inView)); continue; }
+    const tone = toneOf(summary);
+    for (const [point, role] of [[summary.origin, "origin"], [summary.destination, "destination"]] as const) {
+      if (!point || !shown(point) || tiles.has(`${role}/${tileKey(point)}`)) continue;
+      tiles.add(`${role}/${tileKey(point)}`);
+      features.push({ kind: "point", key: stationKey(point), point, tone, role });
+    }
+  }
+  const spokes: MapFeature[] = [], hubs: MapFeature[] = [];
+  for (const each of networks.values()) {
+    const key = networkKey(each.id), tone = toneOf({ type: each.type, teleport: false });
+    for (const { point: station } of each.stations.filter(station => shown(station.point))) spokes.push({ kind: "edge", key, from: station, to: each.hub, tone, spoke: true });
+    hubs.push({ kind: "hub", key, point: each.hub, tone, label: each.name });
+  }
   const anchors = selected ? transportFeatures(selected, undefined, true) : [];
-  // The selection is drawn last, over the rest.
-  return { features: [...features, ...anchors], anchors, selected: selected?.id, collision };
+  // Spokes under the tiles, hubs over them, and the selection last, over the rest.
+  return { features: [...spokes, ...features, ...hubs, ...anchors], anchors, selected: selected?.id ?? (network && networkKey(network)), collision };
 }
 
 /** The explorer's map layers, in the order the layer control lists them. */
