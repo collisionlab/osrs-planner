@@ -181,6 +181,8 @@ button.wb-chip[aria-pressed="true"] { border-color: var(--orange); }
 .wb-routing h3 { margin: 0 0 .4rem; }
 .wb-routing button { margin: .15rem; }
 .layer-control .wb-filters { padding: 0; border: 0; }
+.wb-families { display: grid; gap: 2px; margin-bottom: 4px; }
+.wb-families label { display: flex; align-items: center; gap: 4px; }
 .layer-control .wb-filters[open] { max-height: 40vh; overflow: auto; }
 .layer-control .wb-warning { display: block; margin: 0; }
 .wb-detail > .wb-routing { padding: 0; }

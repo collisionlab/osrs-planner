@@ -76,6 +76,15 @@ async function mockCatalogue(page: Page, { dense = false, collisionRev = "e615af
 type InsetMapHandle = { featureCount(): Record<string, number>; centreTile(): { point: Point; zoom: number } };
 const featureCount = (page: Page) => page.evaluate(() => (window as unknown as { insetMap: InsetMapHandle }).insetMap.featureCount());
 
+/** Where a tile is drawn once the map has settled: the same pixel twice running. */
+async function settledPixel(page: Page, point: Point) {
+  const pixel = () => page.evaluate(p => (window as unknown as { insetMap: { pixel(p: Point): number[] | null } }).insetMap.pixel(p), point);
+  let last: number[] | null = null;
+  await expect.poll(async () => { const now = await pixel(); const settled = !!now && JSON.stringify(now) === JSON.stringify(last); last = now; return settled; },
+    { intervals: [250] }).toBe(true);
+  return last!;
+}
+
 async function open(page: Page, query: string) {
   await page.goto(`/transports${query}`);
   await expect(page.locator(".inset-map")).toBeVisible();
@@ -114,7 +123,7 @@ test("lists every transport arriving at or leaving a clicked tile, teleports inc
   const tile = homeTeleport.destination;
   await open(page, `?at=${tile.x},${tile.y},${tile.plane}&z=10`);
   await expect(page.getByRole("navigation", { name: "Transports" }).locator(".wb-list-heading")).toContainText(/in view/);
-  const [x, y] = await page.evaluate(p => (window as unknown as { insetMap: { pixel(p: Point): number[] } }).insetMap.pixel(p), tile);
+  const [x, y] = await settledPixel(page, tile);
   await page.locator(".inset-map").click({ position: { x, y } });
   const list = page.getByRole("navigation", { name: "Transports" });
   await expect(list.locator(".wb-list-heading")).toContainText(`At ${tile.x} ${tile.y} ${tile.plane}`);
@@ -192,7 +201,7 @@ test("draws a network as spokes to its hub, which lists its stations", async ({ 
   await mockCatalogue(page);
   await open(page, "?at=3110,3152,0&z=10");
   await expect.poll(async () => (await featureCount(page)).hub).toBe(1);
-  const [x, y] = await page.evaluate(p => (window as unknown as { insetMap: { pixel(p: Point): number[] } }).insetMap.pixel(p), RINGS.hub);
+  const [x, y] = await settledPixel(page, RINGS.hub);
   await page.locator(".inset-map").click({ position: { x, y } });
   const list = page.getByRole("navigation", { name: "Transports" });
   await expect(list.locator(".wb-list-heading")).toContainText("Fairy rings 3 stations");
@@ -204,12 +213,7 @@ test("shows banks from the layer control, and a clicked bank's tiles and needs",
   await mockCatalogue(page);
   await open(page, "?at=3092,3245,0&z=10&layers=banks");
   await expect.poll(async () => (await featureCount(page)).point).toBe(2);
-  // Where the tile is once the map has settled: the same twice running.
-  const pixel = () => page.evaluate(p => (window as unknown as { insetMap: { pixel(p: Point): number[] | null } }).insetMap.pixel(p), DRAYNOR.tiles[0]);
-  let last: number[] | null = null;
-  await expect.poll(async () => { const now = await pixel(); const settled = !!now && JSON.stringify(now) === JSON.stringify(last); last = now; return settled; },
-    { intervals: [250] }).toBe(true);
-  const [x, y] = last!;
+  const [x, y] = await settledPixel(page, DRAYNOR.tiles[0]);
   await page.locator(".inset-map").click({ position: { x, y } });
   const detail = page.getByRole("region", { name: "Bank" });
   await expect(detail).toContainText("Draynor Village");
@@ -218,6 +222,22 @@ test("shows banks from the layer control, and a clicked bank's tiles and needs",
   // Zoomed out, the layer says why it draws nothing.
   await open(page, "?at=3092,3245,0&z=6&layers=banks");
   await expect(page.locator(".layer-status")).toContainText("Zoom in to see banks");
+});
+
+test("switches transport families and network hubs from the layer control", async ({ page }) => {
+  await mockCatalogue(page);
+  await open(page, "?at=3110,3152,0&z=10");
+  const layers = page.getByRole("group", { name: "Map layers" });
+  await expect.poll(async () => (await featureCount(page)).hub).toBe(1);
+  await layers.getByRole("checkbox", { name: "Network hubs" }).uncheck();
+  await expect(page).toHaveURL(/hubs=0/);
+  await expect.poll(async () => (await featureCount(page)).hub).toBe(0);
+  // A family is every type of its colour at once.
+  await layers.getByRole("checkbox", { name: "Teleports" }).uncheck();
+  await expect(page).toHaveURL(/types=/);
+  expect(new URL(page.url()).searchParams.get("types")!.split(",")).not.toContain("TELEPORTATION_SPELL_HOME");
+  await layers.getByRole("checkbox", { name: "Teleports" }).check();
+  await expect(page).not.toHaveURL(/types=/);
 });
 
 test("says when collision wasn't made from the transport data's revision", async ({ page }) => {
