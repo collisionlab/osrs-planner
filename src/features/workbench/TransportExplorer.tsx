@@ -8,6 +8,7 @@ import { COLLISION_RADIUS } from "../../map/insets/composition";
 import { LayerControl, toggleLayer, type MapLayerEntry } from "../../map/insets/LayerControl";
 import type { WorldBox } from "../../map/insets/projection";
 import { TONES } from "../../map/insets/routeStyles";
+import { bankFeatures, bankKey, bankOf, loadBanks, type Bank, type Banks } from "./banks";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "./provenance";
 import { useRoutingLayers } from "./RoutingPanel";
 import { EXPLORER_LAYERS, loadDetail, loadMeta, loadView, parseTile, readState, searchTransports, sourceUrl, stationOf, toneOf, toneOfType,
@@ -71,6 +72,17 @@ function Detail({ detail, meta, onShow }: { detail: TransportDetail; meta?: Tran
   </section>;
 }
 
+function BankDetail({ bank, onShow }: { bank: Bank; onShow(point: WorldPoint): void }) {
+  return <section className="wb-detail" aria-label="Bank">
+    <h2><i className="wb-swatch" style={{ background: TONES.bank }} />{bank.name || "Bank"} <small>Bank</small></h2>
+    <dl className="wb-facts">
+      <dt>{bank.tiles.length === 1 ? "Tile" : "Tiles"}</dt><dd className="wb-mono">{bank.tiles.map(tile =>
+        <button key={point(tile)} type="button" className="wb-tile" title="Show on the map" onClick={() => onShow(tile)}>{point(tile)}</button>)}</dd>
+      <dt>Needs</dt><dd>{bank.needs.length ? bank.needs.map(need => <span key={need.kind + need.name} className={`wb-chip ${need.kind}`}>{need.name}</span>) : "nothing"}</dd>
+    </dl>
+  </section>;
+}
+
 export function TransportExplorer() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -102,6 +114,17 @@ export function TransportExplorer() {
   const typesKey = state.types?.join(",");
   const shownLayers = state.layers ?? ["transports"];
   const transportsOn = shownLayers.includes("transports");
+  const banksOn = shownLayers.includes("banks");
+  // The banks: every one, once the layer is first switched on.
+  const [banks, setBanks] = useState<Banks>();
+  const [bankError, setBankError] = useState("");
+  useEffect(() => {
+    if (!banksOn || banks) return;
+    const abort = new AbortController();
+    loadBanks(abort.signal).then(setBanks, reason => { if (!abort.signal.aborted) setBankError(String(reason instanceof Error ? reason.message : reason)); });
+    return () => abort.abort();
+  }, [banksOn, banks]);
+  const [bank, setBank] = useState<Bank>();
   useEffect(() => {
     if (!transportsOn || zoomedOut) { setView(undefined); setViewBoxes(undefined); setLoading(false); return; }
     if (!boxes) return;
@@ -138,8 +161,12 @@ export function TransportExplorer() {
   const [viewBoxes, setViewBoxes] = useState<WorldBox[]>();
   // A network picked by its hub or a spoke: its stations are listed.
   const [network, setNetwork] = useState<TransportNetwork>();
-  const transportOverlay = useMemo(() => viewOverlay(view, selected, collisionFor === selected?.id ? collision : undefined, viewBoxes, network?.id),
-    [view, selected, collisionFor, collision, viewBoxes, network]);
+  const transportOverlay = useMemo(() => {
+    const drawn = viewOverlay(view, selected, collisionFor === selected?.id ? collision : undefined, viewBoxes, network?.id);
+    // Banks under the transports, drawn on their tiles like them, and only as close.
+    const banked = banksOn && banks && boxes && !zoomedOut ? bankFeatures(banks.banks, boxes) : [];
+    return { ...drawn, features: [...banked, ...drawn.features], selected: drawn.selected ?? (bank && bankKey(bank.id)) };
+  }, [view, selected, collisionFor, collision, viewBoxes, network, banksOn, banks, boxes, zoomedOut, bank]);
 
   // A selection from the list, a search or a link brings it into view; one picked on the map doesn't.
   // A link that names a place opens there, not on its transport.
@@ -164,6 +191,9 @@ export function TransportExplorer() {
     const station = keys.map(stationOf).find(Boolean);
     const transports = keys.filter(key => !key.includes(":"));
     const hub = keys.find(key => key.startsWith("network:"));
+    const banked = keys.map(key => bankOf(banks?.banks, key)).find(Boolean);
+    setBank(!transports.length && !station ? banked : undefined);
+    if (banked && !transports.length && !station) { setNetwork(undefined); setHere(undefined); select(undefined, false); return; }
     if (!station && !transports.length && hub) {
       const picked = view?.networks?.find(each => `network:${each.id}` === hub);
       if (picked) { setNetwork(picked); setHere(undefined); select(undefined, false); }
@@ -221,6 +251,9 @@ export function TransportExplorer() {
     { id: "transports", label: "Transports", swatch: `linear-gradient(90deg, ${TONES.object} 33%, ${TONES.journey} 33% 66%, ${TONES.teleport} 66%)`, on: transportsOn, options: typeFilter,
       status: zoomedOut ? "Zoom in to see transports" : undefined,
       title: "Every effective transport with an end in view, drawn on its tiles once zoomed in far enough to tell them apart" },
+    { id: "banks", label: "Banks", swatch: TONES.bank, on: banksOn,
+      status: bankError || (zoomedOut ? "Zoom in to see banks" : !banks ? "Loading…" : undefined),
+      title: "The plugin's bank tiles: filled where anyone can bank, outlined where it needs a quest, skill or unlock first" },
     ...routing.layers,
   ];
   const toggle = (id: string, on: boolean) => {
@@ -324,7 +357,8 @@ export function TransportExplorer() {
           {insetPin && <LayerControl layers={layers} onToggle={toggle} />}
         </section>
         <div className="wb-below-map">
-          {selected ? <Detail detail={selected} meta={meta} onShow={p => setFocusTile({ point: p })} />
+          {bank && !selected ? <BankDetail bank={bank} onShow={p => setFocusTile({ point: p })} />
+            : selected ? <Detail detail={selected} meta={meta} onShow={p => setFocusTile({ point: p })} />
             : <section className="wb-detail wb-hint-panel"><p className="wb-note">Click a tile to see every transport arriving there or leaving it, or a transport for its details.</p></section>}
           {routing.panel && <div className="wb-detail">{routing.panel}</div>}
         </div>

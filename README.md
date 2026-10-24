@@ -136,6 +136,11 @@ part of a type each) come with the view as stations and a hub at the middle of t
 stations; each station in view is joined to its hub rather than to every other station. A station's
 several tiles are one station, named by what the transports arriving there call it.
 
+The explorer's banks layer reads the plugin's `destinations/game_features/bank.tsv` through
+`GET /api/workbench/v1/banks` (all at once): tiles of one name close together are one bank, with
+what any of them needs. Bank tiles are drawn like transport tiles, outlined where a bank needs a
+quest, skill or unlock.
+
 Every page says where its layers come from. The service records the tooling and plugin commits it
 was built with (`TOOLING_REV`/`PLUGIN_REV` in the image build, else git); collision comes from the
 tiles release's `collision/<version>/manifest.json`, which names the tooling commit that dumped it.

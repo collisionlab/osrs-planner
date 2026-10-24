@@ -179,7 +179,7 @@ export function viewOverlay(view: TransportView | undefined, selected: Transport
 }
 
 /** The explorer's map layers, in the order the layer control lists them. */
-export const EXPLORER_LAYERS = ["transports", "components", "separators", "unreachable"];
+export const EXPLORER_LAYERS = ["transports", "banks", "components", "separators", "unreachable"];
 
 /** What the page's URL holds: the selected transport, where the map is, the types and layers shown and a search. */
 export interface ExplorerState {

@@ -23,6 +23,9 @@ const ring = find(t => t.construction === "paired");
 const RINGS = { id: "FAIRY_RING:0", type: "FAIRY_RING", name: "Fairy rings", hub: { x: 3112, y: 3160, plane: 0 }, stations: [
   { point: { x: 2412, y: 4434, plane: 0 }, name: "Zanaris" }, { point: { x: 3108, y: 3149, plane: 0 }, name: "D I S" }, { point: { x: 2644, y: 3495, plane: 0 }, name: "A L S" }] };
 
+const DRAYNOR = { id: "draynor-village@3091,3242,0", name: "Draynor Village", tiles: [{ x: 3091, y: 3242, plane: 0 }, { x: 3091, y: 3243, plane: 0 }],
+  needs: [{ kind: "quest", name: "Some Quest" }] };
+
 type Box = [plane: number, x1: number, y1: number, x2: number, y2: number];
 const inBox = (p: Point | null, [plane, x1, y1, x2, y2]: Box) => !!p && p.plane === plane && p.x >= x1 && p.x <= x2 && p.y >= y1 && p.y <= y2;
 
@@ -41,6 +44,7 @@ async function mockCatalogue(page: Page, { dense = false, collisionRev = "e615af
   const views: Box[][] = [];
   await page.route(url => url.pathname.startsWith("/api/"), route => {
     const url = new URL(route.request().url());
+    if (url.pathname === "/api/workbench/v1/banks") return route.fulfill({ json: { plugin: fixture.meta.plugin, banks: [DRAYNOR] } });
     const rest = url.pathname.replace("/api/workbench/v1/transports", "");
     if (!url.pathname.startsWith("/api/workbench/v1/transports")) return route.fulfill({ status: 404, json: {} });
     const types = url.searchParams.get("types")?.split(",").filter(Boolean);
@@ -194,6 +198,26 @@ test("draws a network as spokes to its hub, which lists its stations", async ({ 
   await expect(list.locator(".wb-list-heading")).toContainText("Fairy rings 3 stations");
   await list.getByRole("button", { name: /A L S/ }).click();
   await expect(list.locator(".wb-list-heading")).toContainText("At 2644 3495 0");
+});
+
+test("shows banks from the layer control, and a clicked bank's tiles and needs", async ({ page }) => {
+  await mockCatalogue(page);
+  await open(page, "?at=3092,3245,0&z=10&layers=banks");
+  await expect.poll(async () => (await featureCount(page)).point).toBe(2);
+  // Where the tile is once the map has settled: the same twice running.
+  const pixel = () => page.evaluate(p => (window as unknown as { insetMap: { pixel(p: Point): number[] | null } }).insetMap.pixel(p), DRAYNOR.tiles[0]);
+  let last: number[] | null = null;
+  await expect.poll(async () => { const now = await pixel(); const settled = !!now && JSON.stringify(now) === JSON.stringify(last); last = now; return settled; },
+    { intervals: [250] }).toBe(true);
+  const [x, y] = last!;
+  await page.locator(".inset-map").click({ position: { x, y } });
+  const detail = page.getByRole("region", { name: "Bank" });
+  await expect(detail).toContainText("Draynor Village");
+  await expect(detail).toContainText("3091 3243 0");
+  await expect(detail.locator(".wb-chip.quest")).toHaveText("Some Quest");
+  // Zoomed out, the layer says why it draws nothing.
+  await open(page, "?at=3092,3245,0&z=6&layers=banks");
+  await expect(page.locator(".layer-status")).toContainText("Zoom in to see banks");
 });
 
 test("says when collision wasn't made from the transport data's revision", async ({ page }) => {
