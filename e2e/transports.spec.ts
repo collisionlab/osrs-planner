@@ -20,6 +20,9 @@ const homeTeleport = find(t => t.type === "TELEPORTATION_SPELL_HOME");
 const trapdoor = find(t => t.label === "Climb-down Trapdoor 6435");
 const ring = find(t => t.construction === "paired");
 
+const RINGS = { id: "FAIRY_RING:0", type: "FAIRY_RING", name: "Fairy rings", hub: { x: 3112, y: 3160, plane: 0 }, stations: [
+  { point: { x: 2412, y: 4434, plane: 0 }, name: "Zanaris" }, { point: { x: 3108, y: 3149, plane: 0 }, name: "D I S" }, { point: { x: 2644, y: 3495, plane: 0 }, name: "A L S" }] };
+
 type Box = [plane: number, x1: number, y1: number, x2: number, y2: number];
 const inBox = (p: Point | null, [plane, x1, y1, x2, y2]: Box) => !!p && p.plane === plane && p.x >= x1 && p.x <= x2 && p.y >= y1 && p.y <= y2;
 
@@ -53,8 +56,9 @@ async function mockCatalogue(page: Page, { dense = false, collisionRev = "e615af
       // One door per 40 tiles: hundreds close up, thousands zoomed out.
       const all = dense ? boxes.flatMap(box => network(box, Math.min(5000, Math.max(50, Math.round((box[3] - box[1]) * (box[4] - box[2]) / 40))))) : fixture.transports;
       const found = typed(all).filter(t => boxes.some(box => inBox(t.origin, box) || inBox(t.destination, box)));
-      // Too many: only counted, as the service does.
-      return route.fulfill({ json: { total: found.length, transports: found.length <= fixture.meta.viewLimit ? found : [] } });
+      // Too many: only counted, as the service does. The fairy rings are one network, its hub near the Wizards' Tower ring.
+      const listed = found.length <= fixture.meta.viewLimit ? found.map(t => t.construction === "paired" ? { ...t, network: RINGS.id } : t) : [];
+      return route.fulfill({ json: { total: found.length, transports: listed, networks: listed.some(t => t.construction === "paired") ? [RINGS] : [] } });
     }
     const detail = fixture.details[decodeURIComponent(rest.slice(1))];
     return detail ? route.fulfill({ json: detail }) : route.fulfill({ status: 404, json: { error: "no transport" } });
@@ -178,6 +182,18 @@ test("shows a network transport as the pairing of an origin row and a destinatio
   await expect(detail.locator(".wb-source")).toHaveCount(2);
   await expect(detail.locator(".wb-source").nth(0)).toContainText("(origin)");
   await expect(detail.locator(".wb-source").nth(1)).toContainText("(destination)");
+});
+
+test("draws a network as spokes to its hub, which lists its stations", async ({ page }) => {
+  await mockCatalogue(page);
+  await open(page, "?at=3110,3152,0&z=10");
+  await expect.poll(async () => (await featureCount(page)).hub).toBe(1);
+  const [x, y] = await page.evaluate(p => (window as unknown as { insetMap: { pixel(p: Point): number[] } }).insetMap.pixel(p), RINGS.hub);
+  await page.locator(".inset-map").click({ position: { x, y } });
+  const list = page.getByRole("navigation", { name: "Transports" });
+  await expect(list.locator(".wb-list-heading")).toContainText("Fairy rings 3 stations");
+  await list.getByRole("button", { name: /A L S/ }).click();
+  await expect(list.locator(".wb-list-heading")).toContainText("At 2644 3495 0");
 });
 
 test("says when collision wasn't made from the transport data's revision", async ({ page }) => {

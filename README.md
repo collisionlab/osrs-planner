@@ -131,6 +131,10 @@ per area drawn), listing at most 2,500 transports and otherwise only counting th
 filter and search (`?t=…&at=x,y,plane&z=…&types=…&q=…`). The explorer draws transports on their
 tiles, in map units, and only once zoomed in to 4 pixels a tile; further out it draws none, since a
 count per area says nothing. A hop between neighbouring tiles (a door) is one bar over their edge.
+Networks (fairy rings, spirit trees, charter ships, canoes, minecarts and the like: one connected
+part of a type each) come with the view as stations and a hub at the middle of their surface
+stations; each station in view is joined to its hub rather than to every other station. A station's
+several tiles are one station, named by what the transports arriving there call it.
 
 Every page says where its layers come from. The service records the tooling and plugin commits it
 was built with (`TOOLING_REV`/`PLUGIN_REV` in the image build, else git); collision comes from the

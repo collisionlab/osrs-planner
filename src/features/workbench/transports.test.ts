@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTile, readState, sourceUrl, toneOf, transportFeatures, viewOverlay, writeState, type TransportSummary, type TransportView } from "./transports";
+import { parseTile, readState, sourceUrl, stationOf, toneOf, transportFeatures, viewOverlay, writeState, type TransportSummary, type TransportView } from "./transports";
 import { provenance } from "./provenance";
 
 const p = (x: number, y: number, plane = 0) => ({ x, y, plane });
@@ -45,6 +45,27 @@ describe("transport explorer", () => {
     expect(overlay.features.at(-1)!.key).toBe("far");
     // The selected one isn't drawn twice when it's in view too.
     expect(viewOverlay(view, view.transports[0], undefined, [box]).features.filter(f => f.key === "a")).toHaveLength(3);
+  });
+
+  it("draws a network as its tiles, once each, and a spoke from each station in view to its hub", () => {
+    const ring = (id: string, from: ReturnType<typeof p>, to: ReturnType<typeof p>) => ({ ...summary(id, from, to, "FAIRY_RING"), construction: "paired" as const, network: "FAIRY_RING:0" });
+    const view: TransportView = { total: 3, transports: [ring("ab", p(10, 10), p(51, 50)), ring("ac", p(10, 10), p(900, 900)), ring("ba", p(50, 50), p(11, 10))],
+      networks: [{ id: "FAIRY_RING:0", type: "FAIRY_RING", name: "Fairy rings", hub: p(400, 400), stations: [
+        { point: p(10, 10), name: "AIQ" }, { point: p(50, 50), name: "BKR" }, { point: p(900, 900), name: "CKS" }] }] };
+    const overlay = viewOverlay(view, undefined, undefined, [box]);
+    // No ring-to-ring edges; the far station's tile and spoke aren't in view, but the hub is drawn wherever it is.
+    expect(overlay.features.filter(f => f.kind === "edge").map(f => f.kind === "edge" && [f.from, f.to, f.spoke, f.key])).toEqual([
+      [p(10, 10), p(400, 400), true, "network:FAIRY_RING:0"], [p(50, 50), p(400, 400), true, "network:FAIRY_RING:0"]]);
+    expect(overlay.features.filter(f => f.kind === "point").map(f => f.key)).toEqual(["station:10,10,0", "station:51,50,0", "station:50,50,0", "station:11,10,0"]);
+    expect(overlay.features.filter(f => f.kind === "hub")).toEqual([{ kind: "hub", key: "network:FAIRY_RING:0", point: p(400, 400), tone: "journey", label: "Fairy rings" }]);
+    expect(stationOf("station:10,10,0")).toEqual(p(10, 10));
+    expect(stationOf("0123456789ab")).toBeUndefined();
+    // A selected network is highlighted; a selected ring is still drawn whole, with its real edge.
+    expect(viewOverlay(view, undefined, undefined, [box], "FAIRY_RING:0").selected).toBe("network:FAIRY_RING:0");
+    const picked = viewOverlay(view, view.transports[0], undefined, [box]);
+    expect(picked.anchors.map(f => f.kind)).toEqual(["edge", "point", "point"]);
+    // Without networks (an older service), its transports are drawn as any other.
+    expect(viewOverlay({ ...view, networks: undefined }, undefined, undefined, [box]).features.some(f => f.kind === "edge" && !f.spoke)).toBe(true);
   });
 
   it("draws nothing but the selection for a view too big to list", () => {

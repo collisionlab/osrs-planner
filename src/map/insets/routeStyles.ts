@@ -76,6 +76,7 @@ function edgeStyle(feature: FeatureLike, selected: boolean, resolution: number):
   const length = Math.hypot(x2 - x1, y2 - y1);
   if (!length) return [];
   if (feature.get("hop")) return hopStyle(feature, color, selected, resolution, [x1, y1], [x2, y2], length);
+  if (feature.get("spoke")) return [new Style({ stroke: new Stroke({ color: selected ? color : `${color}8c`, width: scaled(resolution, 0.08, 1, 2.5) + (selected ? 1 : 0) }) })];
   const width = scaled(resolution, 0.16, 1.5, 5) + (selected ? 1.5 : 0);
   const shift = scaled(resolution, 0.16, 1.5, 5) * resolution, nx = (y2 - y1) / length * shift, ny = -(x2 - x1) / length * shift;
   // Stop short of the tile centre so the arrowhead sits on the destination tile's edge.
@@ -99,6 +100,17 @@ function hopStyle(feature: FeatureLike, color: string, selected: boolean, resolu
     new Style({ geometry: bar, stroke: new Stroke({ color: selected ? "#ffffff" : ink, width: width + (selected ? 4 : 2.5), lineCap: "butt" }) }),
     new Style({ geometry: bar, stroke: new Stroke({ color, width, lineCap: "butt", lineDash: feature.get("dashed") ? [4, 3] : undefined }) }),
   ];
+}
+
+/** A network's hub: a dark node ringed in its tone, a little smaller than a tile close up, with its name under it. */
+function hubStyle(feature: FeatureLike, selected: boolean, resolution: number): Style {
+  const color = TONES[feature.get("tone") as FeatureTone], radius = scaled(resolution, 0.45, 5, 12);
+  return new Style({
+    image: new Circle({ radius, fill: new Fill({ color: "rgba(20,25,20,.88)" }), stroke: new Stroke({ color: selected ? "#ffffff" : color, width: selected ? 3 : 2 }) }),
+    text: new Text({ text: String(feature.get("label")), font: "bold 11px ui-monospace, monospace", offsetY: radius + 9, overflow: true,
+      fill: new Fill({ color: selected ? "#ffffff" : color }), stroke: new Stroke({ color: ink, width: 3 }) }),
+    zIndex: 2,
+  });
 }
 
 const markStyles = new Map<string, Style>();
@@ -166,6 +178,7 @@ export function featureStyle(feature: FeatureLike, selected: string | undefined,
   const kind = feature.get("kind");
   if (kind === "edge") return edgeStyle(feature, isSelected, resolution);
   if (kind === "point") return markStyle(feature, resolution, isSelected);
+  if (kind === "hub") return hubStyle(feature, isSelected, resolution);
   return regionStyle(feature, isSelected);
 }
 
