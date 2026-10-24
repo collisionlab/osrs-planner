@@ -11,6 +11,7 @@ import Point from "ol/geom/Point";
 import MultiPolygon from "ol/geom/MultiPolygon";
 import Polygon from "ol/geom/Polygon";
 import Translate from "ol/interaction/Translate";
+import { defaults as defaultInteractions } from "ol/interaction/defaults";
 import { Stroke, Style } from "ol/style";
 import { createEmpty, extend, isEmpty } from "ol/extent";
 import type { Coordinate } from "ol/coordinate";
@@ -140,7 +141,9 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
       ...worldToMap({ x: x + width - 0.5, y: y + height - 0.5, plane })]);
   }
   if (!isEmpty(surfaceBounds)) base.setExtent(surfaceBounds);
-  const map = new OLMap({ target, view, layers: [base] });
+  // The target has a tabindex (for keys), which by default makes OpenLayers pan and wheel-zoom only
+  // while the map has the focus: any click on a control beside it would stop the wheel working.
+  const map = new OLMap({ target, view, layers: [base], interactions: defaultInteractions({ onFocusOnly: false }) });
   let disposed = false;
   const cleanup: (() => void)[] = [];
   const owned = new RegionFeatures();

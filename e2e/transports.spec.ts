@@ -240,6 +240,23 @@ test("switches transport families and network hubs from the layer control", asyn
   await expect(page).not.toHaveURL(/types=/);
 });
 
+test("keeps the map zooming by wheel and keys after using the layer control", async ({ page }) => {
+  await mockCatalogue(page);
+  await open(page, "?at=3222,3218,0&z=8");
+  const zoom = () => page.evaluate(() => (window as unknown as { insetMap: InsetMapHandle }).insetMap.centreTile().zoom);
+  const layers = page.getByRole("group", { name: "Map layers" });
+  await layers.getByRole("checkbox", { name: "Routing components" }).check();
+  // The checkbox handed the focus back, so keys still zoom the map.
+  await expect(page.locator(".inset-map")).toBeFocused();
+  await page.keyboard.press("+");
+  await expect.poll(zoom).toBe(9);
+  await layers.getByRole("checkbox", { name: "Banks" }).check();
+  const box = (await page.locator(".inset-map").boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, -400);
+  await expect.poll(zoom).toBe(10);
+});
+
 test("says when collision wasn't made from the transport data's revision", async ({ page }) => {
   await mockCatalogue(page);
   await open(page, "?at=3210,3214,0&z=9");

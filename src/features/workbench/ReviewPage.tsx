@@ -175,7 +175,7 @@ export function ReviewPage() {
       <main className="wb-main">
         <section className="wb-map">
           {insetPin && overlay ? <Suspense fallback={<div className="route-map" role="status">Loading inset map…</div>}>
-            <InsetMap overlay={overlay} focusTile={focusTile} style={style} insets onPick={() => {}} onFallback={() => {}}
+            <InsetMap overlay={overlay} focusTile={focusTile} style={style} insets keepFocus onPick={() => {}} onFallback={() => {}}
               onSelectFeatures={keys => setSelectedChange(changeOfKey(unit, keys[0]))} />
           </Suspense> : <p className="wb-message">Insets are not available for these map tiles.</p>}
           {insetPin && styles.length > 1 && <div className="map-style-toggle wb-style" role="group" aria-label="Map style">
