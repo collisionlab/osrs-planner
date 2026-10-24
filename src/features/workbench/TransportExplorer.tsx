@@ -11,7 +11,7 @@ import { TONES } from "../../map/insets/routeStyles";
 import { bankFeatures, bankKey, bankOf, loadBanks, type Bank, type Banks } from "./banks";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "./provenance";
 import { useRoutingLayers } from "./RoutingPanel";
-import { EXPLORER_LAYERS, loadDetail, loadMeta, loadView, parseTile, readState, searchTransports, sourceUrl, stationOf, toneOf, toneOfType,
+import { EXPLORER_LAYERS, FAMILIES, loadDetail, loadMeta, loadView, parseTile, readState, searchTransports, sourceUrl, stationOf, toneOf, toneOfType,
   TRANSPORTS_MAX_RESOLUTION, typeName, viewOverlay, writeState, type ExplorerState, type TransportDetail, type TransportMeta, type TransportNetwork,
   type TransportSummary, type TransportView } from "./transports";
 import "./workbench.css";
@@ -162,11 +162,11 @@ export function TransportExplorer() {
   // A network picked by its hub or a spoke: its stations are listed.
   const [network, setNetwork] = useState<TransportNetwork>();
   const transportOverlay = useMemo(() => {
-    const drawn = viewOverlay(view, selected, collisionFor === selected?.id ? collision : undefined, viewBoxes, network?.id);
+    const drawn = viewOverlay(view, selected, collisionFor === selected?.id ? collision : undefined, viewBoxes, network?.id, state.hubs !== false);
     // Banks under the transports, drawn on their tiles like them, and only as close.
     const banked = banksOn && banks && boxes && !zoomedOut ? bankFeatures(banks.banks, boxes) : [];
     return { ...drawn, features: [...banked, ...drawn.features], selected: drawn.selected ?? (bank && bankKey(bank.id)) };
-  }, [view, selected, collisionFor, collision, viewBoxes, network, banksOn, banks, boxes, zoomedOut, bank]);
+  }, [view, selected, collisionFor, collision, viewBoxes, network, banksOn, banks, boxes, zoomedOut, bank, state.hubs]);
 
   // A selection from the list, a search or a link brings it into view; one picked on the map doesn't.
   // A link that names a place opens there, not on its transport.
@@ -236,7 +236,29 @@ export function TransportExplorer() {
     update({ types: next.length === all.length ? undefined : all.filter(other => next.includes(other)) });
   };
 
-  const typeFilter = <details className="wb-filters">
+  // A family's types all at once; partly shown when only some are.
+  const setTypes = (types: string[], on: boolean) => {
+    const all = meta?.types.map(other => other.type) || [];
+    const next = on ? new Set([...shownTypes, ...types]) : new Set([...shownTypes].filter(type => !types.includes(type)));
+    update({ types: next.size === all.length ? undefined : all.filter(other => next.has(other)) });
+  };
+  const families = <div className="wb-families" role="group" aria-label="Transport families">
+    {FAMILIES.map(family => {
+      const types = meta?.types.filter(type => toneOfType(type) === family.tone).map(type => type.type) || [];
+      const shown = types.filter(type => shownTypes.has(type)).length;
+      return <label key={family.tone}>
+        <input type="checkbox" checked={!!types.length && shown === types.length} disabled={!types.length}
+          ref={input => { if (input) input.indeterminate = shown > 0 && shown < types.length; }}
+          onChange={event => setTypes(types, event.target.checked)} />
+        <i className="wb-swatch" style={{ background: TONES[family.tone] }} />{family.label}
+      </label>;
+    })}
+    <label title="Join each network station to its network's hub">
+      <input type="checkbox" checked={state.hubs !== false} onChange={event => update({ hubs: event.target.checked ? undefined : false })} />
+      Network hubs
+    </label>
+  </div>;
+  const typeFilter = <>{families}<details className="wb-filters">
     <summary>Types {state.types ? `(${state.types.length} of ${meta?.types.length ?? "?"})` : "(all)"}</summary>
     <div className="wb-filter-actions">
       <button type="button" onClick={() => update({ types: undefined })}>All</button>
@@ -246,7 +268,7 @@ export function TransportExplorer() {
       <input type="checkbox" checked={shownTypes.has(type.type)} onChange={() => toggleType(type.type)} />
       <i className="wb-swatch" style={{ background: TONES[toneOfType(type)] }} />{typeName(type.type)} <small>{type.count}</small>
     </label>)}
-  </details>;
+  </details></>;
   const layers: MapLayerEntry[] = [
     { id: "transports", label: "Transports", swatch: `linear-gradient(90deg, ${TONES.object} 33%, ${TONES.journey} 33% 66%, ${TONES.teleport} 66%)`, on: transportsOn, options: typeFilter,
       status: zoomedOut ? "Zoom in to see transports" : undefined,

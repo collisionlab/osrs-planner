@@ -149,10 +149,10 @@ export function stationOf(key: string): WorldPoint | undefined {
  * The overlay for a view: each listed transport (what of it is in view), plus the whole selected
  * transport (whether or not it is in view), which the map lays out and draws collision around.
  * A network's transports are their tiles, each drawn once, and each station in view has a spoke to
- * the network's hub, wherever that is; `network` is a selected network.
+ * the network's hub, wherever that is (unless `withHubs` is off); `network` is a selected network.
  */
 export function viewOverlay(view: TransportView | undefined, selected: TransportSummary | undefined, collision?: CollisionMap,
-  inView?: WorldBox[], network?: string): FeatureOverlay {
+  inView?: WorldBox[], network?: string, withHubs = true): FeatureOverlay {
   const features: MapFeature[] = [];
   const shown = (point: WorldPoint) => !inView || inView.some(box => inBox(point, box));
   const networks = new Map((view?.networks || []).map(each => [each.id, each]));
@@ -168,7 +168,7 @@ export function viewOverlay(view: TransportView | undefined, selected: Transport
     }
   }
   const spokes: MapFeature[] = [], hubs: MapFeature[] = [];
-  for (const each of networks.values()) {
+  for (const each of withHubs ? networks.values() : []) {
     const key = networkKey(each.id), tone = toneOf({ type: each.type, teleport: false });
     for (const { point: station } of each.stations.filter(station => shown(station.point))) spokes.push({ kind: "edge", key, from: station, to: each.hub, tone, spoke: true });
     hubs.push({ kind: "hub", key, point: each.hub, tone, label: each.name });
@@ -190,7 +190,13 @@ export interface ExplorerState {
   query?: string;
   /** Undefined for the transports alone. */
   layers?: string[];
+  /** False to draw networks' stations without their hubs and spokes. */
+  hubs?: false;
 }
+
+/** Transports by family, as they are coloured: objects used where they stand, journeys, teleports. */
+export const FAMILIES: { tone: FeatureTone; label: string }[] = [
+  { tone: "object", label: "Objects and shortcuts" }, { tone: "journey", label: "Journeys and networks" }, { tone: "teleport", label: "Teleports" }];
 
 const POINT = /^(\d{1,5}),(\d{1,5}),([0-3])$/;
 export function readState(search: string): ExplorerState {
@@ -206,6 +212,7 @@ export function readState(search: string): ExplorerState {
   if (query) state.query = query;
   const layers = readLayers(params, EXPLORER_LAYERS);
   if (layers) state.layers = layers;
+  if (params.get("hubs") === "0") state.hubs = false;
   return state;
 }
 
@@ -216,6 +223,7 @@ export function writeState(state: ExplorerState): string {
   if (state.types) params.set("types", state.types.join(","));
   if (state.query) params.set("q", state.query);
   if (state.layers) params.set("layers", state.layers.join(","));
+  if (state.hubs === false) params.set("hubs", "0");
   const text = params.toString().replace(/%2C/g, ",");
   return text ? `?${text}` : "";
 }
