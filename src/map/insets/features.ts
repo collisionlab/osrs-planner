@@ -14,6 +14,8 @@ export type FeatureTone =
   | "added" | "removed" | "changed"
   /** A transport by what it is: an object used where it stands, a journey, or a teleport. */
   | "object" | "journey" | "teleport"
+  /** A bank's tile. */
+  | "bank"
   /** Inset investigation: an area's own regions, a link a diagnostic suggests, a doubtful transport end,
    * a walking component, an evidence coordinate, an area's way in, and a link being drafted by hand. */
   | "area" | "candidate" | "suspect" | "component" | "evidence" | "entrance" | "draft";

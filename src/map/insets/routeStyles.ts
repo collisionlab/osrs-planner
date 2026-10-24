@@ -54,7 +54,7 @@ function endpointHit(resolution: number): Style[] {
 
 /** Feature colours: review rows by change, transports by kind. */
 export const TONES: Record<FeatureTone, string> = { added: "#5ee08a", removed: "#ff6b6b", changed: "#ffc44d",
-  object: "#f2ead2", journey: "#6fc3ff", teleport: "#c79bff",
+  object: "#f2ead2", journey: "#6fc3ff", teleport: "#c79bff", bank: "#ffcc33",
   area: "#ffae47", candidate: "#ff7ad9", suspect: "#ff6b6b", component: "#7ee0d0", evidence: "#ffe066", entrance: "#f7f1dc", draft: "#5ee08a" };
 
 /** A tile's size on screen, at a view resolution. */

@@ -71,6 +71,16 @@ public final class Workbench {
         });
     }
 
+    /** The banks of the bundled plugin, all at once (there are about a hundred), for the explorer's banks layer. */
+    public static void bankRoutes(Javalin app, Supplier<BankCatalog> catalog, Provenance provenance) {
+        app.get("/workbench/v1/banks", ctx -> {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("plugin", provenance.plugin);
+            body.put("banks", catalog.get().banks());
+            ctx.header("Cache-Control", "public, max-age=300").json(body);
+        });
+    }
+
     /**
      * The inset investigation's topology report from shortest-path-tooling, served as it was made:
      * the file {@code WORKBENCH_TOPOLOGY} names, else {@code workbench-topology.json} on the
