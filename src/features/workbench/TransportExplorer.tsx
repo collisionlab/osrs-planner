@@ -5,11 +5,12 @@ import type { WorldPoint } from "../../domain/contracts";
 import { insetPin, mapLayers, savedStyle, saveStyle, type MapLayer, type MapStyle } from "../../map/layers";
 import { CollisionMap, releaseTiles } from "../../map/insets/collision";
 import { COLLISION_RADIUS } from "../../map/insets/composition";
+import { LayerControl, toggleLayer, type MapLayerEntry } from "../../map/insets/LayerControl";
 import type { WorldBox } from "../../map/insets/projection";
 import { TONES } from "../../map/insets/routeStyles";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "./provenance";
 import { useRoutingLayers } from "./RoutingPanel";
-import { clusterKey, loadDetail, loadMeta, loadView, parseTile, readState, searchTransports, sourceUrl, toneOf, toneOfType,
+import { clusterKey, EXPLORER_LAYERS, loadDetail, loadMeta, loadView, parseTile, readState, searchTransports, sourceUrl, toneOf, toneOfType,
   typeName, viewOverlay, writeState, type ExplorerState, type TransportDetail, type TransportMeta, type TransportSummary,
   type TransportView } from "./transports";
 import "./workbench.css";
@@ -97,7 +98,10 @@ export function TransportExplorer() {
   const [view, setView] = useState<TransportView>();
   const [loading, setLoading] = useState(false);
   const typesKey = state.types?.join(",");
+  const shownLayers = state.layers ?? ["transports"];
+  const transportsOn = shownLayers.includes("transports");
   useEffect(() => {
+    if (!transportsOn) { setView(undefined); setViewBoxes(undefined); setLoading(false); return; }
     if (!boxes) return;
     if (!boxes.length) { setView({ total: 0, transports: [], clusters: [] }); setViewBoxes([]); return; }
     const abort = new AbortController();
@@ -105,7 +109,7 @@ export function TransportExplorer() {
     loadView(boxes, state.types, abort.signal).then(loaded => { setView(loaded); setViewBoxes(boxes); setLoading(false); },
       reason => { if (!abort.signal.aborted) { setError(String(reason instanceof Error ? reason.message : reason)); setLoading(false); } });
     return () => abort.abort();
-  }, [boxes, typesKey]);
+  }, [boxes, typesKey, transportsOn]);
 
   const [detail, setDetail] = useState<TransportDetail>();
   useEffect(() => {
@@ -148,7 +152,7 @@ export function TransportExplorer() {
   const [focusBox, setFocusBox] = useState<WorldBox>();
   // A tile clicked on the map, for the routing layers to inspect.
   const [picked, setPicked] = useState<WorldPoint>();
-  const routing = useRoutingLayers(picked, setFocusBox);
+  const routing = useRoutingLayers(picked, setFocusBox, shownLayers);
   const overlay = useMemo(() => transportOverlay && { ...transportOverlay, routing: routing.overlay }, [transportOverlay, routing.overlay]);
   const [focusTile, setFocusTile] = useState<{ point: WorldPoint }>();
   const onSelectFeatures = (keys: string[], point?: WorldPoint) => {
@@ -192,6 +196,27 @@ export function TransportExplorer() {
     const all = meta?.types.map(other => other.type) || [];
     const next = shownTypes.has(type) ? [...shownTypes].filter(other => other !== type) : [...shownTypes, type];
     update({ types: next.length === all.length ? undefined : all.filter(other => next.includes(other)) });
+  };
+
+  const typeFilter = <details className="wb-filters">
+    <summary>Types {state.types ? `(${state.types.length} of ${meta?.types.length ?? "?"})` : "(all)"}</summary>
+    <div className="wb-filter-actions">
+      <button type="button" onClick={() => update({ types: undefined })}>All</button>
+      <button type="button" onClick={() => update({ types: [] })}>None</button>
+    </div>
+    {meta?.types.map(type => <label key={type.type}>
+      <input type="checkbox" checked={shownTypes.has(type.type)} onChange={() => toggleType(type.type)} />
+      <i className="wb-swatch" style={{ background: TONES[toneOfType(type)] }} />{typeName(type.type)} <small>{type.count}</small>
+    </label>)}
+  </details>;
+  const layers: MapLayerEntry[] = [
+    { id: "transports", label: "Transports", swatch: `linear-gradient(90deg, ${TONES.object} 33%, ${TONES.journey} 33% 66%, ${TONES.teleport} 66%)`, on: transportsOn, options: typeFilter,
+      title: "Every effective transport with an end in view: listed and drawn when few enough, else counted where they are" },
+    ...routing.layers,
+  ];
+  const toggle = (id: string, on: boolean) => {
+    const next = toggleLayer(shownLayers, id, on, EXPLORER_LAYERS);
+    update({ layers: next.join(",") === "transports" ? undefined : next });
   };
 
   const listed = (results ?? view?.transports) || [];
@@ -240,17 +265,6 @@ export function TransportExplorer() {
           <input aria-label="Search transports" placeholder="Object id, x y plane, or text" value={query} onChange={event => setQuery(event.target.value)} />
           <button type="submit">Find</button>
         </form>
-        <details className="wb-filters">
-          <summary>Types {state.types ? `(${state.types.length} of ${meta?.types.length ?? "?"})` : "(all)"}</summary>
-          <div className="wb-filter-actions">
-            <button type="button" onClick={() => update({ types: undefined })}>All</button>
-            <button type="button" onClick={() => update({ types: [] })}>None</button>
-          </div>
-          {meta?.types.map(type => <label key={type.type}>
-            <input type="checkbox" checked={shownTypes.has(type.type)} onChange={() => toggleType(type.type)} />
-            <i className="wb-swatch" style={{ background: TONES[toneOfType(type)] }} />{typeName(type.type)} <small>{type.count}</small>
-          </label>)}
-        </details>
         {here ? <>
           <p className="wb-list-heading" role="status">At <span className="wb-mono">{point(here.tile)}</span>{" "}
             <button type="button" className="wb-link" onClick={() => setHere(undefined)}>back to all in view</button></p>
@@ -266,7 +280,7 @@ export function TransportExplorer() {
           </>}
         </> : <>
           <p className="wb-list-heading" role="status">{results ? <>{results.length}{results.length === 50 ? "+" : ""} found for “{state.query}” <button type="button" className="wb-link" onClick={() => { setResults(undefined); setQuery(""); update({ query: undefined }); }}>clear</button></>
-            : !view ? "Loading…" : view.clusters.length ? `${view.total.toLocaleString()} in view; zoom in to list them`
+            : !transportsOn ? "The transports layer is off." : !view ? "Loading…" : view.clusters.length ? `${view.total.toLocaleString()} in view; zoom in to list them`
             : `${view.total} in view${loading ? " (updating…)" : ""}`}</p>
           <ol>{groups.slice(0, LISTED).map(group => <li key={group[0].id}>
             <SummaryButton group={group} selected={group.some(summary => summary.id === state.selected)} onSelect={() => choose(group[0])} />
@@ -287,11 +301,12 @@ export function TransportExplorer() {
             {styles.map(([id, { label }]) => <button key={id} type="button" aria-pressed={style === id}
               onClick={() => { setStyle(id); saveStyle(id); }}>{label}</button>)}
           </div>}
+          {insetPin && <LayerControl layers={layers} onToggle={toggle} />}
         </section>
         <div className="wb-below-map">
           {selected ? <Detail detail={selected} meta={meta} onShow={p => setFocusTile({ point: p })} />
             : <section className="wb-detail wb-hint-panel"><p className="wb-note">Click a tile to see every transport arriving there or leaving it, or a transport for its details.</p></section>}
-          <div className="wb-detail">{routing.panel}</div>
+          {routing.panel && <div className="wb-detail">{routing.panel}</div>}
         </div>
       </main>
     </div>

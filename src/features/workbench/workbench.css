@@ -174,15 +174,15 @@ button.wb-chip[aria-pressed="true"] { border-color: var(--orange); }
   .wb-style { top: auto; bottom: 12px; right: auto; left: 12px; }
 }
 
-/* The transport explorer's details and routing layers share the row under the map. */
+/* The transport explorer's details and routing details share the row under the map. */
 .wb-below-map { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); min-height: 0; }
+.wb-below-map:has(> :only-child) { grid-template-columns: 1fr; }
 .wb-below-map > .wb-detail + .wb-detail { border-left: 1px solid var(--line); }
 .wb-routing h3 { margin: 0 0 .4rem; }
-.wb-routing-toggles { display: flex; flex-wrap: wrap; gap: .2rem 1rem; }
-.wb-routing label { display: block; margin: .4rem 0; }
-.wb-routing-toggles label { margin: 0; }
-.wb-routing input[type=number] { width: 6em; }
 .wb-routing button { margin: .15rem; }
+.layer-control .wb-filters { padding: 0; border: 0; }
+.layer-control .wb-filters[open] { max-height: 40vh; overflow: auto; }
+.layer-control .wb-warning { display: block; margin: 0; }
 .wb-detail > .wb-routing { padding: 0; }
 
 /* Transport explorer: grouped rows, sections at a clicked tile, collapsible source rows. */

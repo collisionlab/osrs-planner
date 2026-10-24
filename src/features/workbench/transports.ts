@@ -2,6 +2,7 @@ import type { WorldPoint } from "../../domain/contracts";
 import type { CollisionMap } from "../../map/insets/collision";
 import type { FeatureOverlay, FeatureTone, MapFeature } from "../../map/insets/features";
 import type { WorldBox } from "../../map/insets/projection";
+import { readLayers } from "../../map/insets/LayerControl";
 
 /**
  * The transport explorer's data, from the planner service (`shortestpath.workbench.TransportCatalog`):
@@ -125,13 +126,18 @@ export function viewOverlay(view: TransportView | undefined, selected: Transport
   return { features: [...features, ...anchors], anchors, selected: selected?.id, collision };
 }
 
-/** What the page's URL holds: the selected transport, where the map is, the types shown and a search. */
+/** The explorer's map layers, in the order the layer control lists them. */
+export const EXPLORER_LAYERS = ["transports", "components", "separators", "unreachable"];
+
+/** What the page's URL holds: the selected transport, where the map is, the types and layers shown and a search. */
 export interface ExplorerState {
   selected?: string;
   at?: { point: WorldPoint; zoom: number };
   /** Undefined for every type. */
   types?: string[];
   query?: string;
+  /** Undefined for the transports alone. */
+  layers?: string[];
 }
 
 const POINT = /^(\d{1,5}),(\d{1,5}),([0-3])$/;
@@ -146,6 +152,8 @@ export function readState(search: string): ExplorerState {
   if (types !== null) state.types = types.split(",").filter(type => /^[A-Z_]+$/.test(type));
   const query = params.get("q");
   if (query) state.query = query;
+  const layers = readLayers(params, EXPLORER_LAYERS);
+  if (layers) state.layers = layers;
   return state;
 }
 
@@ -155,6 +163,7 @@ export function writeState(state: ExplorerState): string {
   if (state.at) { params.set("at", `${state.at.point.x},${state.at.point.y},${state.at.point.plane}`); params.set("z", String(state.at.zoom)); }
   if (state.types) params.set("types", state.types.join(","));
   if (state.query) params.set("q", state.query);
+  if (state.layers) params.set("layers", state.layers.join(","));
   const text = params.toString().replace(/%2C/g, ",");
   return text ? `?${text}` : "";
 }

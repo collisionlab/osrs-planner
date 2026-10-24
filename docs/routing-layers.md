@@ -1,8 +1,10 @@
 # Routing partitions in the workbench
 
-The Routing partitions panel, in Inset Investigation and the Transport Explorer, adds three independent
-controls to the shared OpenLayers map:
-Routing components, Synthetic separators and Structurally unreachable. They work with any available
+Inset Investigation and the Transport Explorer offer three independent routing layers in the map's
+layer control (top right, beside the other overlays the page has): Routing components, Synthetic
+separators and Structurally unreachable. The layers switched on are kept in the page's URL
+(`layers=components,separators`). What a click inspects — the tile's status, its component, a
+crossing — shows in the page's panel while a layer is on. They work with any available
 base style, including Blueprint. Each production component gets a faint tint (blocked tiles inside it
 show as gaps), and borders between two components are thin crisp lines; the edge of the search graph
 itself isn't outlined, since the base map and collision already show it. Selecting a retained search
