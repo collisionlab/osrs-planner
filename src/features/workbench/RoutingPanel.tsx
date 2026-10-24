@@ -20,7 +20,7 @@ const LOOKS: Record<typeof ROUTING_LAYERS[number], { label: string; swatch: stri
  * in `shown`), and a panel explaining the inspected tile, component or crossing. Toggling a layer
  * updates the map's existing composition.
  */
-export function useRoutingLayers(inspected: WorldPoint | undefined, focus: (box: WorldBox) => void, shown: readonly string[]) {
+export function useRoutingLayers(inspected: WorldPoint | undefined, focus: (box: WorldBox) => void, shown: readonly string[], wanted = false) {
   const pin = tiles.routingLayers as RoutingPin | null;
   const [data, setData] = useState<RoutingData>();
   const [error, setError] = useState("");
@@ -34,15 +34,15 @@ export function useRoutingLayers(inspected: WorldPoint | undefined, focus: (box:
     [shown.join(","), minimumSize, selection]);
   const active = options.components || options.separators || options.unreachable;
 
-  // The release loads the first time a layer is switched on.
+  // The release loads the first time a layer is switched on, or the page wants it for something else (`wanted`).
   useEffect(() => {
-    if (!pin || !active || data) return;
+    if (!pin || !(active || wanted) || data) return;
     const abort = new AbortController();
     RoutingData.load(`${tiles.base}/routing-layers/${pin.version}`, pin, tiles.version, abort.signal).then(
       value => { if (!abort.signal.aborted) setData(value); },
       error => { if (!abort.signal.aborted) setError(String(error)); });
     return () => abort.abort();
-  }, [active, data]);
+  }, [active, wanted, data]);
 
   useEffect(() => data?.subscribe(() => {
     setArrivals(value => value + 1);
@@ -120,6 +120,6 @@ export function useRoutingLayers(inspected: WorldPoint | undefined, focus: (box:
   /** For the page footer, beside the other releases. */
   const provenance = data ? data.manifest.version.slice(0, 12) : undefined;
   const selectCrossing = (selectedCrossing: RoutingCrossing) => setSelection({ selectedCrossing });
-  return { overlay, layers, panel, provenance, selectCrossing };
+  return { overlay, layers, panel, provenance, selectCrossing, data };
 }
 

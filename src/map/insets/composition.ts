@@ -289,7 +289,8 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     // Collision everywhere in view, or around the anchors' tiles.
     const points = overlay.anchors.filter(item => item.kind !== "region").flatMap(featurePoints);
     collisionDrawing?.update(overlay.collision && (overlay.collisionEverywhere || points.length)
-      ? { collision: overlay.collision, around: overlay.collisionEverywhere ? undefined : { points, radius: COLLISION_RADIUS } } : undefined);
+      ? { collision: overlay.collision, around: overlay.collisionEverywhere ? undefined : { points, radius: COLLISION_RADIUS }, pyramid: overlay.collisionTiles }
+      : undefined);
   };
   const doorSource = new VectorSource();
   const doorLayer = new VectorLayer({ source: doorSource, zIndex: 95, maxResolution: 8.01, style: doorStyle });

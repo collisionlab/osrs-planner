@@ -4,7 +4,8 @@ import type { Coordinate } from "ol/coordinate";
 import type { WorldPoint } from "../../domain/contracts";
 import type { CollisionMap } from "./collision";
 import { visibleBoxes, worldToMap } from "./projection";
-import type { RoutingPlacement } from "./routingLayer";
+import { blockedTilePath, type RoutingData } from "./routing";
+import { drawPyramid, type RoutingPlacement } from "./routingLayer";
 
 /**
  * The pathfinder's collision as a bold layer of its own, in the manner of the routing components:
@@ -27,6 +28,8 @@ export interface CollisionOverlay {
   collision: CollisionMap;
   /** Draw only within `radius` tiles of these (a selection), rather than everywhere in view. */
   around?: { points: WorldPoint[]; radius: number };
+  /** A routing release with blocked ground's pyramid: drawn from wherever tiles are under 8 px, at any zoom. */
+  pyramid?: RoutingData;
 }
 
 /** `complete` once every neighbour it reads was there too, so later arrivals can't change it. */
@@ -34,7 +37,9 @@ interface SquareDrawing { blocked: HTMLCanvasElement; edges?: { walls: number[];
 
 export function collisionLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
   let overlay: CollisionOverlay | undefined;
-  let unsubscribe: (() => void) | undefined;
+  let unsubscribe: (() => void) | undefined, pyramidUnsubscribe: (() => void) | undefined;
+  // The overlay's release, when it has blocked ground's pyramid (releases before it don't).
+  let withPyramid: RoutingData | undefined;
   const canvas = document.createElement("canvas");
   canvas.dataset.collisionLayer = "true";
   canvas.style.position = "absolute";
@@ -106,8 +111,11 @@ export function collisionLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
     const ctx = canvas.getContext("2d")!;
     ctx.scale(ratio, ratio);
     ctx.imageSmoothingEnabled = false;
-    if (!overlay || resolution > MAX_RESOLUTION) return canvas;
+    if (!overlay) return canvas;
     const { collision, around } = overlay, tilePx = 32 / resolution;
+    // Squares, read bit by bit, only close in, for walls; further out the release's pyramid, else squares as far as they're practical.
+    const pyramid = resolution > EDGE_RESOLUTION ? withPyramid : undefined;
+    if (!pyramid && resolution > MAX_RESOLUTION) return canvas;
     for (const { shape, offset } of contexts()) {
       const box = visibleBoxes(frame.extent!, [{ plane: shape.plane, bounds: shape.bounds, offset }])[0];
       if (!box) continue;
@@ -130,6 +138,11 @@ export function collisionLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
           ctx.rect(a[0], a[1], b[0] - a[0], b[1] - a[1]);
         }
         ctx.clip();
+      }
+      if (pyramid) {
+        drawPyramid(ctx, pyramid, blockedTilePath, box, shape.plane, resolution, (x, y) => pixel(x, y, shape.plane, offset));
+        ctx.restore();
+        continue;
       }
       const walls: number[][] = [], objects: number[][] = [];
       for (let sx = box.x1 >> 6; sx <= box.x2 >> 6; sx++) for (let sy = box.y1 >> 6; sy <= box.y2 >> 6; sy++) {
@@ -164,6 +177,11 @@ export function collisionLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
 
   return {
     update(next?: CollisionOverlay) {
+      if (next?.pyramid !== overlay?.pyramid) {
+        pyramidUnsubscribe?.();
+        pyramidUnsubscribe = next?.pyramid?.subscribe(() => layer.changed());
+        withPyramid = next?.pyramid && Object.keys(next.pyramid.manifest.files).some(path => path.startsWith("blocked/")) ? next.pyramid : undefined;
+      }
       if (next?.collision !== overlay?.collision) {
         unsubscribe?.();
         // A square arriving changes its own drawing and its neighbours' edges.
@@ -178,6 +196,7 @@ export function collisionLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
     },
     dispose() {
       unsubscribe?.();
+      pyramidUnsubscribe?.();
       squares.clear();
       map.removeLayer(layer);
       layer.dispose();

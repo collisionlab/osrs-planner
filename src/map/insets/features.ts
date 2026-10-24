@@ -2,7 +2,7 @@ import type { WorldPoint } from "../../domain/contracts";
 import type { CollisionMap } from "./collision";
 import type { InsetEntrance } from "./assets";
 import type { RegionLink } from "./layout";
-import type { RoutingOverlay } from "./routing";
+import type { RoutingData, RoutingOverlay } from "./routing";
 
 /**
  * What a tool draws over the inset map besides a route: a small set of geographical features, each
@@ -70,6 +70,8 @@ export interface FeatureOverlay {
   collision?: CollisionMap;
   /** Draw the collision everywhere in view rather than around the anchors alone. */
   collisionEverywhere?: boolean;
+  /** A routing release whose blocked-ground pyramid draws the collision zoomed out. */
+  collisionTiles?: RoutingData;
   /** Names for the areas these points are in, where the inset release hasn't named them. */
   names?: { point: WorldPoint; name: string }[];
   /** Inset regions to lay out besides those the anchors reach. */
