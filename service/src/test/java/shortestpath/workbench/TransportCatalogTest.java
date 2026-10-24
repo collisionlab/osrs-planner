@@ -134,6 +134,10 @@ class TransportCatalogTest {
         assertEquals(5, counted.total);
         assertTrue(counted.transports.isEmpty());
         assertEquals(5, counted.clusters.stream().mapToInt(cluster -> cluster.count).sum());
+        // Each count sits among the ends it counts.
+        for (TransportCatalog.Cluster cluster : counted.clusters) {
+            assertTrue(cluster.x >= cluster.x1 && cluster.x <= cluster.x2 && cluster.y >= cluster.y1 && cluster.y <= cluster.y2);
+        }
     }
 
     @Test

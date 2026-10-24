@@ -215,8 +215,8 @@ test("stays bounded over a dense network, and counts instead of drawing when zoo
 
   await open(page, "?at=3000,3300,0&z=5");
   await expect(list.locator(".wb-list-heading")).toContainText("zoom in");
-  await expect.poll(async () => (await featureCount(page)).region).toBeGreaterThan(0);
+  await expect.poll(async () => (await featureCount(page)).count).toBeGreaterThan(0);
   const far = await featureCount(page);
-  expect(far.edge + far.point).toBe(0);
-  expect(far.region).toBeLessThanOrEqual(4 * 24);
+  expect(far.edge + far.point + far.region).toBe(0);
+  expect(far.count).toBeLessThanOrEqual(4 * 24);
 });

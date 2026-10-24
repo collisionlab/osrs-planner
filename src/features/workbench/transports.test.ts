@@ -37,11 +37,19 @@ describe("transport explorer", () => {
   });
 
   it("draws counts instead of transports when there are too many, however many there are", () => {
-    const clusters = Array.from({ length: 150 }, (_, i) => ({ plane: 0, x1: i * 64, y1: 0, x2: i * 64 + 63, y2: 63, count: 1000 }));
+    const clusters = Array.from({ length: 150 }, (_, i) => ({ plane: 0, x1: i * 64, y1: 0, x2: i * 64 + 63, y2: 63, x: i * 64 + 5, y: 7, count: 1000 }));
     const overlay = viewOverlay({ total: 150_000, transports: [], clusters }, undefined);
     expect(overlay.features).toHaveLength(150);
-    expect(overlay.features.every(f => f.kind === "region" && f.label === "1000")).toBe(true);
+    expect(overlay.features.every(f => f.kind === "count" && f.count === 1000)).toBe(true);
     expect(overlay.anchors).toEqual([]);
+  });
+
+  it("puts a count where its transports are, or mid-cell from a service that doesn't say", () => {
+    const cluster = { plane: 1, x1: 100, y1: 200, x2: 120, y2: 260, count: 4 };
+    const [placed] = viewOverlay({ total: 4, transports: [], clusters: [{ ...cluster, x: 101, y: 259 }] }, undefined).features;
+    expect(placed).toMatchObject({ kind: "count", point: p(101, 259, 1) });
+    const [middle] = viewOverlay({ total: 4, transports: [], clusters: [cluster] }, undefined).features;
+    expect(middle).toMatchObject({ kind: "count", point: p(110, 230, 1) });
   });
 
   it("keeps the selection, place, types and search in the URL", () => {

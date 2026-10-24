@@ -25,6 +25,8 @@ export type MapFeature =
   | { kind: "edge"; key: string; from: WorldPoint; to: WorldPoint; tone: FeatureTone; dashed?: boolean }
   /** A tile: an origin is outlined, a destination filled. */
   | { kind: "point"; key: string; point: WorldPoint; tone: FeatureTone; role: "origin" | "destination" }
+  /** Many items counted where they are, too many to draw at this zoom: a badge with the count. */
+  | { kind: "count"; key: string; point: WorldPoint; count: number; tone: FeatureTone }
   /** A rectangle of tiles (inclusive), labelled; `key` selects it like any feature. */
   | { kind: "region"; key: string; plane: number; bounds: [number, number, number, number]; tone: FeatureTone; label?: string; dashed?: boolean }
   /**
@@ -66,7 +68,7 @@ export interface FeatureOverlay {
 
 export function featurePoints(feature: MapFeature): WorldPoint[] {
   if (feature.kind === "edge") return [feature.from, feature.to];
-  if (feature.kind === "point") return [feature.point];
+  if (feature.kind === "point" || feature.kind === "count") return [feature.point];
   // A mask's tiles are the catalogue's; it places nothing and fits nothing by itself.
   if (feature.kind === "mask") return [];
   const [x1, y1, x2, y2] = feature.bounds;

@@ -56,7 +56,8 @@ export interface TransportDetail extends TransportSummary {
   sources: TransportSource[];
 }
 
-export interface Cluster { plane: number; x1: number; y1: number; x2: number; y2: number; count: number }
+/** Transports counted in a cell of the view: the bounds of their ends counted, and where those ends are on average (not from an older service). */
+export interface Cluster { plane: number; x1: number; y1: number; x2: number; y2: number; x?: number; y?: number; count: number }
 export interface TransportView { total: number; transports: TransportSummary[]; clusters: Cluster[] }
 
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
@@ -118,8 +119,8 @@ export const clusterKey = (index: number) => `cluster:${index}`;
 export function viewOverlay(view: TransportView | undefined, selected: TransportSummary | undefined, collision?: CollisionMap,
   inView?: WorldBox[]): FeatureOverlay {
   const features: MapFeature[] = [];
-  view?.clusters.forEach((cluster, index) => features.push({ kind: "region", key: clusterKey(index), plane: cluster.plane,
-    bounds: [cluster.x1, cluster.y1, cluster.x2, cluster.y2], tone: "count", label: String(cluster.count) }));
+  view?.clusters.forEach((cluster, index) => features.push({ kind: "count", key: clusterKey(index), tone: "count", count: cluster.count,
+    point: { x: cluster.x ?? Math.round((cluster.x1 + cluster.x2) / 2), y: cluster.y ?? Math.round((cluster.y1 + cluster.y2) / 2), plane: cluster.plane } }));
   for (const summary of view?.transports || []) if (summary.id !== selected?.id) features.push(...transportFeatures(summary, inView));
   const anchors = selected ? transportFeatures(selected) : [];
   // The selection is drawn last, over the rest.
