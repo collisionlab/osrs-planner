@@ -105,12 +105,23 @@ test("shows a region with no name or entrance where it really is, joined to noth
   await expect(details(page).getByText("suggestion").first()).toBeVisible();
 });
 
+/** Where a tile is drawn once the map has settled: the same pixel twice running. */
+async function settledPixel(page: Page, point: Point) {
+  let last: number[] | null = null;
+  await expect.poll(async () => {
+    const now = await page.evaluate(p => (window as unknown as { insetMap: Handle }).insetMap.pixel(p), point) as number[] | null;
+    const settled = !!now && JSON.stringify(now) === JSON.stringify(last);
+    last = now;
+    return settled;
+  }, { intervals: [250] }).toBe(true);
+  return last!;
+}
+
 test("selects a region by clicking its terrain and reports the tile", async ({ page }) => {
   await mock(page);
   await open(page, "?area=area:taverley-dungeon&plane=1&mode=labelling");
   await expect.poll(() => masks(page)).toBe(2);
-  await page.waitForTimeout(800);
-  const [x, y] = await map(page, handle => handle.pixel({ x: 2962, y: 9800, plane: 1 }));
+  const [x, y] = await settledPixel(page, { x: 2962, y: 9800, plane: 1 });
   await page.locator(".inset-map").click({ position: { x, y } });
   await expect(page).toHaveURL(/region=p1-2887-9797-df2334d7b8/);
   await expect(page.getByRole("status", { name: "Inspected tile" })).toContainText("2962 9800 1");
@@ -291,7 +302,7 @@ test("drafts an annotation only from what the developer chose", async ({ page })
   await expect(problems).toContainText("Choose a seed tile");
   await form.getByRole("button", { name: "Pick the seed tile on the map" }).click();
   await page.waitForTimeout(500);
-  const [x, y] = await map(page, handle => handle.pixel({ x: 3711, y: 8703, plane: 0 }));
+  const [x, y] = await settledPixel(page, { x: 3711, y: 8703, plane: 0 });
   await page.locator(".inset-map").click({ position: { x, y } });
   const draft = details(page).getByLabel("Annotation draft");
   await expect(draft).toContainText(`"componentId": "${NAMELESS}"`);
