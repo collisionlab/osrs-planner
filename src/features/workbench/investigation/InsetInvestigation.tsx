@@ -144,7 +144,7 @@ export function InsetInvestigation() {
     setNearby(undefined);
     if (!ends.length) return;
     const abort = new AbortController();
-    loadView(ends.map(nearbyBox), undefined, abort.signal).then(setNearby, () => setNearby({ total: 0, transports: [], clusters: [] }));
+    loadView(ends.map(nearbyBox), undefined, abort.signal).then(setNearby, () => setNearby({ total: 0, transports: [] }));
     return () => abort.abort();
   }, [endsKey]);
 

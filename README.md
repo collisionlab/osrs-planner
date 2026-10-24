@@ -126,9 +126,11 @@ which is exactly `PluginResources.transports()` (`TransportCatalogTest` checks t
 traces every effective transport to the rows it came from: one row, an origin row paired with a
 destination row (fairy rings and other networks), or a teleport's row (no origin is made up). The
 API answers a view at a time, `GET /api/workbench/v1/transports?view=plane,x1,y1,x2,y2;...` (a box
-per area drawn), listing at most 800 transports and otherwise counting them by area; also `/meta`,
+per area drawn), listing at most 2,500 transports and otherwise only counting them; also `/meta`,
 `/search?q=` (object id, `x y plane`, or text) and `/<id>`. URLs keep the selection, place, type
-filter and search (`?t=…&at=x,y,plane&z=…&types=…&q=…`).
+filter and search (`?t=…&at=x,y,plane&z=…&types=…&q=…`). The explorer draws transports on their
+tiles, in map units, and only once zoomed in to 4 pixels a tile; further out it draws none, since a
+count per area says nothing. A hop between neighbouring tiles (a door) is one bar over their edge.
 
 Every page says where its layers come from. The service records the tooling and plugin commits it
 was built with (`TOOLING_REV`/`PLUGIN_REV` in the image build, else git); collision comes from the

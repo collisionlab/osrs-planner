@@ -47,10 +47,11 @@ public final class TransportCatalog {
     static final String RESOURCES = "src/main/resources";
     /** Index cells, in tiles a side. */
     private static final int CELL_SHIFT = 6;
-    /** A view with more transports than this answers with counts per area instead. */
-    public static final int VIEW_LIMIT = 800;
-    /** Cluster cells a box is split into at most, about. */
-    static final int CLUSTER_CELLS = 160;
+    /**
+     * A view with more transports than this answers with their number alone. The explorer asks only
+     * when zoomed in to about 4 pixels a tile, where the densest view (around Varrock) has about 1,000.
+     */
+    public static final int VIEW_LIMIT = 2500;
     public static final int SEARCH_LIMIT = 50;
 
     /** A world tile. */
@@ -186,35 +187,14 @@ public final class TransportCatalog {
         }
     }
 
-    /**
-     * Transports somewhere in a cluster's bounds, too many to list at this zoom; {@code x}, {@code y}
-     * is the mean of their ends counted, where the map draws the count.
-     */
-    public static final class Cluster {
-        public final int plane, x1, y1, x2, y2, x, y, count;
-
-        Cluster(int plane, int x1, int y1, int x2, int y2, int x, int y, int count) {
-            this.plane = plane;
-            this.x1 = x1;
-            this.y1 = y1;
-            this.x2 = x2;
-            this.y2 = y2;
-            this.x = x;
-            this.y = y;
-            this.count = count;
-        }
-    }
-
-    /** The transports with an end in a view: listed, or counted by area when there are too many. */
+    /** The transports with an end in a view: listed, or only counted when there are too many. */
     public static final class View {
         public final int total;
         public final List<Summary> transports;
-        public final List<Cluster> clusters;
 
-        View(int total, List<Summary> transports, List<Cluster> clusters) {
+        View(int total, List<Summary> transports) {
             this.total = total;
             this.transports = transports;
-            this.clusters = clusters;
         }
     }
 
@@ -460,7 +440,7 @@ public final class TransportCatalog {
 
     /**
      * The transports of the given types (all when empty) with an end in any of the boxes: listed when
-     * there are at most {@code limit}, else counted in cells of each box.
+     * there are at most {@code limit}, else only counted.
      */
     public View view(List<Box> boxes, Set<String> types, int limit) {
         Set<Entry> found = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -479,45 +459,9 @@ public final class TransportCatalog {
         if (found.size() <= limit) {
             List<Summary> listed = found.stream().sorted(Comparator.comparing((Entry entry) -> entry.file).thenComparing(entry -> entry.id))
                 .map(Summary::new).collect(Collectors.toList());
-            return new View(found.size(), listed, List.of());
+            return new View(found.size(), listed);
         }
-        return new View(found.size(), List.of(), clusters(boxes, found));
-    }
-
-    /** Counts per cell of each box, each transport once, under its first end in a box. */
-    private static List<Cluster> clusters(List<Box> boxes, Set<Entry> found) {
-        Map<String, long[]> counts = new LinkedHashMap<>();
-        for (Entry entry : found) {
-            for (Box box : boxes) {
-                Point end = box.contains(entry.origin) ? entry.origin : box.contains(entry.destination) ? entry.destination : null;
-                if (end == null) {
-                    continue;
-                }
-                int size = clusterSize(box);
-                int cx = Math.floorDiv(end.x - box.x1, size), cy = Math.floorDiv(end.y - box.y1, size);
-                long[] cluster = counts.computeIfAbsent(boxes.indexOf(box) + ":" + cx + ":" + cy,
-                    key -> new long[] {box.plane, end.x, end.y, end.x, end.y, 0, 0, 0});
-                cluster[1] = Math.min(cluster[1], end.x);
-                cluster[2] = Math.min(cluster[2], end.y);
-                cluster[3] = Math.max(cluster[3], end.x);
-                cluster[4] = Math.max(cluster[4], end.y);
-                cluster[5] += end.x;
-                cluster[6] += end.y;
-                cluster[7]++;
-                break;
-            }
-        }
-        return counts.values().stream().map(c -> new Cluster((int) c[0], (int) c[1], (int) c[2], (int) c[3], (int) c[4],
-            (int) Math.round((double) c[5] / c[7]), (int) Math.round((double) c[6] / c[7]), (int) c[7])).collect(Collectors.toList());
-    }
-
-    /** A box's cluster cell side, in tiles: a power of two that splits it into about {@link #CLUSTER_CELLS}. */
-    static int clusterSize(Box box) {
-        int size = 8;
-        while (box.area() / ((long) size * size) > CLUSTER_CELLS) {
-            size *= 2;
-        }
-        return size;
+        return new View(found.size(), List.of());
     }
 
     /**

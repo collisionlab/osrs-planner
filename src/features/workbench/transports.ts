@@ -56,9 +56,14 @@ export interface TransportDetail extends TransportSummary {
   sources: TransportSource[];
 }
 
-/** Transports counted in a cell of the view: the bounds of their ends counted, and where those ends are on average (not from an older service). */
-export interface Cluster { plane: number; x1: number; y1: number; x2: number; y2: number; x?: number; y?: number; count: number }
-export interface TransportView { total: number; transports: TransportSummary[]; clusters: Cluster[] }
+/** The transports with an end in view; listed when at most `viewLimit`, else only counted (`total`). */
+export interface TransportView { total: number; transports: TransportSummary[] }
+
+/**
+ * The coarsest map resolution (map units a screen pixel) transports are drawn at: a tile 4 pixels
+ * wide. Further out a transport is a speck, and how many there are in an area says nothing.
+ */
+export const TRANSPORTS_MAX_RESOLUTION = 8;
 
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`/api/workbench/v1/transports${path}`, { signal });
@@ -94,14 +99,20 @@ export const typeName = (type: string) => type.charAt(0) + type.slice(1).toLower
 
 const inBox = (point: WorldPoint, box: WorldBox) => point.plane === box.plane && point.x >= box.x1 && point.x <= box.x2 && point.y >= box.y1 && point.y <= box.y2;
 
+/** Neighbouring tiles on one plane, side by side (not diagonal): a hop across the edge between them. */
+const hop = (from: WorldPoint, to: WorldPoint) => from.plane === to.plane && Math.abs(from.x - to.x) + Math.abs(from.y - to.y) === 1;
+
 /**
  * A transport's features: its tiles, and the edge between them, or a teleport's landing alone (no
  * origin is made up). Given the boxes in view, an edge leaving the view isn't drawn (a fairy ring
- * would otherwise cross the map to every other ring), nor an end outside it.
+ * would otherwise cross the map to every other ring), nor an end outside it. A hop between
+ * neighbouring tiles (a door) is one bar over their shared edge, unless it is `whole` (selected).
  */
-export function transportFeatures(summary: TransportSummary, inView?: WorldBox[]): MapFeature[] {
+export function transportFeatures(summary: TransportSummary, inView?: WorldBox[], whole = false): MapFeature[] {
   const tone = toneOf(summary), key = summary.id;
   const shown = (point: WorldPoint) => !inView || inView.some(box => inBox(point, box));
+  if (!whole && summary.origin && hop(summary.origin, summary.destination))
+    return shown(summary.origin) && shown(summary.destination) ? [{ kind: "edge", key, from: summary.origin, to: summary.destination, tone, hop: true }] : [];
   const features: MapFeature[] = [];
   if (summary.origin && shown(summary.origin) && shown(summary.destination)) features.push({ kind: "edge", key, from: summary.origin, to: summary.destination, tone });
   if (summary.origin && shown(summary.origin)) features.push({ kind: "point", key, point: summary.origin, tone, role: "origin" });
@@ -109,20 +120,15 @@ export function transportFeatures(summary: TransportSummary, inView?: WorldBox[]
   return features;
 }
 
-export const clusterKey = (index: number) => `cluster:${index}`;
-
 /**
- * The overlay for a view: each listed transport (what of it is in view), or each counted area when
- * there were too many, plus the whole selected transport (whether or not it is in view), which the
- * map lays out and draws collision around.
+ * The overlay for a view: each listed transport (what of it is in view), plus the whole selected
+ * transport (whether or not it is in view), which the map lays out and draws collision around.
  */
 export function viewOverlay(view: TransportView | undefined, selected: TransportSummary | undefined, collision?: CollisionMap,
   inView?: WorldBox[]): FeatureOverlay {
   const features: MapFeature[] = [];
-  view?.clusters.forEach((cluster, index) => features.push({ kind: "count", key: clusterKey(index), tone: "count", count: cluster.count,
-    point: { x: cluster.x ?? Math.round((cluster.x1 + cluster.x2) / 2), y: cluster.y ?? Math.round((cluster.y1 + cluster.y2) / 2), plane: cluster.plane } }));
   for (const summary of view?.transports || []) if (summary.id !== selected?.id) features.push(...transportFeatures(summary, inView));
-  const anchors = selected ? transportFeatures(selected) : [];
+  const anchors = selected ? transportFeatures(selected, undefined, true) : [];
   // The selection is drawn last, over the rest.
   return { features: [...features, ...anchors], anchors, selected: selected?.id, collision };
 }

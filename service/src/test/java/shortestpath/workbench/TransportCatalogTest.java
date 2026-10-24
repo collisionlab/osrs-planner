@@ -133,11 +133,6 @@ class TransportCatalogTest {
         TransportCatalog.View counted = catalog.view(List.of(new TransportCatalog.Box(0, 0, 0, 1000, 1000)), Set.of(), 2);
         assertEquals(5, counted.total);
         assertTrue(counted.transports.isEmpty());
-        assertEquals(5, counted.clusters.stream().mapToInt(cluster -> cluster.count).sum());
-        // Each count sits among the ends it counts.
-        for (TransportCatalog.Cluster cluster : counted.clusters) {
-            assertTrue(cluster.x >= cluster.x1 && cluster.x <= cluster.x2 && cluster.y >= cluster.y1 && cluster.y <= cluster.y2);
-        }
     }
 
     @Test
@@ -156,7 +151,6 @@ class TransportCatalogTest {
         long millis = (System.nanoTime() - started) / 1_000_000;
         assertEquals(catalog.size(), world.total);
         assertTrue(world.transports.isEmpty());
-        assertTrue(world.clusters.size() <= 4 * TransportCatalog.CLUSTER_CELLS, world.clusters.size() + " clusters");
         assertTrue(millis < 2000, millis + " ms");
         TransportCatalog.View close = catalog.view(List.of(new TransportCatalog.Box(0, 2000, 3000, 2040, 3040)), Set.of(), TransportCatalog.VIEW_LIMIT);
         assertFalse(close.transports.isEmpty());
