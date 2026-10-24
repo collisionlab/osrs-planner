@@ -289,8 +289,10 @@ test("draws collision everywhere in view from its layer, boldly", async ({ page 
   });
   await expect.poll(painted).toBeGreaterThan(100);
   await expect(page.getByRole("group", { name: "Map layers" }).getByLabel("Collision legend")).toContainText("wall or door");
-  await open(page, "?at=3210,3214,0&z=5&layers=collision");
-  await expect(page.locator(".layer-status")).toContainText("Zoom in to see collision");
+  // Zoomed out, from the routing release's pyramid of blocked ground.
+  await open(page, "?at=3210,3214,0&z=4&layers=collision");
+  await expect.poll(painted).toBeGreaterThan(100);
+  await expect(page.locator(".layer-status")).toHaveCount(0);
 });
 
 test("says when collision wasn't made from the transport data's revision", async ({ page }) => {

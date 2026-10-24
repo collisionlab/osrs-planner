@@ -4,7 +4,7 @@ import type { Coordinate } from "ol/coordinate";
 import type { WorldPoint } from "../../domain/contracts";
 import { contains, type Region } from "./geometry";
 import { mapToWorld, visibleBoxes, worldToMap } from "./projection";
-import { COMPONENT_ZOOMS, componentTilePath, squarePath, TILE_ORIGIN, visibleNegative, type RoutingCrossing, type RoutingOverlay,
+import { COMPONENT_ZOOMS, componentTilePath, squarePath, TILE_ORIGIN, visibleNegative, type RoutingCrossing, type RoutingData, type RoutingOverlay,
   type RoutingSquare } from "./routing";
 
 // Magenta: no terrain style uses it, so the mask never reads as dirt or lava.
@@ -19,6 +19,39 @@ const PYRAMID_ZERO_RESOLUTION = 2 ** 11;
 const MAX_RESOLUTION = 16;
 const SEPARATOR_RESOLUTION = 16;
 const CACHED_BITMAPS = 64;
+
+/**
+ * A tile pyramid of the release (the components', blocked ground's) over a placement's visible box,
+ * at the pyramid zoom nearest the view's resolution without being coarser, each tile scaled to its
+ * map squares without smoothing; until a tile arrives, the part of a coarser one already here.
+ * `pixel` places a world tile edge coordinate on the canvas.
+ */
+export function drawPyramid(ctx: CanvasRenderingContext2D, data: RoutingData, pathOf: (plane: number, z: number, c: number, r: number) => string,
+  box: { x1: number; y1: number; x2: number; y2: number }, plane: number, resolution: number, pixel: (x: number, y: number) => number[]) {
+  const z = Math.max(COMPONENT_ZOOMS.min, Math.min(COMPONENT_ZOOMS.native, Math.ceil(Math.log2(PYRAMID_ZERO_RESOLUTION / resolution) - 1e-9)));
+  const span = 2 ** (COMPONENT_ZOOMS.native - z);
+  const column = (x: number) => Math.floor(((x >> 6) - TILE_ORIGIN.x) / span), row = (y: number) => Math.floor(((y >> 6) - TILE_ORIGIN.y) / span);
+  for (let c = Math.max(0, column(box.x1)); c <= column(box.x2); c++) {
+    for (let r = Math.max(0, row(box.y1)); r <= row(box.y2); r++) {
+      const x0 = (TILE_ORIGIN.x + c * span) * 64, y0 = (TILE_ORIGIN.y + r * span) * 64, size = span * 64;
+      const a = pixel(x0 - .5, y0 + size - .5), b = pixel(x0 + size - .5, y0 - .5);
+      const path = pathOf(plane, z, c, r);
+      if (!data.manifest.files[path]) continue;
+      const image = data.tile(path);
+      if (image) {
+        ctx.drawImage(image, a[0], a[1], b[0] - a[0], b[1] - a[1]);
+        continue;
+      }
+      for (let up = 1; z - up >= COMPONENT_ZOOMS.min; up++) {
+        const k = 2 ** up, parent = data.tile(pathOf(plane, z - up, Math.floor(c / k), Math.floor(r / k)), true);
+        if (!parent) continue;
+        const part = 256 / k, sx = (c % k) * part, sy = (k - 1 - (r % k)) * part;
+        ctx.drawImage(parent, sx, sy, part, part, a[0], a[1], b[0] - a[0], b[1] - a[1]);
+        break;
+      }
+    }
+  }
+}
 
 export interface RoutingPlacement { shape: Pick<Region, "plane" | "bounds" | "mask">; offset: Coordinate }
 
@@ -65,37 +98,8 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
     return image;
   };
 
-  /**
-   * The component tiles over a placement's visible box, at the pyramid zoom nearest the view's
-   * resolution without being coarser, each scaled to its map squares without smoothing.
-   */
   const drawTints = (ctx: CanvasRenderingContext2D, box: { x1: number; y1: number; x2: number; y2: number }, plane: number, offset: Coordinate,
-    resolution: number) => {
-    const z = Math.max(COMPONENT_ZOOMS.min, Math.min(COMPONENT_ZOOMS.native, Math.ceil(Math.log2(PYRAMID_ZERO_RESOLUTION / resolution) - 1e-9)));
-    const span = 2 ** (COMPONENT_ZOOMS.native - z);
-    const column = (x: number) => Math.floor(((x >> 6) - TILE_ORIGIN.x) / span), row = (y: number) => Math.floor(((y >> 6) - TILE_ORIGIN.y) / span);
-    for (let c = Math.max(0, column(box.x1)); c <= column(box.x2); c++) {
-      for (let r = Math.max(0, row(box.y1)); r <= row(box.y2); r++) {
-        const x0 = (TILE_ORIGIN.x + c * span) * 64, y0 = (TILE_ORIGIN.y + r * span) * 64, size = span * 64;
-        const a = pixel(x0 - .5, y0 + size - .5, plane, offset), b = pixel(x0 + size - .5, y0 - .5, plane, offset);
-        const path = componentTilePath(plane, z, c, r);
-        if (!overlay!.data.manifest.files[path]) continue;
-        const image = overlay!.data.tile(path);
-        if (image) {
-          ctx.drawImage(image, a[0], a[1], b[0] - a[0], b[1] - a[1]);
-          continue;
-        }
-        // Until it arrives, the part of a coarser tile already here.
-        for (let up = 1; z - up >= COMPONENT_ZOOMS.min; up++) {
-          const k = 2 ** up, parent = overlay!.data.tile(componentTilePath(plane, z - up, Math.floor(c / k), Math.floor(r / k)), true);
-          if (!parent) continue;
-          const part = 256 / k, sx = (c % k) * part, sy = (k - 1 - (r % k)) * part;
-          ctx.drawImage(parent, sx, sy, part, part, a[0], a[1], b[0] - a[0], b[1] - a[1]);
-          break;
-        }
-      }
-    }
-  };
+    resolution: number) => drawPyramid(ctx, overlay!.data, componentTilePath, box, plane, resolution, (x, y) => pixel(x, y, plane, offset));
 
   /**
    * Tile-edge segments, in world tile-edge coordinates (tile centres are integers): borders between

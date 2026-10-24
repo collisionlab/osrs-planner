@@ -97,6 +97,8 @@ const CACHED_TILES = 192;
 export const COMPONENT_ZOOMS = { min: 3, native: 8 } as const;
 export const TILE_ORIGIN = { x: 15, y: 19 } as const;
 export const componentTilePath = (plane: number, z: number, c: number, r: number) => `components/${plane ? `p${plane}/` : ""}${z}/${c}/${r}.png`;
+/** Blocked ground's pyramid, in the same layout (not in releases before it). */
+export const blockedTilePath = (plane: number, z: number, c: number, r: number) => `blocked/${plane ? `p${plane}/` : ""}${z}/${c}/${r}.png`;
 
 export const squarePath = ({ x, y, plane }: WorldPoint) => `p${plane}/${x >> 6}/${y >> 6}.bin`;
 export const localTile = ({ x, y }: WorldPoint) => (y & 63) * 64 + (x & 63);
@@ -133,7 +135,7 @@ export function decodeRouting(bytes: ArrayBuffer): RoutingSquare {
   return { owners, status, boundaries, naturalSizes, crossings, edges: [] };
 }
 
-const FILE_PATH = /^(components\.json|crossings\.json|p[0-3]\/\d+\/\d+\.(bin|crossings\.json)|components\/(p[1-3]\/)?[3-8]\/\d+\/\d+\.png)$/;
+const FILE_PATH = /^(components\.json|crossings\.json|p[0-3]\/\d+\/\d+\.(bin|crossings\.json)|(components|blocked)\/(p[1-3]\/)?[3-8]\/\d+\/\d+\.png)$/;
 
 /** The manifest must be the one the pin names, for the pinned tiles, plugin and inputs. */
 export function validateRoutingManifest(manifest: RoutingManifest, pin: RoutingPin, tileVersion: string) {

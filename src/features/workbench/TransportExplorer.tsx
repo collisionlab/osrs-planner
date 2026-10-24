@@ -183,8 +183,10 @@ export function TransportExplorer() {
   const [focusBox, setFocusBox] = useState<WorldBox>();
   // A tile clicked on the map, for the routing layers to inspect.
   const [picked, setPicked] = useState<WorldPoint>();
-  const routing = useRoutingLayers(picked, setFocusBox, shownLayers);
-  const overlay = useMemo(() => transportOverlay && { ...transportOverlay, routing: routing.overlay }, [transportOverlay, routing.overlay]);
+  // The routing release also holds blocked ground's pyramid, for collision zoomed out.
+  const routing = useRoutingLayers(picked, setFocusBox, shownLayers, shownLayers.includes("collision"));
+  const overlay = useMemo(() => transportOverlay && { ...transportOverlay, routing: routing.overlay, collisionTiles: routing.data },
+    [transportOverlay, routing.overlay, routing.data]);
   const [focusTile, setFocusTile] = useState<{ point: WorldPoint }>();
   const onSelectFeatures = (keys: string[], point?: WorldPoint) => {
     // A station's tiles stand for every transport there: the tile is looked at.
@@ -277,7 +279,7 @@ export function TransportExplorer() {
       status: bankError || (zoomedOut ? "Zoom in to see banks" : !banks ? "Loading…" : undefined),
       title: "The plugin's bank tiles: filled where anyone can bank, outlined where it needs a quest, skill or unlock first" },
     { id: "collision", label: "Collision", swatch: COLLISION_COLOURS.blocked.replace(/,[.\d]+\)$/, ")"), on: collisionOn,
-      status: resolution > COLLISION_MAX_RESOLUTION ? "Zoom in to see collision" : undefined,
+      status: resolution > COLLISION_MAX_RESOLUTION && !routing.data ? "Zoom in to see collision" : undefined,
       title: "The pathfinder's collision everywhere in view",
       options: <p className="wb-legend" aria-label="Collision legend">
         <span className="wb-key blocked" /> blocked <span className="wb-key wall" /> wall or door <span className="wb-key object" /> closed by an object
