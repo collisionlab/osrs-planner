@@ -17,7 +17,7 @@ const SEPARATOR_SELECTED = "#fff3a6";
 const PYRAMID_ZERO_RESOLUTION = 2 ** 11;
 /** Map units per pixel above which nothing but the component colours is drawn, and above which separators aren't. */
 const MAX_RESOLUTION = 16;
-const SEPARATOR_RESOLUTION = 8;
+const SEPARATOR_RESOLUTION = 16;
 const CACHED_BITMAPS = 64;
 
 export interface RoutingPlacement { shape: Pick<Region, "plane" | "bounds" | "mask">; offset: Coordinate }
@@ -133,23 +133,42 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
     ctx.stroke();
   };
 
+  /**
+   * The pathfinder's synthetic crossings as barriers: both tiles of each crossing filled amber, and
+   * for side-by-side tiles the edge between them striped black and amber like a road barrier, so a
+   * cut reads as a wall across the ground. The inspected crossing is pale and outlined.
+   */
   const drawSeparators = (ctx: CanvasRenderingContext2D, edges: Iterable<RoutingCrossing>, offset: Coordinate, resolution: number) => {
     const { selectedCrossing } = overlay!.options;
-    for (const edge of edges) {
+    const tilePx = 32 / resolution, list = [...edges];
+    const tile = (x: number, y: number, plane: number) => {
+      const a = pixel(x - .5, y + .5, plane, offset), b = pixel(x + .5, y - .5, plane, offset);
+      return [a[0], a[1], b[0] - a[0], b[1] - a[1]] as const;
+    };
+    for (const edge of list) {
       const selected = edge.id === selectedCrossing?.id;
-      const a = pixel(edge.from[0], edge.from[1], edge.from[2], offset), b = pixel(edge.to[0], edge.to[1], edge.to[2], offset);
-      ctx.strokeStyle = selected ? SEPARATOR_SELECTED : SEPARATOR;
-      ctx.lineWidth = selected ? 2.5 : 1.5;
-      ctx.setLineDash([4, 3]);
-      ctx.beginPath();
-      ctx.moveTo(a[0], a[1]);
-      ctx.lineTo(b[0], b[1]);
-      ctx.stroke();
+      ctx.fillStyle = selected ? "rgba(255,243,166,.75)" : "rgba(232,183,101,.6)";
+      for (const end of [edge.from, edge.to]) ctx.fillRect(...tile(end[0], end[1], end[2]));
+    }
+    const width = Math.max(2, Math.min(7, tilePx * .3));
+    for (const edge of list) {
+      const [x1, y1, plane] = edge.from, [x2, y2] = edge.to;
+      if (Math.abs(x1 - x2) + Math.abs(y1 - y2) !== 1) continue;
+      // The shared edge: across the middle of the step, a tile long.
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, along = x1 === x2;
+      const a = pixel(along ? mx - .5 : mx, along ? my : my - .5, plane, offset), b = pixel(along ? mx + .5 : mx, along ? my : my + .5, plane, offset);
+      ctx.lineCap = "butt";
       ctx.setLineDash([]);
-      // Endpoint tiles only for the crossing being inspected: a cut has many crossings sharing tiles.
-      if (edge.id !== selectedCrossing?.id) continue;
-      const half = 16 / resolution;
-      for (const end of [a, b]) ctx.strokeRect(end[0] - half, end[1] - half, half * 2, half * 2);
+      ctx.strokeStyle = "#141914"; ctx.lineWidth = width;
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+      ctx.strokeStyle = edge.id === selectedCrossing?.id ? SEPARATOR_SELECTED : SEPARATOR;
+      ctx.setLineDash([Math.max(2, tilePx * .2), Math.max(2, tilePx * .2)]);
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    if (selectedCrossing) {
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
+      for (const end of [selectedCrossing.from, selectedCrossing.to]) ctx.strokeRect(...tile(end[0], end[1], end[2]));
     }
   };
 

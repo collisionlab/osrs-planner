@@ -4,14 +4,14 @@ import tiles from "../../../tiles.json";
 import type { WorldPoint } from "../../domain/contracts";
 import { insetPin, mapLayers, savedStyle, saveStyle, type MapLayer, type MapStyle } from "../../map/layers";
 import { CollisionMap, releaseTiles } from "../../map/insets/collision";
-import { COLLISION_COLOURS } from "../../map/insets/collisionLayer";
+import { COLLISION_COLOURS, COLLISION_MAX_RESOLUTION } from "../../map/insets/collisionLayer";
 import { LayerControl, toggleLayer, type MapLayerEntry } from "../../map/insets/LayerControl";
 import type { WorldBox } from "../../map/insets/projection";
 import { TONES } from "../../map/insets/routeStyles";
 import { bankFeatures, bankKey, bankOf, loadBanks, type Bank, type Banks } from "./banks";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "./provenance";
 import { useRoutingLayers } from "./RoutingPanel";
-import { EXPLORER_LAYERS, FAMILIES, loadDetail, loadMeta, loadView, parseTile, readState, searchTransports, sourceUrl, stationOf, toneOf, toneOfType,
+import { EXPLORER_LAYERS, FAMILIES, loadDetail, loadMeta, loadNetworks, loadView, parseTile, readState, searchTransports, sourceUrl, stationOf, toneOf, toneOfType,
   TRANSPORTS_MAX_RESOLUTION, typeName, viewOverlay, writeState, type ExplorerState, type TransportDetail, type TransportMeta, type TransportNetwork,
   type TransportSummary, type TransportView } from "./transports";
 import "./workbench.css";
@@ -106,6 +106,7 @@ export function TransportExplorer() {
   // enough to tell them apart.
   const [boxes, setBoxes] = useState<WorldBox[]>();
   const [zoomedOut, setZoomedOut] = useState(false);
+  const [resolution, setResolution] = useState(0);
   const [view, setView] = useState<TransportView>();
   const [loading, setLoading] = useState(false);
   const typesKey = state.types?.join(",");
@@ -122,6 +123,14 @@ export function TransportExplorer() {
     return () => abort.abort();
   }, [banksOn, banks]);
   const [bank, setBank] = useState<Bank>();
+  // Every network, drawn at any zoom: from far out they are the transports worth seeing.
+  const [networks, setNetworks] = useState<TransportNetwork[]>();
+  useEffect(() => {
+    if (!transportsOn || networks) return;
+    const abort = new AbortController();
+    loadNetworks(abort.signal).then(setNetworks, () => {});
+    return () => abort.abort();
+  }, [transportsOn, networks]);
   useEffect(() => {
     if (!transportsOn || zoomedOut) { setView(undefined); setViewBoxes(undefined); setLoading(false); return; }
     if (!boxes) return;
@@ -142,7 +151,7 @@ export function TransportExplorer() {
     return () => abort.abort();
   }, [state.selected]);
 
-  // Collision: everywhere in view with its layer on, else around the selected transport's tiles.
+  // Collision: everywhere in view, with its layer on.
   const collision = useMemo(() => new CollisionMap(releaseTiles(tiles.base, tiles.version)), []);
   const collisionOn = shownLayers.includes("collision");
 
@@ -152,11 +161,12 @@ export function TransportExplorer() {
   // A network picked by its hub or a spoke: its stations are listed.
   const [network, setNetwork] = useState<TransportNetwork>();
   const transportOverlay = useMemo(() => {
-    const drawn = viewOverlay(view, selected, collision, viewBoxes, network?.id, state.hubs !== false);
+    const shownNetworks = transportsOn && state.hubs !== false ? (networks || []).filter(each => !state.types || state.types.includes(each.type)) : [];
+    const drawn = viewOverlay(view, selected, collisionOn ? collision : undefined, viewBoxes, network?.id, { networks: shownNetworks, inView: boxes });
     // Banks under the transports, drawn on their tiles like them, and only as close.
     const banked = banksOn && banks && boxes && !zoomedOut ? bankFeatures(banks.banks, boxes) : [];
     return { ...drawn, features: [...banked, ...drawn.features], selected: drawn.selected ?? (bank && bankKey(bank.id)), collisionEverywhere: collisionOn };
-  }, [view, selected, collision, viewBoxes, network, banksOn, banks, boxes, zoomedOut, bank, state.hubs, collisionOn]);
+  }, [view, selected, collision, viewBoxes, network, banksOn, banks, boxes, zoomedOut, bank, state.hubs, state.types, collisionOn, networks, transportsOn]);
 
   // A selection from the list, a search or a link brings it into view; one picked on the map doesn't.
   // A link that names a place opens there, not on its transport.
@@ -185,7 +195,7 @@ export function TransportExplorer() {
     setBank(!transports.length && !station ? banked : undefined);
     if (banked && !transports.length && !station) { setNetwork(undefined); setHere(undefined); select(undefined, false); return; }
     if (!station && !transports.length && hub) {
-      const picked = view?.networks?.find(each => `network:${each.id}` === hub);
+      const picked = [...networks || [], ...view?.networks || []].find(each => `network:${each.id}` === hub);
       if (picked) { setNetwork(picked); setHere(undefined); select(undefined, false); }
       return;
     }
@@ -267,8 +277,8 @@ export function TransportExplorer() {
       status: bankError || (zoomedOut ? "Zoom in to see banks" : !banks ? "Loading…" : undefined),
       title: "The plugin's bank tiles: filled where anyone can bank, outlined where it needs a quest, skill or unlock first" },
     { id: "collision", label: "Collision", swatch: COLLISION_COLOURS.blocked.replace(/,[.\d]+\)$/, ")"), on: collisionOn,
-      status: zoomedOut ? "Zoom in to see collision" : undefined,
-      title: "The pathfinder's collision everywhere in view; off, it is still drawn around the selected transport",
+      status: resolution > COLLISION_MAX_RESOLUTION ? "Zoom in to see collision" : undefined,
+      title: "The pathfinder's collision everywhere in view",
       options: <p className="wb-legend" aria-label="Collision legend">
         <span className="wb-key blocked" /> blocked <span className="wb-key wall" /> wall or door <span className="wb-key object" /> closed by an object
       </p> },
@@ -299,6 +309,7 @@ export function TransportExplorer() {
   const recordView = (inView: WorldBox[], resolution: number) => {
     setBoxes(inView);
     setZoomedOut(resolution > TRANSPORTS_MAX_RESOLUTION);
+    setResolution(resolution);
     const at = mapRef.current?.centreTile();
     if (at) update({ at });
   };

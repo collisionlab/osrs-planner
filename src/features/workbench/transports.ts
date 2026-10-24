@@ -96,6 +96,8 @@ export const loadMeta = (signal?: AbortSignal) => get<TransportMeta>("/meta", si
 export const loadDetail = (id: string, signal?: AbortSignal) => get<TransportDetail>(`/${encodeURIComponent(id)}`, signal);
 export const loadView = (boxes: WorldBox[], types: string[] | undefined, signal?: AbortSignal) =>
   get<TransportView>(`?view=${encodeURIComponent(boxesQuery(boxes))}${types ? `&${typesQuery(types)}` : ""}`, signal);
+/** Every network: few enough (a dozen or so) to draw at any zoom. */
+export const loadNetworks = (signal?: AbortSignal) => get<TransportNetwork[]>("/networks", signal);
 export const searchTransports = (query: string, types: string[] | undefined, signal?: AbortSignal) =>
   get<TransportSummary[]>(`/search?q=${encodeURIComponent(query)}${types ? `&${typesQuery(types)}` : ""}`, signal);
 
@@ -154,13 +156,18 @@ export function stationOf(key: string): WorldPoint | undefined {
  * The overlay for a view: each listed transport (what of it is in view), plus the whole selected
  * transport (whether or not it is in view), which the map lays out and draws collision around.
  * A network's transports are their tiles, each drawn once, and each station in view has a spoke to
- * the network's hub, wherever that is (unless `withHubs` is off); `network` is a selected network.
+ * the network's hub, wherever that is; `network` is a selected network. The networks drawn are
+ * `hubs.networks` (every one shown, at any zoom, its stations in `hubs.inView`), else the view's.
+ * Zoomed out, where tiles are specks, a station is a small node.
  */
 export function viewOverlay(view: TransportView | undefined, selected: TransportSummary | undefined, collision?: CollisionMap,
-  inView?: WorldBox[], network?: string, withHubs = true): FeatureOverlay {
+  inView?: WorldBox[], network?: string, hubs?: { networks: TransportNetwork[]; inView?: WorldBox[] }): FeatureOverlay {
   const features: MapFeature[] = [];
   const shown = (point: WorldPoint) => !inView || inView.some(box => inBox(point, box));
-  const networks = new Map((view?.networks || []).map(each => [each.id, each]));
+  const nearHub = (point: WorldPoint) => { const boxes = hubs ? hubs.inView : inView; return !boxes || boxes.some(box => inBox(point, box)); };
+  // Every network known draws its transports as tiles; those in `hubs` (else the view's) get spokes and a hub.
+  const networks = new Map([...view?.networks || [], ...hubs?.networks || []].map(each => [each.id, each]));
+  const withHubs = hubs ? hubs.networks : view?.networks || [];
   const tiles = new Set<string>();
   for (const summary of view?.transports || []) {
     if (summary.id === selected?.id) continue;
@@ -174,16 +181,19 @@ export function viewOverlay(view: TransportView | undefined, selected: Transport
       features.push({ kind: "point", key: stationKey(point), point, tone, role, title });
     }
   }
-  const spokes: MapFeature[] = [], hubs: MapFeature[] = [];
-  for (const each of withHubs ? networks.values() : []) {
+  const spokes: MapFeature[] = [], nodes: MapFeature[] = [];
+  for (const each of withHubs) {
     const key = networkKey(each.id), tone = toneOf({ type: each.type, teleport: false });
     const title = `${each.name}: ${each.stations.length} stations`;
-    for (const { point: station } of each.stations.filter(station => shown(station.point))) spokes.push({ kind: "edge", key, from: station, to: each.hub, tone, spoke: true, title });
-    hubs.push({ kind: "hub", key, point: each.hub, tone, label: each.name, title });
+    for (const { point: station, name } of each.stations.filter(station => nearHub(station.point))) {
+      spokes.push({ kind: "edge", key, from: station, to: each.hub, tone, spoke: true, title });
+      nodes.push({ kind: "hub", key: stationKey(station), point: station, tone, label: "", station: true, title: `${each.name}${name ? `: ${name}` : ""}` });
+    }
+    nodes.push({ kind: "hub", key, point: each.hub, tone, label: each.name, title });
   }
   const anchors = selected ? transportFeatures(selected, undefined, true) : [];
   // Spokes under the tiles, hubs over them, and the selection last, over the rest.
-  return { features: [...spokes, ...features, ...hubs, ...anchors], anchors, selected: selected?.id ?? (network && networkKey(network)), collision };
+  return { features: [...spokes, ...features, ...nodes, ...anchors], anchors, selected: selected?.id ?? (network && networkKey(network)), collision };
 }
 
 /** The explorer's map layers, in the order the layer control lists them. */

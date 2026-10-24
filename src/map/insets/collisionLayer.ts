@@ -13,10 +13,15 @@ import type { RoutingPlacement } from "./routingLayer";
  * object closes as dashed white ones, each on a dark casing.
  */
 export const COLLISION_COLOURS = { blocked: "rgba(235,38,58,.55)", wall: "#ffe23d", object: "#ffffff", casing: "rgba(14,16,14,.9)" };
+const BLOCKED_RGBA = [235, 38, 58, 140];
 
-/** Map units a pixel above which nothing is drawn (a tile under 4 px), and above which edges aren't (under 8 px). */
-const MAX_RESOLUTION = 8, EDGE_RESOLUTION = 4;
-const CACHED_SQUARES = 96;
+/**
+ * Map units a pixel above which nothing is drawn (a tile under a pixel: a view holds a few hundred
+ * map squares there, each a 2 KB file), and above which edges aren't (a tile under 8 px).
+ */
+export const COLLISION_MAX_RESOLUTION = 32;
+const MAX_RESOLUTION = COLLISION_MAX_RESOLUTION, EDGE_RESOLUTION = 4;
+const CACHED_SQUARES = 600;
 
 export interface CollisionOverlay {
   collision: CollisionMap;
@@ -24,7 +29,8 @@ export interface CollisionOverlay {
   around?: { points: WorldPoint[]; radius: number };
 }
 
-interface SquareDrawing { blocked: HTMLCanvasElement; walls: number[]; objects: number[] }
+/** `complete` once every neighbour it reads was there too, so later arrivals can't change it. */
+interface SquareDrawing { blocked: HTMLCanvasElement; edges?: { walls: number[]; objects: number[] }; complete: boolean }
 
 export function collisionLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
   let overlay: CollisionOverlay | undefined;
@@ -41,34 +47,44 @@ export function collisionLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
     return map.getPixelFromCoordinate([point[0] + offset[0], point[1] + offset[1]]);
   };
 
-  /** A square's blocked tiles, one pixel a tile, and its closed edges between walkable tiles, in tile-edge coordinates. */
+  /** A square's blocked tiles, one pixel a tile. */
   const drawing = (collision: CollisionMap, sx: number, sy: number, plane: number): SquareDrawing | undefined => {
     const name = `${plane}/${sx}/${sy}`, cached = squares.get(name);
     if (cached) return cached;
-    const bytes = collision.square(sx, sy, plane);
-    if (bytes === undefined) return undefined;
-    // Neighbours first, for the edges along the square's south and west sides.
-    collision.square(sx - 1, sy, plane); collision.square(sx, sy - 1, plane);
+    if (collision.square(sx, sy, plane) === undefined) return undefined;
+    // Its sides read its neighbours' tiles.
+    const complete = [[-1, 0], [1, 0], [0, -1], [0, 1]].map(([dx, dy]) => collision.square(sx + dx, sy + dy, plane)).every(bytes => bytes !== undefined);
+    const mask = collision.blockedTiles(sx, sy, plane)!;
     const blocked = document.createElement("canvas");
     blocked.width = blocked.height = 64;
     const ctx = blocked.getContext("2d")!;
-    ctx.fillStyle = COLLISION_COLOURS.blocked;
+    const image = ctx.createImageData(64, 64);
+    const [r, g, b, a] = BLOCKED_RGBA;
+    for (let i = 0; i < 4096; i++) if (mask[i]) {
+      const p = ((63 - (i >> 6)) * 64 + (i & 63)) * 4;
+      image.data[p] = r; image.data[p + 1] = g; image.data[p + 2] = b; image.data[p + 3] = a;
+    }
+    ctx.putImageData(image, 0, 0);
+    const made: SquareDrawing = { blocked, complete };
+    squares.set(name, made);
+    while (squares.size > CACHED_SQUARES) squares.delete(squares.keys().next().value!);
+    return made;
+  };
+
+  /** A square's closed edges between walkable tiles, in tile-edge coordinates, each from the tile south or west of it. */
+  const edges = (collision: CollisionMap, drawn: SquareDrawing, sx: number, sy: number, plane: number) => {
+    if (drawn.edges) return drawn.edges;
     const walls: number[] = [], objects: number[] = [];
-    if (!bytes) ctx.fillRect(0, 0, 64, 64);
-    else for (let i = 0; i < 4096; i++) {
+    for (let i = 0; i < 4096; i++) {
       const x = sx * 64 + (i & 63), y = sy * 64 + (i >> 6);
       const tile = collision.tile({ x, y, plane });
-      if (!tile || tile.blocked) { ctx.fillRect(i & 63, 63 - (i >> 6), 1, 1); continue; }
-      // A closed edge between two walkable tiles, from the tile south or west of it.
+      if (!tile || tile.blocked) continue;
       const north = !tile.north && collision.tile({ x, y: y + 1, plane })?.blocked === false;
       const east = !tile.east && collision.tile({ x: x + 1, y, plane })?.blocked === false;
       if (north) (tile.wallNorth ? walls : objects).push(x - .5, y + .5, x + .5, y + .5);
       if (east) (tile.wallEast ? walls : objects).push(x + .5, y - .5, x + .5, y + .5);
     }
-    const made = { blocked, walls, objects };
-    squares.set(name, made);
-    while (squares.size > CACHED_SQUARES) squares.delete(squares.keys().next().value!);
-    return made;
+    return drawn.edges = { walls, objects };
   };
 
   const stroke = (ctx: CanvasRenderingContext2D, lines: number[], plane: number, offset: Coordinate) => {
@@ -123,7 +139,10 @@ export function collisionLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
         if (!square) continue;
         const a = pixel(sx * 64 - .5, (sy + 1) * 64 - .5, shape.plane, offset), b = pixel((sx + 1) * 64 - .5, sy * 64 - .5, shape.plane, offset);
         ctx.drawImage(square.blocked, a[0], a[1], b[0] - a[0], b[1] - a[1]);
-        walls.push(square.walls); objects.push(square.objects);
+        if (resolution <= EDGE_RESOLUTION) {
+          const lines = edges(collision, square, sx, sy, shape.plane);
+          walls.push(lines.walls); objects.push(lines.objects);
+        }
       }
       if (resolution <= EDGE_RESOLUTION) {
         const width = Math.min(6, Math.max(2, tilePx * .18));
@@ -148,7 +167,10 @@ export function collisionLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
       if (next?.collision !== overlay?.collision) {
         unsubscribe?.();
         // A square arriving changes its own drawing and its neighbours' edges.
-        unsubscribe = next?.collision.subscribe(() => { squares.clear(); layer.changed(); });
+        unsubscribe = next?.collision.subscribe(() => {
+          for (const [name, drawn] of squares) if (!drawn.complete) squares.delete(name);
+          layer.changed();
+        });
         squares.clear();
       }
       overlay = next;

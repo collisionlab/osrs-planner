@@ -58,7 +58,7 @@ describe("transport explorer", () => {
     expect(overlay.features.filter(f => f.kind === "edge").map(f => f.kind === "edge" && [f.from, f.to, f.spoke, f.key])).toEqual([
       [p(10, 10), p(400, 400), true, "network:FAIRY_RING:0"], [p(50, 50), p(400, 400), true, "network:FAIRY_RING:0"]]);
     expect(overlay.features.filter(f => f.kind === "point").map(f => f.key)).toEqual(["station:10,10,0", "station:51,50,0", "station:50,50,0", "station:11,10,0"]);
-    expect(overlay.features.filter(f => f.kind === "hub")).toEqual([{ kind: "hub", key: "network:FAIRY_RING:0", point: p(400, 400), tone: "journey", label: "Fairy rings",
+    expect(overlay.features.filter(f => f.kind === "hub" && !f.station)).toEqual([{ kind: "hub", key: "network:FAIRY_RING:0", point: p(400, 400), tone: "journey", label: "Fairy rings",
       title: "Fairy rings: 3 stations" }]);
     // A station's tile says which station it is.
     expect(overlay.features.find(f => f.key === "station:10,10,0")?.title).toBe("Fairy rings: AIQ\nleave from 10 10 0");
@@ -69,9 +69,13 @@ describe("transport explorer", () => {
     const picked = viewOverlay(view, view.transports[0], undefined, [box]);
     expect(picked.anchors.map(f => f.kind)).toEqual(["edge", "point", "point"]);
     // With hubs off: the stations' tiles alone.
-    const bare = viewOverlay(view, undefined, undefined, [box], undefined, false).features;
+    const bare = viewOverlay(view, undefined, undefined, [box], undefined, { networks: [] }).features;
     expect(bare.some(f => f.kind === "hub" || (f.kind === "edge" && f.spoke))).toBe(false);
     expect(bare.filter(f => f.kind === "point")).toHaveLength(4);
+    // Zoomed out, with no view at all: every network given, its stations in view as nodes.
+    const far = viewOverlay(undefined, undefined, undefined, undefined, undefined, { networks: view.networks!, inView: [box] }).features;
+    expect(far.filter(f => f.kind === "hub").map(f => f.kind === "hub" && [f.key, !!f.station])).toEqual([
+      ["station:10,10,0", true], ["station:50,50,0", true], ["network:FAIRY_RING:0", false]]);
     // Without networks (an older service), its transports are drawn as any other.
     expect(viewOverlay({ ...view, networks: undefined }, undefined, undefined, [box]).features.some(f => f.kind === "edge" && !f.spoke)).toBe(true);
   });

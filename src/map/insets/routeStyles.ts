@@ -76,7 +76,9 @@ function edgeStyle(feature: FeatureLike, selected: boolean, resolution: number):
   const length = Math.hypot(x2 - x1, y2 - y1);
   if (!length) return [];
   if (feature.get("hop")) return hopStyle(feature, color, selected, resolution, [x1, y1], [x2, y2], length);
-  if (feature.get("spoke")) return [new Style({ stroke: new Stroke({ color: selected ? color : `${color}8c`, width: scaled(resolution, 0.08, 1, 2.5) + (selected ? 1 : 0) }) })];
+  if (feature.get("spoke")) return [
+    new Style({ stroke: new Stroke({ color: "rgba(20,25,20,.55)", width: scaled(resolution, 0.08, 1.5, 2.5) + 2 + (selected ? 1 : 0) }) }),
+    new Style({ stroke: new Stroke({ color: selected ? color : `${color}cc`, width: scaled(resolution, 0.08, 1.5, 2.5) + (selected ? 1 : 0) }) })];
   const width = scaled(resolution, 0.16, 1.5, 5) + (selected ? 1.5 : 0);
   const shift = scaled(resolution, 0.16, 1.5, 5) * resolution, nx = (y2 - y1) / length * shift, ny = -(x2 - x1) / length * shift;
   // Stop short of the tile centre so the arrowhead sits on the destination tile's edge.
@@ -102,15 +104,24 @@ function hopStyle(feature: FeatureLike, color: string, selected: boolean, resolu
   ];
 }
 
-/** A network's hub: a dark node ringed in its tone, a little smaller than a tile close up, with its name under it. */
-function hubStyle(feature: FeatureLike, selected: boolean, resolution: number): Style {
-  const color = TONES[feature.get("tone") as FeatureTone], radius = scaled(resolution, 0.45, 5, 12);
-  return new Style({
-    image: new Circle({ radius, fill: new Fill({ color: "rgba(20,25,20,.88)" }), stroke: new Stroke({ color: selected ? "#ffffff" : color, width: selected ? 3 : 2 }) }),
-    text: new Text({ text: String(feature.get("label")), font: "bold 11px ui-monospace, monospace", offsetY: radius + 9, overflow: true,
-      fill: new Fill({ color: selected ? "#ffffff" : color }), stroke: new Stroke({ color: ink, width: 3 }) }),
-    zIndex: 2,
-  });
+/**
+ * A network's hub: a node in its tone ringed dark and light, with its name under it, big enough to
+ * find from across the world. A station node (zoomed out, where its tiles are specks) is a small dot
+ * of the same, gone once the tiles themselves can be seen.
+ */
+function hubStyle(feature: FeatureLike, selected: boolean, resolution: number): Style | Style[] {
+  const color = TONES[feature.get("tone") as FeatureTone];
+  if (feature.get("station")) {
+    if (32 / resolution >= 6) return [];
+    return new Style({ image: new Circle({ radius: selected ? 5 : 3.5, fill: new Fill({ color }), stroke: new Stroke({ color: selected ? "#ffffff" : ink, width: 1.5 }) }), zIndex: 2 });
+  }
+  const radius = scaled(resolution, 0.6, 9, 14);
+  return [
+    new Style({ image: new Circle({ radius: radius + 2.5, fill: new Fill({ color: selected ? "#ffffff" : ink }) }), zIndex: 3 }),
+    new Style({ image: new Circle({ radius, fill: new Fill({ color }), stroke: new Stroke({ color: "#f7f1dc", width: 2 }) }), zIndex: 3,
+      text: new Text({ text: String(feature.get("label")), font: "bold 13px ui-monospace, monospace", offsetY: radius + 12, overflow: true,
+        fill: new Fill({ color: selected ? "#ffffff" : color }), stroke: new Stroke({ color: ink, width: 4 }) }) }),
+  ];
 }
 
 const markStyles = new Map<string, Style[]>();
