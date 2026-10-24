@@ -123,15 +123,20 @@ const hop = (from: WorldPoint, to: WorldPoint) => from.plane === to.plane && Mat
  * would otherwise cross the map to every other ring), nor an end outside it. A hop between
  * neighbouring tiles (a door) is one bar over their shared edge, unless it is `whole` (selected).
  */
+const where = (point: WorldPoint | null) => point ? `${point.x} ${point.y} ${point.plane}` : "anywhere";
+/** What hovering a transport shows: its name, and where it goes from and to. */
+export const transportTitle = (summary: TransportSummary) =>
+  `${summary.label || typeName(summary.type)}\n${where(summary.origin)} → ${where(summary.destination)}`;
+
 export function transportFeatures(summary: TransportSummary, inView?: WorldBox[], whole = false): MapFeature[] {
-  const tone = toneOf(summary), key = summary.id;
+  const tone = toneOf(summary), key = summary.id, title = transportTitle(summary);
   const shown = (point: WorldPoint) => !inView || inView.some(box => inBox(point, box));
   if (!whole && summary.origin && hop(summary.origin, summary.destination))
-    return shown(summary.origin) && shown(summary.destination) ? [{ kind: "edge", key, from: summary.origin, to: summary.destination, tone, hop: true }] : [];
+    return shown(summary.origin) && shown(summary.destination) ? [{ kind: "edge", key, from: summary.origin, to: summary.destination, tone, hop: true, title }] : [];
   const features: MapFeature[] = [];
-  if (summary.origin && shown(summary.origin) && shown(summary.destination)) features.push({ kind: "edge", key, from: summary.origin, to: summary.destination, tone });
-  if (summary.origin && shown(summary.origin)) features.push({ kind: "point", key, point: summary.origin, tone, role: "origin" });
-  if (shown(summary.destination)) features.push({ kind: "point", key, point: summary.destination, tone, role: "destination" });
+  if (summary.origin && shown(summary.origin) && shown(summary.destination)) features.push({ kind: "edge", key, from: summary.origin, to: summary.destination, tone, title });
+  if (summary.origin && shown(summary.origin)) features.push({ kind: "point", key, point: summary.origin, tone, role: "origin", title });
+  if (shown(summary.destination)) features.push({ kind: "point", key, point: summary.destination, tone, role: "destination", title });
   return features;
 }
 
@@ -160,18 +165,21 @@ export function viewOverlay(view: TransportView | undefined, selected: Transport
   for (const summary of view?.transports || []) {
     if (summary.id === selected?.id) continue;
     if (!summary.network || !networks.has(summary.network)) { features.push(...transportFeatures(summary, inView)); continue; }
-    const tone = toneOf(summary);
+    const tone = toneOf(summary), network = networks.get(summary.network)!;
     for (const [point, role] of [[summary.origin, "origin"], [summary.destination, "destination"]] as const) {
       if (!point || !shown(point) || tiles.has(`${role}/${tileKey(point)}`)) continue;
       tiles.add(`${role}/${tileKey(point)}`);
-      features.push({ kind: "point", key: stationKey(point), point, tone, role });
+      const station = network.stations.find(each => each.point.plane === point.plane && Math.abs(each.point.x - point.x) <= 12 && Math.abs(each.point.y - point.y) <= 12);
+      const title = `${network.name}${station?.name ? `: ${station.name}` : ""}\n${role === "origin" ? "leave from" : "arrive at"} ${where(point)}`;
+      features.push({ kind: "point", key: stationKey(point), point, tone, role, title });
     }
   }
   const spokes: MapFeature[] = [], hubs: MapFeature[] = [];
   for (const each of withHubs ? networks.values() : []) {
     const key = networkKey(each.id), tone = toneOf({ type: each.type, teleport: false });
-    for (const { point: station } of each.stations.filter(station => shown(station.point))) spokes.push({ kind: "edge", key, from: station, to: each.hub, tone, spoke: true });
-    hubs.push({ kind: "hub", key, point: each.hub, tone, label: each.name });
+    const title = `${each.name}: ${each.stations.length} stations`;
+    for (const { point: station } of each.stations.filter(station => shown(station.point))) spokes.push({ kind: "edge", key, from: station, to: each.hub, tone, spoke: true, title });
+    hubs.push({ kind: "hub", key, point: each.hub, tone, label: each.name, title });
   }
   const anchors = selected ? transportFeatures(selected, undefined, true) : [];
   // Spokes under the tiles, hubs over them, and the selection last, over the rest.
@@ -179,7 +187,7 @@ export function viewOverlay(view: TransportView | undefined, selected: Transport
 }
 
 /** The explorer's map layers, in the order the layer control lists them. */
-export const EXPLORER_LAYERS = ["transports", "banks", "components", "separators", "unreachable"];
+export const EXPLORER_LAYERS = ["transports", "banks", "collision", "components", "separators", "unreachable"];
 
 /** What the page's URL holds: the selected transport, where the map is, the types and layers shown and a search. */
 export interface ExplorerState {

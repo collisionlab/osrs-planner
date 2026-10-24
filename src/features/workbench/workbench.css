@@ -198,7 +198,8 @@ button.wb-chip[aria-pressed="true"] { border-color: var(--orange); }
 .wb-investigate { margin: 12px 0; padding-top: 6px; border-top: 1px solid var(--line); }
 .wb-investigate > summary { font-weight: 600; color: var(--text); }
 .wb-legend { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
-.wb-key { display: inline-block; width: 18px; margin: 0 4px 3px 10px; vertical-align: middle; border-top: 2px solid; }
-.wb-key.boundary { border-color: rgba(119, 226, 212, 0.85); }
-.wb-key.wall { border-top-width: 3px; border-color: #ff8f6b; }
-.wb-key.edge { border-top-style: dashed; border-color: #ff8f6b; }
+.wb-key { display: inline-block; width: 18px; margin: 0 4px 3px 6px; vertical-align: middle; border-top: 4px solid; }
+.wb-key:first-child { margin-left: 0; }
+.wb-key.blocked { height: 10px; border: 0; background: rgba(235, 38, 58, .75); }
+.wb-key.wall { border-color: #ffe23d; box-shadow: 0 0 0 1px #0e100e; }
+.wb-key.object { border-top-style: dashed; border-color: #ffffff; box-shadow: 0 0 0 1px #0e100e; }

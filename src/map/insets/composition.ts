@@ -27,7 +27,8 @@ import { surfaceLayer } from "./tactical";
 import { regionTerrain, type TerrainTiles } from "./terrain";
 import { PastedTerrainSource } from "./PastedTerrainSource";
 import { RegionFeatures } from "./RegionFeatures";
-import { collisionStyle, doorStyle, endpointPixels, featureStyle, maskStyle, routeFeatureStyle, routeMarkerOverlay } from "./routeStyles";
+import { collisionLayer } from "./collisionLayer";
+import { doorStyle, endpointPixels, featureStyle, maskStyle, routeFeatureStyle, routeMarkerOverlay } from "./routeStyles";
 import { regionContour } from "./contour";
 import type { RoutingCrossing } from "./routing";
 import { routingLayer } from "./routingLayer";
@@ -215,14 +216,20 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   let overlay = areas.overlay;
   const featureSource = new VectorSource();
   const featureLayer = new VectorLayer({ source: featureSource, zIndex: 99, updateWhileInteracting: true, updateWhileAnimating: true,
-    style: (feature, resolution) => featureStyle(feature, overlay?.selected, resolution) });
+    style: (feature, resolution) => featureStyle(feature, overlay?.selected, resolution, hovered) });
   map.addLayer(featureLayer);
+  // The item under the pointer, drawn lit, and what its features say about it.
+  let hovered: string | undefined;
+  const tooltip = document.createElement("div");
+  tooltip.className = "map-tooltip";
+  tooltip.hidden = true;
+  target.append(tooltip);
+  cleanup.push(() => tooltip.remove());
   // Regions' exact terrain, tinted under the collision and the features; clicks pass through to the terrain.
   const maskSource = new VectorSource();
   map.addLayer(new VectorLayer({ source: maskSource, zIndex: 55, updateWhileInteracting: true, updateWhileAnimating: true, style: maskStyle }));
-  const collisionSource = new VectorSource();
-  map.addLayer(new VectorLayer({ source: collisionSource, zIndex: 60, maxResolution: ANCHOR_MAX_RESOLUTION + .01, updateWhileInteracting: true, updateWhileAnimating: true,
-    style: collisionStyle }));
+  // Drawn on its own canvas once every region is placed (see below).
+  let collisionDrawing: ReturnType<typeof collisionLayer> | undefined;
   /** A tile's square on the map, drawn where its region is placed. */
   const tileRing = (point: WorldPoint, inset = 0) => {
     const [cx, cy] = projected(point), half = 16 - inset;
@@ -233,9 +240,9 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   let drawable: (point: WorldPoint) => boolean = () => false;
   /** Draw (or redraw) the overlay's features and the collision around its anchors' tiles. */
   const drawOverlay = () => {
-    featureSource.clear(); collisionSource.clear(); maskSource.clear();
+    featureSource.clear(); maskSource.clear();
     owned.remove(target => !!target.get("overlay"));
-    if (!overlay) return;
+    if (!overlay) { collisionDrawing?.update(undefined); return; }
     const anchored = new Set<MapFeature>(overlay.anchors);
     const add = (source: VectorSource, region: string, feature: Feature) => {
       feature.set("overlay", true); source.addFeature(feature); owned.add(region, feature);
@@ -270,7 +277,8 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
         feature = new Feature(new Polygon([[[a[0] - 16, a[1] - 16], [b[0] + 16, a[1] - 16], [b[0] + 16, b[1] + 16], [a[0] - 16, b[1] + 16], [a[0] - 16, a[1] - 16]]]));
         feature.setProperties({ label: item.label, dashed: item.dashed });
       }
-      feature.setProperties({ key: item.key, kind: item.kind, tone: item.tone });
+      feature.setProperties({ key: item.key, kind: item.kind, tone: item.tone, title: "title" in item ? item.title : undefined,
+        tile: item.kind === "point" || item.kind === "hub" ? item.point : undefined });
       if (item.kind === "edge" && classify(item.from) !== classify(item.to)) {
         // An edge between two insets follows each end's inset.
         const line = feature.getGeometry() as LineString;
@@ -278,41 +286,10 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
         owned.addLink(classify(item.from), classify(item.to), line);
       } else add(featureSource, classify(ends[0]), feature);
     }
-    const collision = overlay.collision;
-    if (!collision) return;
-    const drawn = new Set<string>();
-    for (const centre of overlay.anchors.filter(item => item.kind !== "region").flatMap(featurePoints)) {
-      const { x: mx, y: my, plane } = centre;
-      for (let x = mx - COLLISION_RADIUS; x <= mx + COLLISION_RADIUS; x++) for (let y = my - COLLISION_RADIUS; y <= my + COLLISION_RADIUS; y++) {
-        const point = { x, y, plane }, key = `${x},${y},${plane}`, region = classify(point);
-        if (drawn.has(key) || hidden.has(region) || region !== classify(centre)) continue;
-        drawn.add(key);
-        const tile = collision.tile(point);
-        if (!tile || tile.blocked) continue;
-        // Lines only, from walkable tiles: where walkable ground ends, and closed edges between two
-        // walkable tiles (walls heavy, objects dashed). Blocked ground isn't painted.
-        const [cx, cy] = projected(point);
-        const line = (kind: string, ax: number, ay: number, bx: number, by: number) => {
-          const f = new Feature(new LineString([[cx + ax, cy + ay], [cx + bx, cy + by]]));
-          f.set("kind", kind);
-          add(collisionSource, region, f);
-        };
-        const sides = [
-          { open: tile.north, wall: tile.wallNorth, next: { x, y: y + 1, plane }, ends: [-16, 16, 16, 16], owned: true },
-          { open: tile.east, wall: tile.wallEast, next: { x: x + 1, y, plane }, ends: [16, -16, 16, 16], owned: true },
-          { open: tile.south, wall: false, next: { x, y: y - 1, plane }, ends: [-16, -16, 16, -16], owned: false },
-          { open: tile.west, wall: false, next: { x: x - 1, y, plane }, ends: [-16, -16, -16, 16], owned: false },
-        ];
-        for (const side of sides) {
-          if (side.open) continue;
-          const next = collision.tile(side.next);
-          const [ax, ay, bx, by] = side.ends;
-          if (!next || next.blocked) line("boundary", ax, ay, bx, by);
-          // A closed edge between walkable tiles is drawn once, from the tile south or west of it.
-          else if (side.owned) line(side.wall ? "wall" : "edge", ax, ay, bx, by);
-        }
-      }
-    }
+    // Collision everywhere in view, or around the anchors' tiles.
+    const points = overlay.anchors.filter(item => item.kind !== "region").flatMap(featurePoints);
+    collisionDrawing?.update(overlay.collision && (overlay.collisionEverywhere || points.length)
+      ? { collision: overlay.collision, around: overlay.collisionEverywhere ? undefined : { points, radius: COLLISION_RADIUS } } : undefined);
   };
   const doorSource = new VectorSource();
   const doorLayer = new VectorLayer({ source: doorSource, zIndex: 95, maxResolution: 8.01, style: doorStyle });
@@ -442,15 +419,19 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
   upper.forEach(shape => picked.set(shape.id, { offset: [0, 0], anchored: true }));
   hitPlacements = picked;
   // The routing overlay draws over the surface first, then each placed inset, as the terrain is drawn.
-  const routing = routingLayer(map, () => [
+  // The surface, and each region where it is placed: what the canvas layers draw over.
+  const drawnPlacements = () => [
     ...assets.catalogue.surfaceRects.filter(([plane]) => plane === 0).map(([plane, x, y, w, h]) => {
       const rect: [number, number, number, number] = [x, y, w, h];
       return { shape: { plane, bounds: [x, y, x + w, y + h] as [number, number, number, number], mask: [rect] }, offset: [0, 0] };
     }),
     ...[...picked].map(([id, placement]) => ({ shape: regionById.get(id)!, offset: placement.offset })),
-  ]);
+  ];
+  const routing = routingLayer(map, drawnPlacements);
   routing.update(overlay?.routing);
   cleanup.push(() => routing.dispose());
+  collisionDrawing = collisionLayer(map, drawnPlacements);
+  cleanup.push(() => collisionDrawing?.dispose());
 
   drawable = point => {
     const region = classify(point);
@@ -582,7 +563,28 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     const hit = door || map.forEachFeatureAtPixel(event.pixel, feature => feature, { layerFilter: candidate => candidate === routes || (candidate === featureLayer && !!areas.onSelectFeatures), hitTolerance: 4 });
     target.style.cursor = hit ? "pointer" : "";
     target.title = door ? `${door.get("name")} — click to ${door.get("open") ? "hide" : "show"}` : "";
+    // Every overlay item under the pointer: the topmost lit, and each one's title (or its tile) listed.
+    const under = door ? [] : map.getFeaturesAtPixel(event.pixel, { layerFilter: candidate => candidate === featureLayer, hitTolerance: 4 });
+    const items = new Map<string, string>();
+    for (const feature of under) {
+      const key = feature.get("key") as string | undefined, tile = feature.get("tile") as WorldPoint | undefined;
+      if (key === undefined || items.has(key)) continue;
+      const title = (feature.get("title") as string | undefined) || (tile ? `${tile.x} ${tile.y} ${tile.plane}` : "");
+      if (title || !items.size) items.set(key, title);
+    }
+    const next = items.keys().next().value;
+    if (next !== hovered) { hovered = next; featureLayer.changed(); }
+    const lines = [...items.values()].filter(Boolean);
+    tooltip.hidden = !lines.length;
+    if (lines.length) {
+      tooltip.textContent = lines.length > 4 ? [...lines.slice(0, 3), `and ${lines.length - 3} more`].join("\n") : lines.join("\n");
+      tooltip.style.left = `${event.pixel[0] + 14}px`;
+      tooltip.style.top = `${event.pixel[1] + 14}px`;
+    }
   });
+  const leave = () => { tooltip.hidden = true; if (hovered !== undefined) { hovered = undefined; featureLayer.changed(); } };
+  target.addEventListener("pointerleave", leave);
+  cleanup.push(() => target.removeEventListener("pointerleave", leave));
   const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => map.updateSize()) : undefined;
   observer?.observe(target);
   if (initialView) { view.setCenter(initialView.center); view.setResolution(initialView.resolution); }

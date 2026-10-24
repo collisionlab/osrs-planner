@@ -54,7 +54,7 @@ function endpointHit(resolution: number): Style[] {
 
 /** Feature colours: review rows by change, transports by kind. */
 export const TONES: Record<FeatureTone, string> = { added: "#5ee08a", removed: "#ff6b6b", changed: "#ffc44d",
-  object: "#f2ead2", journey: "#6fc3ff", teleport: "#c79bff", bank: "#ffcc33",
+  object: "#c8ff3c", journey: "#6fc3ff", teleport: "#c79bff", bank: "#ffcc33",
   area: "#ffae47", candidate: "#ff7ad9", suspect: "#ff6b6b", component: "#7ee0d0", evidence: "#ffe066", entrance: "#f7f1dc", draft: "#5ee08a" };
 
 /** A tile's size on screen, at a view resolution. */
@@ -113,37 +113,33 @@ function hubStyle(feature: FeatureLike, selected: boolean, resolution: number): 
   });
 }
 
-const markStyles = new Map<string, Style>();
+const markStyles = new Map<string, Style[]>();
 /**
- * A point feature's tile, always the tile itself so it scales with the map: an origin outlined, a
- * destination filled, in its tone; a selected one is ringed in white.
+ * A point feature's tile, always the tile itself so it scales with the map, on a dark casing that
+ * keeps it apart from any terrain: an origin a thick ring in its tone over a light wash of it, a
+ * destination solid in its tone with a dark dot at its heart, where things arrive. Hovered, the
+ * casing turns light; selected, it gains a white halo.
  */
-export function markStyle(feature: FeatureLike, resolution: number, selected = false): Style {
+export function markStyle(feature: FeatureLike, resolution: number, selected = false, hovered = false): Style[] {
   const tone = feature.get("tone") as FeatureTone, role = feature.get("role") as string;
-  const outline = Math.round(scaled(resolution, 0.1, 1, 3) * 2) / 2, key = `${tone}/${role}/${outline}/${selected}`;
-  let style = markStyles.get(key);
-  if (!style) {
-    const color = TONES[tone];
-    const stroke = selected ? new Stroke({ color: "#ffffff", width: outline + 1.5 })
-      : role === "origin" ? new Stroke({ color, width: outline }) : new Stroke({ color: ink, width: Math.min(outline, 1.5) });
-    const fill = new Fill({ color: role === "origin" ? "rgba(0,0,0,0)" : `${color}b3` });
-    style = new Style({ stroke, fill });
-    markStyles.set(key, style);
+  const width = Math.round(scaled(resolution, 0.13, 1.5, 4.5) * 2) / 2, state = selected ? "selected" : hovered ? "hovered" : "plain";
+  const key = `${tone}/${role}/${width}/${state}`;
+  let styles = markStyles.get(key);
+  if (!styles) {
+    const color = TONES[tone], casing = width + 3;
+    const centre = (mark: FeatureLike) => (mark.getGeometry() as Polygon).getInteriorPoint();
+    styles = [
+      ...(selected ? [new Style({ stroke: new Stroke({ color: "#ffffff", width: casing + 4 }), zIndex: 1 })] : []),
+      new Style({ stroke: new Stroke({ color: hovered && !selected ? "#f7f1dc" : ink, width: casing }), zIndex: 1 }),
+      role === "origin"
+        ? new Style({ stroke: new Stroke({ color, width }), fill: new Fill({ color: `${color}4d` }), zIndex: 1 })
+        : new Style({ fill: new Fill({ color }), stroke: new Stroke({ color, width: Math.max(1, width - 1) }), zIndex: 1 }),
+      ...(role === "origin" ? [] : [new Style({ geometry: centre, zIndex: 1,
+        image: new RegularShape({ points: 4, radius: scaled(resolution, 0.17, 1.5, 5.5), angle: Math.PI / 4, fill: new Fill({ color: ink }) }) })]),
+    ];
+    markStyles.set(key, styles);
   }
-  return style;
-}
-
-const collisionLooks: Record<string, Style> = {
-  boundary: new Style({ stroke: new Stroke({ color: "rgba(119, 226, 212, 0.85)", width: 1.5, lineCap: "square" }) }),
-  wall: new Style({ stroke: new Stroke({ color: "#ff8f6b", width: 3, lineCap: "butt" }) }),
-  edge: new Style({ stroke: new Stroke({ color: "#ff8f6b", width: 2, lineCap: "butt", lineDash: [4, 3] }) }),
-};
-/**
- * The pathfinder's collision, as lines: a light line where walkable ground ends, a heavy line for a
- * wall or door between two walkable tiles, a dashed one for an edge an object closes.
- */
-export function collisionStyle(feature: FeatureLike): Style {
-  return collisionLooks[feature.get("kind") as string];
+  return styles;
 }
 
 /** A region: its rectangle tinted, with its label over it. */
@@ -172,14 +168,15 @@ export function maskStyle(feature: FeatureLike): Style {
   return style;
 }
 
-/** An overlay feature (see features.ts), by its kind; `selected` is the selected item's key. */
-export function featureStyle(feature: FeatureLike, selected: string | undefined, resolution: number): Style | Style[] {
+/** An overlay feature (see features.ts), by its kind; `selected` is the selected item's key, `hovered` the one under the pointer. */
+export function featureStyle(feature: FeatureLike, selected: string | undefined, resolution: number, hovered?: string): Style | Style[] {
   const isSelected = selected !== undefined && feature.get("key") === selected;
+  const isHovered = hovered !== undefined && feature.get("key") === hovered;
   const kind = feature.get("kind");
-  if (kind === "edge") return edgeStyle(feature, isSelected, resolution);
-  if (kind === "point") return markStyle(feature, resolution, isSelected);
-  if (kind === "hub") return hubStyle(feature, isSelected, resolution);
-  return regionStyle(feature, isSelected);
+  if (kind === "edge") return edgeStyle(feature, isSelected || isHovered, resolution);
+  if (kind === "point") return markStyle(feature, resolution, isSelected, isHovered);
+  if (kind === "hub") return hubStyle(feature, isSelected || isHovered, resolution);
+  return regionStyle(feature, isSelected || isHovered);
 }
 
 export function routeFeatureStyle(feature: FeatureLike, selectedSegment?: number, resolution = 1): Style | Style[] {

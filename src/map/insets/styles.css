@@ -62,3 +62,7 @@
   .layer-control { top: 12px; width: auto; max-width: calc(100% - 24px); }
   .layer-control:has([aria-expanded='true']) { width: min(240px, calc(100% - 24px)); }
 }
+.inset-map { position: relative; }
+/* What is under the pointer on the map: beside it, never in its way. */
+.inset-map .map-tooltip { position: absolute; z-index: 5; max-width: 320px; padding: 4px 7px; pointer-events: none; white-space: pre-line;
+  color: #f7f1dc; background: rgba(20, 25, 20, .92); border: 1px solid rgba(247, 241, 220, .35); font: 12px/1.35 ui-monospace, monospace; }

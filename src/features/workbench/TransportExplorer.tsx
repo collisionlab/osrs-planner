@@ -4,7 +4,7 @@ import tiles from "../../../tiles.json";
 import type { WorldPoint } from "../../domain/contracts";
 import { insetPin, mapLayers, savedStyle, saveStyle, type MapLayer, type MapStyle } from "../../map/layers";
 import { CollisionMap, releaseTiles } from "../../map/insets/collision";
-import { COLLISION_RADIUS } from "../../map/insets/composition";
+import { COLLISION_COLOURS } from "../../map/insets/collisionLayer";
 import { LayerControl, toggleLayer, type MapLayerEntry } from "../../map/insets/LayerControl";
 import type { WorldBox } from "../../map/insets/projection";
 import { TONES } from "../../map/insets/routeStyles";
@@ -66,9 +66,6 @@ function Detail({ detail, meta, onShow }: { detail: TransportDetail; meta?: Tran
           <div className="wb-details">{Object.entries(source.fields).filter(([, value]) => value).map(([name, value]) => <span key={name}><b>{name}</b> {value}</span>)}</div>
         </details>) : "no source row matched"}</dd>
     </dl>
-    <p className="wb-legend" aria-label="Collision legend" title="The pathfinder's collision around this transport's ends, when zoomed in">
-      Collision: <span className="wb-key boundary" /> edge of walkable ground <span className="wb-key wall" /> wall or door <span className="wb-key edge" /> closed by an object
-    </p>
   </section>;
 }
 
@@ -145,16 +142,9 @@ export function TransportExplorer() {
     return () => abort.abort();
   }, [state.selected]);
 
-  // Collision around the selected transport's tiles.
+  // Collision: everywhere in view with its layer on, else around the selected transport's tiles.
   const collision = useMemo(() => new CollisionMap(releaseTiles(tiles.base, tiles.version)), []);
-  const [collisionFor, setCollisionFor] = useState<string>();
-  useEffect(() => {
-    if (!detail) return;
-    const abort = new AbortController();
-    const ends = [detail.origin, detail.destination].filter((p): p is WorldPoint => !!p);
-    void collision.load(ends, COLLISION_RADIUS + 1, abort.signal).then(() => { if (!abort.signal.aborted) setCollisionFor(detail.id); });
-    return () => abort.abort();
-  }, [detail, collision]);
+  const collisionOn = shownLayers.includes("collision");
 
   const selected = detail?.id === state.selected ? detail : undefined;
   // Drawn against the boxes the view was asked for, so features never outrun the data behind them.
@@ -162,11 +152,11 @@ export function TransportExplorer() {
   // A network picked by its hub or a spoke: its stations are listed.
   const [network, setNetwork] = useState<TransportNetwork>();
   const transportOverlay = useMemo(() => {
-    const drawn = viewOverlay(view, selected, collisionFor === selected?.id ? collision : undefined, viewBoxes, network?.id, state.hubs !== false);
+    const drawn = viewOverlay(view, selected, collision, viewBoxes, network?.id, state.hubs !== false);
     // Banks under the transports, drawn on their tiles like them, and only as close.
     const banked = banksOn && banks && boxes && !zoomedOut ? bankFeatures(banks.banks, boxes) : [];
-    return { ...drawn, features: [...banked, ...drawn.features], selected: drawn.selected ?? (bank && bankKey(bank.id)) };
-  }, [view, selected, collisionFor, collision, viewBoxes, network, banksOn, banks, boxes, zoomedOut, bank, state.hubs]);
+    return { ...drawn, features: [...banked, ...drawn.features], selected: drawn.selected ?? (bank && bankKey(bank.id)), collisionEverywhere: collisionOn };
+  }, [view, selected, collision, viewBoxes, network, banksOn, banks, boxes, zoomedOut, bank, state.hubs, collisionOn]);
 
   // A selection from the list, a search or a link brings it into view; one picked on the map doesn't.
   // A link that names a place opens there, not on its transport.
@@ -276,6 +266,12 @@ export function TransportExplorer() {
     { id: "banks", label: "Banks", swatch: TONES.bank, on: banksOn,
       status: bankError || (zoomedOut ? "Zoom in to see banks" : !banks ? "Loading…" : undefined),
       title: "The plugin's bank tiles: filled where anyone can bank, outlined where it needs a quest, skill or unlock first" },
+    { id: "collision", label: "Collision", swatch: COLLISION_COLOURS.blocked.replace(/,[.\d]+\)$/, ")"), on: collisionOn,
+      status: zoomedOut ? "Zoom in to see collision" : undefined,
+      title: "The pathfinder's collision everywhere in view; off, it is still drawn around the selected transport",
+      options: <p className="wb-legend" aria-label="Collision legend">
+        <span className="wb-key blocked" /> blocked <span className="wb-key wall" /> wall or door <span className="wb-key object" /> closed by an object
+      </p> },
     ...routing.layers,
   ];
   const toggle = (id: string, on: boolean) => {

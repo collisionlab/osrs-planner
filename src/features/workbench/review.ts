@@ -20,9 +20,11 @@ export function unitOverlay(unit: ReviewUnit, collision?: CollisionMap, selected
   const draw = (change: RowChange, version: "base" | "head", tone: "added" | "removed" | "changed") => {
     const { origin, destination } = change[version]!;
     const key = changeKey(unit, change);
-    if (origin && destination) features.push({ kind: "edge", key, from: origin, to: destination, tone, dashed: tone === "removed" });
-    if (origin) features.push({ kind: "point", key, point: origin, tone, role: "origin" });
-    if (destination) features.push({ kind: "point", key, point: destination, tone, role: "destination" });
+    const where = (point?: WorldPoint | null) => point ? `${point.x} ${point.y} ${point.plane}` : "anywhere";
+    const title = `${tone === "removed" ? "Removed" : tone === "added" ? "Added" : "Edited"} row\n${where(origin)} → ${where(destination)}`;
+    if (origin && destination) features.push({ kind: "edge", key, from: origin, to: destination, tone, dashed: tone === "removed", title });
+    if (origin) features.push({ kind: "point", key, point: origin, tone, role: "origin", title });
+    if (destination) features.push({ kind: "point", key, point: destination, tone, role: "destination", title });
   };
   for (const change of unit.changes) {
     if (change.kind === "changed" && (!samePoint(change.base!.origin, change.head!.origin)

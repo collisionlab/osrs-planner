@@ -9,7 +9,7 @@ import { RoutingData, squarePath, type RoutingComponent, type RoutingCrossing, t
 /** The routing layers, as the map's layer control and the page's URL name them. */
 export const ROUTING_LAYERS = ["components", "separators", "unreachable"] as const;
 const LOOKS: Record<typeof ROUTING_LAYERS[number], { label: string; swatch: string; title: string }> = {
-  components: { label: "Routing components", swatch: "#8ce0f4", title: "The production search graph's components, outlined; a clicked tile's component is filled" },
+  components: { label: "Routing components", swatch: "#8ce0f4", title: "The production search graph's components, each in its own colour; click a tile for its component" },
   separators: { label: "Synthetic separators", swatch: "#e8b765", title: "The pathfinder's internal crossings between components, not transports" },
   unreachable: { label: "Structurally unreachable", swatch: "rgb(214,70,170)", title: "Walkable terrain no route can reach; seas are never shown" },
 };

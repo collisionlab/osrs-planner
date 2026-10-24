@@ -29,5 +29,6 @@ const inBox = (point: WorldPoint, box: WorldBox) => point.plane === box.plane &&
 /** Each bank tile in view, filled where anyone can bank, outlined where it needs something first. */
 export function bankFeatures(banks: Bank[], inView: WorldBox[]): MapFeature[] {
   return banks.flatMap(bank => bank.tiles.filter(tile => inView.some(box => inBox(tile, box))).map(point =>
-    ({ kind: "point", key: bankKey(bank.id), point, tone: "bank", role: bank.needs.length ? "origin" : "destination" }) as MapFeature));
+    ({ kind: "point", key: bankKey(bank.id), point, tone: "bank", role: bank.needs.length ? "origin" : "destination",
+      title: `${bank.name || "Bank"} bank${bank.needs.length ? `\nneeds ${bank.needs.map(need => need.name).join(", ")}` : ""}` }) as MapFeature));
 }
