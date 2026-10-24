@@ -1,4 +1,6 @@
 import type { WorldPoint } from "../../../domain/contracts";
+import { readLayers } from "../../../map/insets/LayerControl";
+import { ROUTING_LAYERS } from "../RoutingPanel";
 
 /** What the investigation page's URL holds, so a link opens the same area, region, item and view. */
 export interface InvestigationState {
@@ -18,6 +20,8 @@ export interface InvestigationState {
   release?: string;
   /** The area browser's filters. */
   q?: string;
+  /** The routing layers switched on. */
+  layers?: string[];
 }
 
 const POINT = /^(\d{1,5}),(\d{1,5}),([0-3])$/;
@@ -39,6 +43,8 @@ export function readState(search: string): InvestigationState {
   if (release && /^[0-9a-f]{6,24}$/.test(release)) state.release = release;
   const q = params.get("q");
   if (q) state.q = q;
+  const layers = readLayers(params, ROUTING_LAYERS);
+  if (layers?.length) state.layers = layers;
   return state;
 }
 
@@ -53,6 +59,7 @@ export function writeState(state: InvestigationState): string {
   if (state.beside) params.set("place", "entrance");
   if (state.release) params.set("v", state.release);
   if (state.q) params.set("q", state.q);
+  if (state.layers?.length) params.set("layers", state.layers.join(","));
   const text = params.toString().replace(/%2C/g, ",").replace(/%3A/g, ":");
   return text ? `?${text}` : "";
 }

@@ -122,6 +122,29 @@ export function collisionStyle(feature: FeatureLike): Style {
   return collisionLooks[feature.get("kind") as string];
 }
 
+const countLooks = new Map<string, Style>();
+/** `1234` → `1.2k`. */
+const shortCount = (count: number) => count < 1000 ? String(count) : `${(count / 1000).toFixed(count < 10_000 ? 1 : 0)}k`;
+/**
+ * Items counted where they are: a dark badge ringed in its tone, a little larger for more, with the
+ * count in it. Only the badge covers the map, not the area counted.
+ */
+function countStyle(feature: FeatureLike, selected: boolean): Style {
+  const count = feature.get("count") as number, tone = feature.get("tone") as FeatureTone, key = `${tone}/${count}/${selected}`;
+  let style = countLooks.get(key);
+  if (!style) {
+    const label = shortCount(count), radius = Math.max(8 + 2.5 * Math.log10(Math.max(count, 1)), label.length * 3.6 + 4);
+    style = new Style({
+      image: new Circle({ radius, fill: new Fill({ color: "rgba(20,25,20,.82)" }),
+        stroke: new Stroke({ color: selected ? "#ffffff" : TONES[tone], width: selected ? 2.5 : 1.5 }) }),
+      text: new Text({ text: label, font: "bold 10px ui-monospace, monospace", fill: new Fill({ color: "#f7f1dc" }) }),
+    });
+    if (countLooks.size > 2000) countLooks.clear();
+    countLooks.set(key, style);
+  }
+  return style;
+}
+
 /** A counted area: its rectangle tinted, with the count over it. */
 function regionStyle(feature: FeatureLike, selected: boolean): Style {
   const color = TONES[feature.get("tone") as FeatureTone];
@@ -154,6 +177,7 @@ export function featureStyle(feature: FeatureLike, selected: string | undefined,
   const kind = feature.get("kind");
   if (kind === "edge") return edgeStyle(feature, isSelected, resolution);
   if (kind === "point") return markStyle(feature, resolution, isSelected);
+  if (kind === "count") return countStyle(feature, isSelected);
   return regionStyle(feature, isSelected);
 }
 

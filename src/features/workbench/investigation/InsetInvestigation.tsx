@@ -6,10 +6,11 @@ import { insetPin, mapLayers, savedStyle, saveStyle, type MapLayer, type MapStyl
 import { loadInsetAssets, type InsetAssets } from "../../../map/insets/assets";
 import { CollisionMap, releaseTiles } from "../../../map/insets/collision";
 import { COLLISION_RADIUS } from "../../../map/insets/composition";
+import { LayerControl, toggleLayer } from "../../../map/insets/LayerControl";
 import { catalogueClassifier } from "../../../map/insets/preview";
 import type { WorldBox } from "../../../map/insets/projection";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "../provenance";
-import { useRoutingLayers } from "../RoutingPanel";
+import { ROUTING_LAYERS, useRoutingLayers } from "../RoutingPanel";
 import { loadMeta, loadView, type TransportMeta, type TransportView } from "../transports";
 import "../workbench.css";
 import { AreaBrowser } from "./AreaBrowser";
@@ -159,7 +160,11 @@ export function InsetInvestigation() {
   }, [looked, collision]);
   const collisionReady = collisionFor === JSON.stringify(looked);
 
-  const routing = useRoutingLayers(inspected, setFocusBox);
+  const routing = useRoutingLayers(inspected, setFocusBox, state.layers ?? []);
+  const toggle = (id: string, on: boolean) => {
+    const next = toggleLayer(state.layers ?? [], id, on, ROUTING_LAYERS);
+    update({ layers: next.length ? next : undefined });
+  };
   const baseOverlay = useMemo(() => data && investigationOverlay({ data, area, plane, mode: state.mode, region: state.region, item: state.item,
     beside: !!state.beside, topology, candidate, transports, draft, inspected, classify,
     collision: collisionReady ? collision : undefined }), [data, area, plane, state.mode, state.region, state.item, state.beside, topology, checks, candidate, transports, draft, inspected, classify, collisionReady, collision]);
@@ -234,6 +239,7 @@ export function InsetInvestigation() {
         {insetPin && styles.length > 1 && <div className="map-style-toggle wb-style" role="group" aria-label="Map style">
           {styles.map(([id, { label }]) => <button key={id} type="button" aria-pressed={style === id} onClick={() => { setStyle(id); saveStyle(id); }}>{label}</button>)}
         </div>}
+        {insetPin && <LayerControl layers={routing.layers} onToggle={toggle} />}
         <div className="wb-tilebar" role="status" aria-label="Inspected tile">
           {picking ? `Click the map to choose the ${picking === "seed" ? "seed tile" : picking === "anchor" ? "anchor point" : picking}.`
             : inspected ? <><span className="wb-mono">{inspected.x} {inspected.y} {inspected.plane}</span> · {classify(inspected) === "main-world" ? "main map" : <span className="wb-mono">{classify(inspected)}</span>}</>

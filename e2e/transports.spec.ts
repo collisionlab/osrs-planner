@@ -123,18 +123,36 @@ test("lists every transport arriving at or leaving a clicked tile, teleports inc
   await expect(list.locator(".wb-list-heading")).toContainText(/in view/);
 });
 
-test("filters by type, and keeps the filter in the URL", async ({ page }) => {
+test("filters by type from the map's layer control, and keeps the filter in the URL", async ({ page }) => {
   await mockCatalogue(page);
   await open(page, "?at=3210,3214,0&z=9");
   const list = page.getByRole("navigation", { name: "Transports" });
-  await list.getByText(/^Types/).click();
-  await list.getByRole("button", { name: "None" }).click();
+  const layers = page.getByRole("group", { name: "Map layers" });
+  await layers.getByText(/^Types/).click();
+  await layers.getByRole("button", { name: "None" }).click();
   await expect(list.locator(".wb-list-heading")).toHaveText("0 in view");
   await expect.poll(async () => Object.values(await featureCount(page)).reduce((a, b) => a + b, 0)).toBe(0);
-  await list.getByRole("checkbox", { name: /Teleportation spell home/ }).check();
+  await layers.getByRole("checkbox", { name: /Teleportation spell home/ }).check();
   await expect(page).toHaveURL(/types=TELEPORTATION_SPELL_HOME/);
   await expect(list.locator("ol button").first()).toContainText("Lumbridge Home Teleport");
   await expect(list.locator("ol button", { hasText: "Staircase" })).toHaveCount(0);
+});
+
+test("switches the transports off and the routing layers on, and keeps them in the URL", async ({ page }) => {
+  await mockCatalogue(page);
+  await open(page, "?at=3210,3214,0&z=9");
+  const list = page.getByRole("navigation", { name: "Transports" });
+  const layers = page.getByRole("group", { name: "Map layers" });
+  await expect(layers.getByLabel("Transports", { exact: true })).toBeChecked();
+  await expect(list.locator(".wb-list-heading")).toContainText(/in view/);
+  await layers.getByLabel("Transports", { exact: true }).uncheck();
+  await expect(list.locator(".wb-list-heading")).toHaveText("The transports layer is off.");
+  await expect.poll(async () => Object.values(await featureCount(page)).reduce((a, b) => a + b, 0)).toBe(0);
+  await layers.getByLabel("Synthetic separators", { exact: true }).check();
+  await expect(page).toHaveURL(/layers=separators(&|$)/);
+  await page.reload();
+  await expect(page.getByRole("group", { name: "Map layers" }).getByLabel("Transports", { exact: true })).not.toBeChecked();
+  await expect(page.getByRole("group", { name: "Map layers" }).getByLabel("Synthetic separators", { exact: true })).toBeChecked();
 });
 
 test("opens shared links to a transport or a place, and finds transports by object id", async ({ page }) => {
@@ -197,8 +215,8 @@ test("stays bounded over a dense network, and counts instead of drawing when zoo
 
   await open(page, "?at=3000,3300,0&z=5");
   await expect(list.locator(".wb-list-heading")).toContainText("zoom in");
-  await expect.poll(async () => (await featureCount(page)).region).toBeGreaterThan(0);
+  await expect.poll(async () => (await featureCount(page)).count).toBeGreaterThan(0);
   const far = await featureCount(page);
-  expect(far.edge + far.point).toBe(0);
-  expect(far.region).toBeLessThanOrEqual(4 * 24);
+  expect(far.edge + far.point + far.region).toBe(0);
+  expect(far.count).toBeLessThanOrEqual(4 * 24);
 });

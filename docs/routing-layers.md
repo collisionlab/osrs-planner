@@ -1,10 +1,16 @@
 # Routing partitions in the workbench
 
-The Routing partitions panel, in Inset Investigation and the Transport Explorer, adds three independent
-controls to the shared OpenLayers map:
-Routing components, Synthetic separators and Structurally unreachable. They work with any available
-base style, including Blueprint. Each production component gets a faint tint (blocked tiles inside it
-show as gaps), and borders between two components are thin crisp lines; the edge of the search graph
+Inset Investigation and the Transport Explorer offer three independent routing layers in the map's
+layer control (top right, beside the other overlays the page has): Routing components, Synthetic
+separators and Structurally unreachable. The layers switched on are kept in the page's URL
+(`layers=components,separators`). What a click inspects — the tile's status, its component, a
+crossing — shows in the page's panel while a layer is on. They work with any available
+base style, including Blueprint. Each production component gets a bold colour of its own, blended in `color` mode so the terrain keeps
+its lightness and detail under it (blocked tiles inside show as gaps). The colours come from the
+release's component tile pyramid (`components/`, the styles' layout; osrs-tiles chooses them so no
+two components that touch or cross share one), drawn at the pyramid zoom matching the view, a coarser
+cached tile standing in while one loads, so the whole world's partition shows at every zoom without
+fetching a square. Borders between two components are thin crisp lines; the edge of the search graph
 itself isn't outlined, since the base map and collision already show it. Selecting a retained search
 tile highlights its production component with a solid outline and shows its tile count, bounds and
 crossing adjacency. Focus component fits its actual location in the current inset placement. Gold
@@ -31,7 +37,7 @@ in screen space each frame. Both sit under the collision/features, clipped to ea
 with its existing placement. It clears obscured overlays before drawing upper contexts, so a ground
 plane mask cannot leak through a pasted upper floor. Tile arrays are fetched once per source square,
 not per placement, with 16 concurrent requests, a 256-square LRU and bounded bitmap caching.
-Component boundaries and masks display at resolution <=16 map units/pixel (zoom >=7); separator
+Component colours display at every zoom; boundaries and masks at resolution <=16 map units/pixel (zoom >=7); separator
 edges at <=8 (zoom >=8), and endpoint boxes only for the selected crossing. Zooming out
 hides these details rather than drawing world-sized paths or millions of tile features. Toggling a
 layer updates the existing composition without rebuilding the map.
@@ -39,7 +45,7 @@ layer updates the existing composition without rebuilding the map.
 Tests include original production bytes for Taverley Dungeon and a surface diagonal separator,
 plus small fixtures testing sparse IDs, row ordering, square seams, filtering, invalid binary data
 and version mismatches. The production snapshot in `e2e/fixtures/routing` retains original file hashes
-and manifest. It intentionally contains only the visible test squares and global component metadata;
+and manifest. It intentionally contains only the visible test squares, the component tiles over them, and global component metadata;
 it is a fixture, not a publishable artifact. `dungeon.json` records sample tile coordinates and the
 source revision. Taverley itself has no synthetic cut in this pinned production revision.
 

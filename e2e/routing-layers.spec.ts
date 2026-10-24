@@ -157,6 +157,28 @@ test("never draws a sea, and says it is an open expanse", async ({ page }) => {
   await expect.poll(() => alpha(page, sea)).toBe(0);
 });
 
+test("colours components from the release's tiles when zoomed out, without fetching a square", async ({ page }) => {
+  await setup(page);
+  const requests: string[] = [];
+  page.on("request", request => { if (request.url().includes("routing-layers")) requests.push(new URL(request.url()).pathname); });
+  await page.goto(`/insets?area=area:taverley-dungeon&region=${fixture.region.id}&at=2893,9792,0&z=6`);
+  await expect.poll(() => insetMap(page)).toBe(true);
+  await page.getByLabel("Routing components", { exact: true }).check();
+  const retained = point(fixture.samples.component761);
+  const components = JSON.parse(readFileSync(path.join(root, "components.json"), "utf8")) as { id: number; colour: number }[];
+  const palette = (JSON.parse(readFileSync(path.join(root, "manifest.json"), "utf8")) as { componentPalette: string[] }).componentPalette;
+  const hex = palette[components.find(c => c.id === 761)!.colour];
+  const expected = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16));
+  // The tint canvas holds the palette colour itself; the page blends it into the terrain.
+  await expect.poll(async () => (await page.evaluate(([x, y]) => {
+    const canvas = document.querySelector<HTMLCanvasElement>("canvas[data-routing-tints]")!;
+    const ratio = canvas.width / parseFloat(canvas.style.width);
+    return [...canvas.getContext("2d")!.getImageData(Math.floor(x * ratio), Math.floor(y * ratio), 1, 1).data];
+  }, await pixel(page, retained))).slice(0, 3)).toEqual(expected);
+  expect(requests.some(request => request.endsWith(".png"))).toBe(true);
+  expect(requests.filter(request => request.endsWith(".bin"))).toEqual([]);
+});
+
 for (const field of ["collisionContentSha256", "transportSha256", "separatorSha256"]) {
   test(`rejects mismatched ${field} before requesting spatial data`, async ({ page }) => {
     await setup(page);

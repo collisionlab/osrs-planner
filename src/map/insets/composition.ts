@@ -258,6 +258,9 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
       } else if (item.kind === "point") {
         feature = new Feature(new Polygon([tileRing(item.point, item.role === "origin" ? 2 : 0)]));
         feature.set("role", item.role);
+      } else if (item.kind === "count") {
+        feature = new Feature(new Point(projected(item.point)));
+        feature.set("count", item.count);
       } else {
         const [x1, y1, x2, y2] = item.bounds;
         const [a, b] = [projected({ x: x1, y: y1, plane: item.plane }), projected({ x: x2, y: y2, plane: item.plane })];
@@ -613,7 +616,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     showTile(point: WorldPoint) { view.animate({ center: projected(point), resolution: Math.min(view.getResolution() ?? 2, 2), duration: 250 }); },
     /** How many overlay features of each kind are drawn (for end-to-end tests of bounded views). */
     featureCount() {
-      const counts: Record<string, number> = { edge: 0, point: 0, region: 0 };
+      const counts: Record<string, number> = { edge: 0, point: 0, count: 0, region: 0 };
       featureSource.forEachFeature(feature => { counts[feature.get("kind")]++; });
       counts.mask = maskSource.getFeatures().filter(feature => feature.get("part") === "fill").length;
       return counts;
