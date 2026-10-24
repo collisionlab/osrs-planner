@@ -50,7 +50,13 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
   /** Whether a rebuilt layout keeps the view where it is, rather than fitting what it shows. */
   keepView?: boolean;
   /** Regions to bring into view, by their real geometry; a new object fits them again. */
-  focusRegions?: { ids: string[] } }) {
+  focusRegions?: { ids: string[] };
+  /**
+   * Whether the map takes the focus back after a click anywhere else on the page that isn't for
+   * typing (a layer checkbox, a list button), so its keys keep working: for tool pages whose map is
+   * what everything else is about.
+   */
+  keepFocus?: boolean }) {
   const target = useRef<HTMLDivElement>(null);
   // After an endpoint drag the map is rebuilt for the new route; keep the view where the user left
   // it until the route for the new endpoints is shown, instead of fitting the whole route again.
@@ -166,6 +172,17 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
   useEffect(() => { composition.current?.select(props.selectedSegment); }, [props.selectedSegment]);
   useEffect(() => { composition.current?.preview(props.previewRoute); }, [props.previewRoute]);
   useEffect(() => { if (props.focusTile) composition.current?.showTile(props.focusTile.point); }, [props.focusTile]);
+  useEffect(() => {
+    if (!props.keepFocus) return;
+    // Pointer clicks only: a keyboard user moving through the page keeps their place.
+    const refocus = (event: PointerEvent) => {
+      const element = event.target instanceof Element ? event.target : null;
+      if (!element || target.current?.contains(element) || typing(element)) return;
+      requestAnimationFrame(() => { if (!typing(document.activeElement)) target.current?.focus({ preventScroll: true }); });
+    };
+    addEventListener("pointerup", refocus);
+    return () => removeEventListener("pointerup", refocus);
+  }, [props.keepFocus]);
   return <>
     <div ref={target} className="route-map inset-map" tabIndex={0} aria-label="Route map with movable insets" />
     <div className="inset-actions">
@@ -179,4 +196,11 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
       {error && <button type="button" onClick={props.onFallback}>Use standard map</button>}
     </div>}
   </>;
+}
+
+/** Whether an element takes typing, so taking the focus from it would lose what is typed. */
+function typing(element: Element | null) {
+  if (!element) return false;
+  if (element instanceof HTMLInputElement) return !["checkbox", "radio", "button", "submit", "reset", "range", "color", "file"].includes(element.type);
+  return element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement || (element as HTMLElement).isContentEditable;
 }
