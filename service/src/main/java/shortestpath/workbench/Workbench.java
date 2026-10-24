@@ -57,6 +57,7 @@ public final class Workbench {
             meta.put("types", loaded.types());
             ctx.header("Cache-Control", cache).json(meta);
         });
+        app.get(transports + "/networks", ctx -> ctx.header("Cache-Control", cache).json(catalog.get().networks()));
         app.get(transports + "/search", ctx ->
             ctx.header("Cache-Control", cache).json(catalog.get().search(Objects.toString(ctx.queryParam("q"), ""), types(ctx))));
         // Transports with an end in the view: ?view=plane,x1,y1,x2,y2;... (a box per area drawn).

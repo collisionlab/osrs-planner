@@ -173,6 +173,7 @@ class TransportCatalogTest {
         Set<String> types = bundled.entries().stream().filter(entry -> entry.network != null).map(entry -> entry.transport.getType().name())
             .collect(Collectors.toSet());
         assertEquals(TransportCatalog.NETWORK_TYPES, types);
+        assertEquals(bundled.networks().stream().map(network -> network.type).collect(Collectors.toSet()), types);
         // A fairy ring is one station, however many tiles it leaves from; every ring is one network.
         assertEquals(1, bundled.entries().stream().filter(entry -> entry.network != null && entry.network.startsWith("FAIRY_RING:"))
             .map(entry -> entry.network).distinct().count());

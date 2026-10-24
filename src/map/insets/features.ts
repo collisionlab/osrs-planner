@@ -28,8 +28,11 @@ export type MapFeature =
    * A `spoke` joins a station to its network's hub: a light line without an arrowhead.
    */
   | { kind: "edge"; key: string; from: WorldPoint; to: WorldPoint; tone: FeatureTone; dashed?: boolean; hop?: boolean; spoke?: boolean; title?: string }
-  /** A network's hub, where its stations' spokes meet: a labelled node, not a tile. */
-  | { kind: "hub"; key: string; point: WorldPoint; tone: FeatureTone; label: string; title?: string }
+  /**
+   * A network's hub, where its stations' spokes meet: a labelled node, not a tile. A `station` node
+   * marks one of its stations when zoomed out too far to see the station's tiles.
+   */
+  | { kind: "hub"; key: string; point: WorldPoint; tone: FeatureTone; label: string; title?: string; station?: boolean }
   /** A tile: an origin is outlined, a destination filled. */
   | { kind: "point"; key: string; point: WorldPoint; tone: FeatureTone; role: "origin" | "destination"; title?: string }
   /** A rectangle of tiles (inclusive), labelled; `key` selects it like any feature. */

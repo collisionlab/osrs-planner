@@ -567,6 +567,11 @@ public final class TransportCatalog {
     }
 
     /** Every transport type, with how many effective transports it has. */
+    /** Every network, for drawing them at any zoom. */
+    public List<Network> networks() {
+        return List.copyOf(networks.values());
+    }
+
     public List<TypeCount> types() {
         Map<String, Integer> counts = new TreeMap<>();
         Map<String, Boolean> teleport = new HashMap<>();

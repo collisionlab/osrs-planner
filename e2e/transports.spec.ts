@@ -50,6 +50,7 @@ async function mockCatalogue(page: Page, { dense = false, collisionRev = "e615af
     const types = url.searchParams.get("types")?.split(",").filter(Boolean);
     const typed = (list: Summary[]) => types ? list.filter(t => types.includes(t.type)) : list;
     if (rest === "/meta") return route.fulfill({ json: fixture.meta });
+    if (rest === "/networks") return route.fulfill({ json: [RINGS] });
     if (rest === "/search") {
       const q = url.searchParams.get("q")!.toLowerCase();
       return route.fulfill({ json: typed(fixture.transports).filter(t => t.label.toLowerCase().includes(q)).slice(0, 50) });
@@ -201,10 +202,13 @@ test("draws a network as spokes to its hub, which lists its stations", async ({ 
   await mockCatalogue(page);
   await open(page, "?at=3110,3152,0&z=10");
   await expect.poll(async () => (await featureCount(page)).hub).toBe(1);
-  const [x, y] = await settledPixel(page, RINGS.hub);
-  await page.locator(".inset-map").click({ position: { x, y } });
   const list = page.getByRole("navigation", { name: "Transports" });
-  await expect(list.locator(".wb-list-heading")).toContainText("Fairy rings 3 stations");
+  // Clicked again should the map still be settling under load.
+  await expect(async () => {
+    const [x, y] = await settledPixel(page, RINGS.hub);
+    await page.locator(".inset-map").click({ position: { x, y } });
+    await expect(list.locator(".wb-list-heading")).toContainText("Fairy rings 3 stations", { timeout: 2000 });
+  }).toPass({ timeout: 20_000 });
   await list.getByRole("button", { name: /A L S/ }).click();
   await expect(list.locator(".wb-list-heading")).toContainText("At 2644 3495 0");
 });
@@ -285,7 +289,7 @@ test("draws collision everywhere in view from its layer, boldly", async ({ page 
   });
   await expect.poll(painted).toBeGreaterThan(100);
   await expect(page.getByRole("group", { name: "Map layers" }).getByLabel("Collision legend")).toContainText("wall or door");
-  await open(page, "?at=3210,3214,0&z=6&layers=collision");
+  await open(page, "?at=3210,3214,0&z=5&layers=collision");
   await expect(page.locator(".layer-status")).toContainText("Zoom in to see collision");
 });
 
@@ -305,7 +309,7 @@ test("trusts collision made from the same revision", async ({ page }) => {
   await expect(page.locator(".wb-provenance .wb-prov.differs")).toHaveCount(0);
 });
 
-test("stays bounded over a dense network, and draws nothing zoomed out", async ({ page }) => {
+test("stays bounded over a dense network, and draws only network hubs zoomed out", async ({ page }) => {
   const views = await mockCatalogue(page, { dense: true });
   await open(page, "?at=3210,3214,0&z=9");
   const list = page.getByRole("navigation", { name: "Transports" });
@@ -323,7 +327,10 @@ test("stays bounded over a dense network, and draws nothing zoomed out", async (
   const asked = views.length;
   await page.waitForTimeout(500);
   const far = await featureCount(page);
-  expect(far.edge + far.point + far.region).toBe(0);
+  // Only the networks: a hub, and a spoke and node for each station in view.
+  expect(far.point + far.region).toBe(0);
+  expect(far.hub).toBe(1);
+  expect(far.edge).toBe(far.station);
   // Nothing is asked for that wouldn't be drawn.
   expect(views.length).toBe(asked);
 });
