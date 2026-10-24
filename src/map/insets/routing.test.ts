@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { decodeRouting, localTile, RoutingData, squarePath, validateRoutingManifest, visibleNegative,
+import { componentTilePath, decodeRouting, localTile, RoutingData, squarePath, validateRoutingManifest, visibleNegative,
   type RoutingManifest, type RoutingPin } from "./routing";
 
 /** One RTL1 square: production ids 17 and 934, one crossing reference (1400). */
@@ -31,10 +31,10 @@ const hash = "a".repeat(64);
 const pin: RoutingPin = { version: "a".repeat(24), tileVersion: "2746-abc", pluginRevision: "f".repeat(40),
   collisionContentSha256: hash, transportSha256: hash, separatorSha256: hash };
 const manifest = (): RoutingManifest => ({
-  ...pin, schemaVersion: 2, plugin: { repository: "Skretzo/shortest-path", revision: pin.pluginRevision },
+  ...pin, schemaVersion: 3, plugin: { repository: "Skretzo/shortest-path", revision: pin.pluginRevision },
   componentCount: 2, effectiveCrossingCount: 1, searchTileCount: 3, structurallyUnreachableTileCount: 3,
-  expanses: { minimumTiles: 100_000, tileCount: 250_000 },
-  files: { "components.json": hash, "p0/50/50.bin": hash },
+  expanses: { minimumTiles: 100_000, tileCount: 250_000 }, componentPalette: ["f2dc1e", "4c55e8"],
+  files: { "components.json": hash, "p0/50/50.bin": hash, "components/8/35/31.png": hash, "components/p1/3/1/0.png": hash },
 });
 
 afterEach(() => vi.unstubAllGlobals());
@@ -80,7 +80,9 @@ describe("production routing sidecar", () => {
   });
 
   it("rejects another schema, plugin revision or an untrusted path", () => {
-    expect(() => validateRoutingManifest({ ...manifest(), schemaVersion: 1 as 2 }, pin, pin.tileVersion)).toThrow(/do not match/);
+    expect(() => validateRoutingManifest(manifest(), pin, pin.tileVersion)).not.toThrow();
+    expect(() => validateRoutingManifest({ ...manifest(), schemaVersion: 2 as 3 }, pin, pin.tileVersion)).toThrow(/do not match/);
+    expect(() => validateRoutingManifest({ ...manifest(), files: { "components.json": hash, "components/9/1/1.png": hash } }, pin, pin.tileVersion)).toThrow(/file index/);
     expect(() => validateRoutingManifest({ ...manifest(), plugin: { repository: "Skretzo/shortest-path", revision: "other" } }, pin, pin.tileVersion)).toThrow();
     expect(() => validateRoutingManifest({ ...manifest(), files: { "components.json": hash, "../secret": hash } }, pin, pin.tileVersion)).toThrow();
   });
@@ -104,5 +106,27 @@ describe("production routing sidecar", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(data.inspect({ x: 3200, y: 3200, plane: 0 }).status).toContain("503");
     expect(data.inspect({ x: 3200, y: 3200, plane: 0 }).status).not.toContain("unreachable");
+  });
+
+  it("names component tiles in the styles' layout, and asks for each listed one once, checked", async () => {
+    expect(componentTilePath(0, 8, 35, 31)).toBe("components/8/35/31.png");
+    expect(componentTilePath(2, 3, 1, 0)).toBe("components/p2/3/1/0.png");
+    const fetch = vi.fn(async () => new Response(new Uint8Array([1, 2, 3])));
+    vi.stubGlobal("fetch", fetch);
+    const data = new RoutingData("https://example.test", manifest());
+    let told = 0;
+    const done = new Promise<void>(resolve => data.subscribe(() => { told++; resolve(); }));
+    expect(data.tile("components/8/35/31.png")).toBeUndefined();
+    expect(data.tile("components/8/35/31.png")).toBeUndefined();
+    // Not in the release, or only peeked at: never fetched.
+    expect(data.tile("components/8/36/31.png")).toBeUndefined();
+    expect(data.tile("components/p1/3/1/0.png", true)).toBeUndefined();
+    await done;
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(told).toBe(1);
+    // These bytes don't match the manifest: an error, never a picture.
+    expect(data.error).toContain("checksum mismatch");
+    expect(data.tile("components/8/35/31.png")).toBeUndefined();
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

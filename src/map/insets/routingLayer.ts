@@ -4,7 +4,8 @@ import type { Coordinate } from "ol/coordinate";
 import type { WorldPoint } from "../../domain/contracts";
 import { contains, type Region } from "./geometry";
 import { mapToWorld, visibleBoxes, worldToMap } from "./projection";
-import { squarePath, visibleNegative, type RoutingCrossing, type RoutingOverlay, type RoutingSquare } from "./routing";
+import { COMPONENT_ZOOMS, componentTilePath, squarePath, TILE_ORIGIN, visibleNegative, type RoutingCrossing, type RoutingOverlay,
+  type RoutingSquare } from "./routing";
 
 // Magenta: no terrain style uses it, so the mask never reads as dirt or lava.
 const UNREACHABLE = "rgba(214,70,170,.5)";
@@ -13,11 +14,10 @@ const SELECTED_LINE = "#8ce0f4";
 const BORDER = "rgba(226,236,240,.85)";
 const SEPARATOR = "#e8b765";
 const SEPARATOR_SELECTED = "#fff3a6";
-/** Faint tints, none red (the unreachable mask) or gold (separators), so neighbouring components read apart. */
-const TINTS = ["rgba(90,169,230,.22)", "rgba(123,211,137,.22)", "rgba(179,157,219,.24)", "rgba(77,208,196,.22)", "rgba(159,168,218,.24)", "rgba(165,214,167,.22)"];
-const componentTint = (id: number) => TINTS[(Math.imul(id, 2654435761) >>> 0) % TINTS.length];
 
-/** Map units per pixel above which nothing is drawn, and above which separators aren't. */
+/** The view resolution at which the component pyramid's zoom 0 would be drawn at its own size. */
+const PYRAMID_ZERO_RESOLUTION = 2 ** 11;
+/** Map units per pixel above which nothing but the component colours is drawn, and above which separators aren't. */
 const MAX_RESOLUTION = 16;
 const SEPARATOR_RESOLUTION = 8;
 const CACHED_BITMAPS = 64;
@@ -31,10 +31,19 @@ export interface RoutingPlacement { shape: Pick<Region, "plane" | "bounds" | "ma
 export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
   let overlay: RoutingOverlay | undefined;
   let unsubscribe: (() => void) | undefined;
+  // Component colours on their own canvas, from the release's component tiles, blended in `color`
+  // mode: the terrain keeps its lightness and detail and takes the component's hue, on dark styles as
+  // on light. The mask, selection and lines go over them on another canvas, drawn as they are.
+  const element = document.createElement("div");
+  element.style.position = "absolute";
+  element.style.inset = "0";
+  element.style.pointerEvents = "none";
+  const tints = document.createElement("canvas");
+  tints.dataset.routingTints = "true";
+  tints.style.mixBlendMode = "color";
   const canvas = document.createElement("canvas");
   canvas.dataset.routingLayer = "true";
-  canvas.style.position = "absolute";
-  canvas.style.pointerEvents = "none";
+  for (const c of [tints, canvas]) { c.style.position = "absolute"; c.style.left = c.style.top = "0"; element.append(c); }
   const bitmaps = new Map<RoutingSquare, HTMLCanvasElement>();
 
   const pixel = (x: number, y: number, plane: number, offset: Coordinate) => {
@@ -60,11 +69,42 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
       if (options.unreachable && visibleNegative(square, i, options.minimumSize)) fill(UNREACHABLE, x, y);
       if (owner < 0) continue;
       if (selected.has(owner) && (options.components || options.separators)) fill(SELECTED_FILL, x, y);
-      else if (options.components) fill(componentTint(owner), x, y);
     }
     bitmaps.set(square, image);
     while (bitmaps.size > CACHED_BITMAPS) bitmaps.delete(bitmaps.keys().next().value!);
     return image;
+  };
+
+  /**
+   * The component tiles over a placement's visible box, at the pyramid zoom nearest the view's
+   * resolution without being coarser, each scaled to its map squares without smoothing.
+   */
+  const drawTints = (ctx: CanvasRenderingContext2D, box: { x1: number; y1: number; x2: number; y2: number }, plane: number, offset: Coordinate,
+    resolution: number) => {
+    const z = Math.max(COMPONENT_ZOOMS.min, Math.min(COMPONENT_ZOOMS.native, Math.ceil(Math.log2(PYRAMID_ZERO_RESOLUTION / resolution) - 1e-9)));
+    const span = 2 ** (COMPONENT_ZOOMS.native - z);
+    const column = (x: number) => Math.floor(((x >> 6) - TILE_ORIGIN.x) / span), row = (y: number) => Math.floor(((y >> 6) - TILE_ORIGIN.y) / span);
+    for (let c = Math.max(0, column(box.x1)); c <= column(box.x2); c++) {
+      for (let r = Math.max(0, row(box.y1)); r <= row(box.y2); r++) {
+        const x0 = (TILE_ORIGIN.x + c * span) * 64, y0 = (TILE_ORIGIN.y + r * span) * 64, size = span * 64;
+        const a = pixel(x0 - .5, y0 + size - .5, plane, offset), b = pixel(x0 + size - .5, y0 - .5, plane, offset);
+        const path = componentTilePath(plane, z, c, r);
+        if (!overlay!.data.manifest.files[path]) continue;
+        const image = overlay!.data.tile(path);
+        if (image) {
+          ctx.drawImage(image, a[0], a[1], b[0] - a[0], b[1] - a[1]);
+          continue;
+        }
+        // Until it arrives, the part of a coarser tile already here.
+        for (let up = 1; z - up >= COMPONENT_ZOOMS.min; up++) {
+          const k = 2 ** up, parent = overlay!.data.tile(componentTilePath(plane, z - up, Math.floor(c / k), Math.floor(r / k)), true);
+          if (!parent) continue;
+          const part = 256 / k, sx = (c % k) * part, sy = (k - 1 - (r % k)) * part;
+          ctx.drawImage(parent, sx, sy, part, part, a[0], a[1], b[0] - a[0], b[1] - a[1]);
+          break;
+        }
+      }
+    }
   };
 
   /**
@@ -125,27 +165,41 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
 
   const layer = new Layer({ zIndex: 58, render: frame => {
     const size = frame.size, ratio = frame.pixelRatio, resolution = frame.viewState.resolution;
-    canvas.width = size[0] * ratio;
-    canvas.height = size[1] * ratio;
-    canvas.style.width = `${size[0]}px`;
-    canvas.style.height = `${size[1]}px`;
-    const ctx = canvas.getContext("2d")!;
-    ctx.scale(ratio, ratio);
-    ctx.imageSmoothingEnabled = false;
+    const [ctx, tint] = [canvas, tints].map(c => {
+      c.width = size[0] * ratio;
+      c.height = size[1] * ratio;
+      c.style.width = `${size[0]}px`;
+      c.style.height = `${size[1]}px`;
+      const context = c.getContext("2d")!;
+      context.scale(ratio, ratio);
+      context.imageSmoothingEnabled = false;
+      return context;
+    });
     const options = overlay?.options;
-    if (!overlay || !options || resolution > MAX_RESOLUTION || !(options.components || options.separators || options.unreachable)) return canvas;
+    if (!overlay || !options || !(options.components || options.separators || options.unreachable)) return element;
+    // Zoomed out, only the component colours: the squares' details would be millions of tiles.
+    const detailed = resolution <= MAX_RESOLUTION;
+    if (!detailed && !options.components) return element;
     for (const { shape, offset } of contexts()) {
       const box = visibleBoxes(frame.extent!, [{ plane: shape.plane, bounds: shape.bounds, offset }])[0];
       if (!box) continue;
       // Clip to the placement's own terrain, and clear what an earlier placement drew under it.
-      ctx.save();
-      ctx.beginPath();
-      for (const [x, y, w, h] of shape.mask) {
-        const a = pixel(x - .5, y + h - .5, shape.plane, offset), b = pixel(x + w - .5, y - .5, shape.plane, offset);
-        ctx.rect(a[0], a[1], b[0] - a[0], b[1] - a[1]);
+      for (const context of [ctx, tint]) {
+        context.save();
+        context.beginPath();
+        for (const [x, y, w, h] of shape.mask) {
+          const a = pixel(x - .5, y + h - .5, shape.plane, offset), b = pixel(x + w - .5, y - .5, shape.plane, offset);
+          context.rect(a[0], a[1], b[0] - a[0], b[1] - a[1]);
+        }
+        context.clip();
+        context.clearRect(0, 0, size[0], size[1]);
       }
-      ctx.clip();
-      ctx.clearRect(0, 0, size[0], size[1]);
+      if (options.components) drawTints(tint, box, shape.plane, offset, resolution);
+      if (!detailed) {
+        ctx.restore();
+        tint.restore();
+        continue;
+      }
       const edges = new Map<number, RoutingCrossing>(), borders: number[][] = [], outlines: number[][] = [];
       for (let sx = box.x1 >> 6; sx <= box.x2 >> 6; sx++) {
         for (let sy = box.y1 >> 6; sy <= box.y2 >> 6; sy++) {
@@ -173,8 +227,9 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
       outlines.forEach(lines => stroke(ctx, lines, shape.plane, offset));
       if (options.separators && resolution <= SEPARATOR_RESOLUTION) drawSeparators(ctx, edges.values(), offset, resolution);
       ctx.restore();
+      tint.restore();
     }
-    return canvas;
+    return element;
   } });
   map.addLayer(layer);
 

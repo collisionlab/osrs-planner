@@ -3,7 +3,7 @@ import type { WorldPoint } from "../../domain/contracts";
 /**
  * The production routing graph as osrs-tiles publishes it (`docs/routing-layers.md` there): which
  * production component owns each search tile, whether walkable terrain is structurally reachable, and
- * the synthetic crossings between components. Pinned in `tiles.json.routingLayers`; every file is
+ * the synthetic crossings between components, and the components as a tile pyramid. Pinned in `tiles.json.routingLayers`; every file is
  * checked against the manifest before use.
  */
 
@@ -17,7 +17,7 @@ export interface RoutingPin {
 }
 
 export interface RoutingManifest {
-  schemaVersion: 2;
+  schemaVersion: 3;
   version: string;
   tileVersion: string;
   plugin: { repository: string; revision: string };
@@ -30,6 +30,8 @@ export interface RoutingManifest {
   structurallyUnreachableTileCount: number;
   /** Unreachable natural components too large to be places (the seas), left out of the mask. */
   expanses: { minimumTiles: number; tileCount: number };
+  /** Component colours as hex RGB, which components.json's `colour` indexes and components/ draws. */
+  componentPalette: string[];
   files: Record<string, string>;
 }
 
@@ -42,6 +44,8 @@ export interface RoutingComponent {
   representative: [number, number, number];
   separatorCrossings: number;
   neighbours: number[];
+  /** Its index in the manifest's componentPalette. */
+  colour: number;
 }
 
 export interface RoutingCrossing {
@@ -84,6 +88,15 @@ export interface RoutingOverlay { data: RoutingData; options: RoutingOptions }
 const MAGIC = 0x314c5452; // "RTL1"
 const CONCURRENT_FETCHES = 16;
 const CACHED_SQUARES = 256;
+const CACHED_TILES = 192;
+
+/**
+ * The component pyramid's layout, the styles' own (osrs-tiles docs/tiles.md): 256 px tiles, rows from
+ * the south, tile (c, r) at zoom 8 map square (15 + c, 19 + r), zooms 3–7 each half the one above.
+ */
+export const COMPONENT_ZOOMS = { min: 3, native: 8 } as const;
+export const TILE_ORIGIN = { x: 15, y: 19 } as const;
+export const componentTilePath = (plane: number, z: number, c: number, r: number) => `components/${plane ? `p${plane}/` : ""}${z}/${c}/${r}.png`;
 
 export const squarePath = ({ x, y, plane }: WorldPoint) => `p${plane}/${x >> 6}/${y >> 6}.bin`;
 export const localTile = ({ x, y }: WorldPoint) => (y & 63) * 64 + (x & 63);
@@ -120,11 +133,11 @@ export function decodeRouting(bytes: ArrayBuffer): RoutingSquare {
   return { owners, status, boundaries, naturalSizes, crossings, edges: [] };
 }
 
-const FILE_PATH = /^(components\.json|crossings\.json|p[0-3]\/\d+\/\d+\.(bin|crossings\.json))$/;
+const FILE_PATH = /^(components\.json|crossings\.json|p[0-3]\/\d+\/\d+\.(bin|crossings\.json)|components\/(p[1-3]\/)?[3-8]\/\d+\/\d+\.png)$/;
 
 /** The manifest must be the one the pin names, for the pinned tiles, plugin and inputs. */
 export function validateRoutingManifest(manifest: RoutingManifest, pin: RoutingPin, tileVersion: string) {
-  const matches = manifest.schemaVersion === 2 && manifest.version === pin.version
+  const matches = manifest.schemaVersion === 3 && manifest.version === pin.version
     && pin.tileVersion === tileVersion && manifest.tileVersion === tileVersion
     && manifest.plugin?.repository === "Skretzo/shortest-path" && manifest.plugin.revision === pin.pluginRevision
     && manifest.collisionContentSha256 === pin.collisionContentSha256
@@ -156,6 +169,7 @@ export class RoutingData {
   private readonly listeners = new Set<() => void>();
   private active = 0;
   private components?: Promise<Map<number, RoutingComponent>>;
+  private readonly tiles = new Map<string, ImageBitmap>();
   error?: string;
 
   constructor(readonly base: string, readonly manifest: RoutingManifest) {}
@@ -195,9 +209,7 @@ export class RoutingData {
     if (this.squares.has(path) || this.failed.has(path) || !this.manifest.files[path]) return Promise.resolve();
     const existing = this.pending.get(path);
     if (existing) return existing;
-    const task = (async () => {
-      if (this.active >= CONCURRENT_FETCHES) await new Promise<void>(resolve => this.waiting.push(resolve));
-      else this.active++;
+    const task = this.queued(path, async () => {
       const square = decodeRouting(await this.file(path));
       if (square.crossings.length) {
         square.edges = JSON.parse(new TextDecoder().decode(await this.file(path.replace(".bin", ".crossings.json")))) as RoutingCrossing[];
@@ -205,6 +217,42 @@ export class RoutingData {
       }
       this.squares.set(path, square);
       while (this.squares.size > CACHED_SQUARES) this.squares.delete(this.squares.keys().next().value!);
+    });
+    return task;
+  }
+
+  /**
+   * A component tile, checked like every file, once it has arrived: undefined until then, and for a
+   * tile the release doesn't have (no search tile there). The first call asks for it, unless `peek`.
+   */
+  tile(path: string, peek = false): ImageBitmap | undefined {
+    const tile = this.tiles.get(path);
+    if (tile) {
+      this.tiles.delete(path);
+      this.tiles.set(path, tile);
+      return tile;
+    }
+    if (!peek && !this.failed.has(path) && !this.pending.has(path) && this.manifest.files[path]) {
+      void this.queued(path, async () => {
+        const bytes = await this.file(path);
+        const bitmap = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
+        this.tiles.set(path, bitmap);
+        while (this.tiles.size > CACHED_TILES) {
+          const [oldest, image] = this.tiles.entries().next().value!;
+          this.tiles.delete(oldest);
+          image.close();
+        }
+      });
+    }
+    return undefined;
+  }
+
+  /** Runs a fetch with at most CONCURRENT_FETCHES at once; a failure is kept as the release's error. */
+  private queued(path: string, work: () => Promise<void>): Promise<void> {
+    const task = (async () => {
+      if (this.active >= CONCURRENT_FETCHES) await new Promise<void>(resolve => this.waiting.push(resolve));
+      else this.active++;
+      await work();
     })().catch(error => {
       this.failed.add(path);
       this.error = String(error);
@@ -255,3 +303,4 @@ export class RoutingData {
 export function visibleNegative(square: RoutingSquare, index: number, minimumSize: number) {
   return square.status[index] === UNREACHABLE && square.naturalSizes[index] >= minimumSize;
 }
+
