@@ -33,7 +33,7 @@ function network(box: Box, count: number): Summary[] {
   });
 }
 
-/** Mocks the catalogue; `dense` answers every view with as many transports as a view lists, or counts past that. */
+/** Mocks the catalogue; `dense` answers every view with a door every 40 tiles, only counted past the view limit. */
 async function mockCatalogue(page: Page, { dense = false, collisionRev = "e615afa705469cdb541c496f1fe99d7ce7e5d4e5" } = {}) {
   const views: Box[][] = [];
   await page.route(url => url.pathname.startsWith("/api/"), route => {
@@ -53,13 +53,8 @@ async function mockCatalogue(page: Page, { dense = false, collisionRev = "e615af
       // One door per 40 tiles: hundreds close up, thousands zoomed out.
       const all = dense ? boxes.flatMap(box => network(box, Math.min(5000, Math.max(50, Math.round((box[3] - box[1]) * (box[4] - box[2]) / 40))))) : fixture.transports;
       const found = typed(all).filter(t => boxes.some(box => inBox(t.origin, box) || inBox(t.destination, box)));
-      if (found.length <= fixture.meta.viewLimit) return route.fulfill({ json: { total: found.length, transports: found, clusters: [] } });
-      // Too many: counted in quarters of each box, as the service does in cells.
-      const clusters = boxes.flatMap(([plane, x1, y1, x2, y2]) => [0, 1, 2, 3].map(q => {
-        const cx = q % 2 ? (x1 + x2) >> 1 : x1, cy = q > 1 ? (y1 + y2) >> 1 : y1;
-        return { plane, x1: cx, y1: cy, x2: cx + ((x2 - x1) >> 1), y2: cy + ((y2 - y1) >> 1), count: Math.ceil(found.length / 4) };
-      }));
-      return route.fulfill({ json: { total: found.length, transports: [], clusters } });
+      // Too many: only counted, as the service does.
+      return route.fulfill({ json: { total: found.length, transports: found.length <= fixture.meta.viewLimit ? found : [] } });
     }
     const detail = fixture.details[decodeURIComponent(rest.slice(1))];
     return detail ? route.fulfill({ json: detail }) : route.fulfill({ status: 404, json: { error: "no transport" } });
@@ -201,22 +196,25 @@ test("trusts collision made from the same revision", async ({ page }) => {
   await expect(page.locator(".wb-provenance .wb-prov.differs")).toHaveCount(0);
 });
 
-test("stays bounded over a dense network, and counts instead of drawing when zoomed out", async ({ page }) => {
-  await mockCatalogue(page, { dense: true });
+test("stays bounded over a dense network, and draws nothing zoomed out", async ({ page }) => {
+  const views = await mockCatalogue(page, { dense: true });
   await open(page, "?at=3210,3214,0&z=9");
   const list = page.getByRole("navigation", { name: "Transports" });
   await expect(list.locator(".wb-list-heading")).toContainText(/[1-9]\d* in view/);
-  await expect.poll(async () => (await featureCount(page)).point).toBeGreaterThan(0);
+  await expect.poll(async () => (await featureCount(page)).edge).toBeGreaterThan(0);
   const close = await featureCount(page);
-  // Each listed transport is at most an edge and two tiles; the list itself stops at 200.
-  expect(close.edge + close.point).toBeLessThanOrEqual(3 * fixture.meta.viewLimit);
-  expect(close.point).toBeGreaterThan(0);
+  // Each door is a single bar over the edge it crosses, not two tiles and an arrow.
+  expect(close.point).toBe(0);
+  expect(close.edge).toBeLessThanOrEqual(fixture.meta.viewLimit);
   expect(await list.locator("ol li").count()).toBeLessThanOrEqual(200);
 
   await open(page, "?at=3000,3300,0&z=5");
-  await expect(list.locator(".wb-list-heading")).toContainText("zoom in");
-  await expect.poll(async () => (await featureCount(page)).count).toBeGreaterThan(0);
+  await expect(list.locator(".wb-list-heading")).toContainText("Zoom in to see transports");
+  await expect(page.locator(".layer-status")).toContainText("Zoom in to see transports");
+  const asked = views.length;
+  await page.waitForTimeout(500);
   const far = await featureCount(page);
   expect(far.edge + far.point + far.region).toBe(0);
-  expect(far.count).toBeLessThanOrEqual(4 * 24);
+  // Nothing is asked for that wouldn't be drawn.
+  expect(views.length).toBe(asked);
 });

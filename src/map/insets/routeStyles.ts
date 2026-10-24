@@ -54,15 +54,19 @@ function endpointHit(resolution: number): Style[] {
 
 /** Feature colours: review rows by change, transports by kind. */
 export const TONES: Record<FeatureTone, string> = { added: "#5ee08a", removed: "#ff6b6b", changed: "#ffc44d",
-  object: "#f2ead2", journey: "#6fc3ff", teleport: "#c79bff", count: "#ffae47",
+  object: "#f2ead2", journey: "#6fc3ff", teleport: "#c79bff",
   area: "#ffae47", candidate: "#ff7ad9", suspect: "#ff6b6b", component: "#7ee0d0", evidence: "#ffe066", entrance: "#f7f1dc", draft: "#5ee08a" };
 
-/** Screen pixels a review edge is moved to its right, so a row and its way back sit side by side. */
-const LANE_PX = 5;
+/** A tile's size on screen, at a view resolution. */
+const tilePixels = (resolution: number) => TILE_UNITS / resolution;
+/** `tiles` of a tile on screen, kept between `min` and `max` pixels so it stays legible but never outgrows the tile. */
+const scaled = (resolution: number, tiles: number, min: number, max: number) => Math.min(max, Math.max(min, tilePixels(resolution) * tiles));
+
 /**
  * An edge: a line in its tone, dashed when asked (a removed row), with an arrowhead at the destination.
  * Edges are drawn a little to the right of their direction, like lanes of a road, so a two-way pair
- * shows as two arrows rather than one line.
+ * shows as two arrows rather than one line. Widths follow the map's scale, so the line belongs to the
+ * tiles it joins. A hop between neighbouring tiles is a bar across the edge they share instead.
  */
 function edgeStyle(feature: FeatureLike, selected: boolean, resolution: number): Style[] {
   const color = TONES[feature.get("tone") as FeatureTone];
@@ -71,39 +75,47 @@ function edgeStyle(feature: FeatureLike, selected: boolean, resolution: number):
   const [x1, y1] = coordinates[0], [x2, y2] = coordinates.at(-1)!;
   const length = Math.hypot(x2 - x1, y2 - y1);
   if (!length) return [];
-  const shift = LANE_PX * resolution, nx = (y2 - y1) / length * shift, ny = -(x2 - x1) / length * shift;
+  if (feature.get("hop")) return hopStyle(feature, color, selected, resolution, [x1, y1], [x2, y2], length);
+  const width = scaled(resolution, 0.16, 1.5, 5) + (selected ? 1.5 : 0);
+  const shift = scaled(resolution, 0.16, 1.5, 5) * resolution, nx = (y2 - y1) / length * shift, ny = -(x2 - x1) / length * shift;
   // Stop short of the tile centre so the arrowhead sits on the destination tile's edge.
   const back = Math.min(length / 3, 12), tx = x2 - (x2 - x1) / length * back + nx, ty = y2 - (y2 - y1) / length * back + ny;
   const lane = new LineStringGeometry(coordinates.map(([x, y]) => [x + nx, y + ny]));
   return [
-    new Style({ geometry: lane, stroke: new Stroke({ color: ink, width: selected ? 7 : 5 }) }),
-    new Style({ geometry: lane, stroke: new Stroke({ color, width: selected ? 4 : 2.5, lineDash: feature.get("dashed") ? [6, 6] : undefined }) }),
+    new Style({ geometry: lane, stroke: new Stroke({ color: ink, width: width + 2.5 }) }),
+    new Style({ geometry: lane, stroke: new Stroke({ color, width, lineDash: feature.get("dashed") ? [6, 6] : undefined }) }),
     new Style({ geometry: new PointGeometry([tx, ty]), image: new RegularShape({
-      points: 3, radius: selected ? 8 : 6, rotation: Math.PI / 2 - Math.atan2(y2 - y1, x2 - x1), rotateWithView: true,
+      points: 3, radius: scaled(resolution, 0.32, 3.5, 10) + (selected ? 2 : 0), rotation: Math.PI / 2 - Math.atan2(y2 - y1, x2 - x1), rotateWithView: true,
       fill: new Fill({ color }), stroke: new Stroke({ color: ink, width: 1.5 }) }) }),
   ];
 }
 
-/** Below this many screen pixels a tile, review marks are drawn as fixed-size squares instead. */
-const MARK_MIN_PX = 12;
+/** A hop (a door, a stile): a bar most of a tile long over the edge between its tiles, both ways alike. */
+function hopStyle(feature: FeatureLike, color: string, selected: boolean, resolution: number, [x1, y1]: Coordinate, [x2, y2]: Coordinate, length: number): Style[] {
+  const half = TILE_UNITS * 0.4, mx = (x1 + x2) / 2, my = (y1 + y2) / 2, ux = -(y2 - y1) / length * half, uy = (x2 - x1) / length * half;
+  const bar = new LineStringGeometry([[mx - ux, my - uy], [mx + ux, my + uy]]);
+  const width = scaled(resolution, 0.22, 2, 7);
+  return [
+    new Style({ geometry: bar, stroke: new Stroke({ color: selected ? "#ffffff" : ink, width: width + (selected ? 4 : 2.5), lineCap: "butt" }) }),
+    new Style({ geometry: bar, stroke: new Stroke({ color, width, lineCap: "butt", lineDash: feature.get("dashed") ? [4, 3] : undefined }) }),
+  ];
+}
+
 const markStyles = new Map<string, Style>();
 /**
- * A point feature's tile: an origin outlined, a destination filled, in its tone; a selected one is
- * ringed in white. Zoomed out they keep a readable size, centred on their tile.
+ * A point feature's tile, always the tile itself so it scales with the map: an origin outlined, a
+ * destination filled, in its tone; a selected one is ringed in white.
  */
 export function markStyle(feature: FeatureLike, resolution: number, selected = false): Style {
   const tone = feature.get("tone") as FeatureTone, role = feature.get("role") as string;
-  const small = TILE_UNITS / resolution < MARK_MIN_PX, key = `${tone}/${role}/${small}/${selected}`;
+  const outline = Math.round(scaled(resolution, 0.1, 1, 3) * 2) / 2, key = `${tone}/${role}/${outline}/${selected}`;
   let style = markStyles.get(key);
   if (!style) {
     const color = TONES[tone];
-    const stroke = selected ? new Stroke({ color: "#ffffff", width: 3 })
-      : role === "origin" ? new Stroke({ color, width: 3 }) : new Stroke({ color: ink, width: 1.5 });
+    const stroke = selected ? new Stroke({ color: "#ffffff", width: outline + 1.5 })
+      : role === "origin" ? new Stroke({ color, width: outline }) : new Stroke({ color: ink, width: Math.min(outline, 1.5) });
     const fill = new Fill({ color: role === "origin" ? "rgba(0,0,0,0)" : `${color}b3` });
-    style = small
-      ? new Style({ geometry: mark => (mark.getGeometry() as Polygon).getInteriorPoint(),
-        image: new RegularShape({ points: 4, radius: MARK_MIN_PX / Math.SQRT2, angle: Math.PI / 4, stroke, fill }) })
-      : new Style({ stroke, fill });
+    style = new Style({ stroke, fill });
     markStyles.set(key, style);
   }
   return style;
@@ -122,30 +134,7 @@ export function collisionStyle(feature: FeatureLike): Style {
   return collisionLooks[feature.get("kind") as string];
 }
 
-const countLooks = new Map<string, Style>();
-/** `1234` → `1.2k`. */
-const shortCount = (count: number) => count < 1000 ? String(count) : `${(count / 1000).toFixed(count < 10_000 ? 1 : 0)}k`;
-/**
- * Items counted where they are: a dark badge ringed in its tone, a little larger for more, with the
- * count in it. Only the badge covers the map, not the area counted.
- */
-function countStyle(feature: FeatureLike, selected: boolean): Style {
-  const count = feature.get("count") as number, tone = feature.get("tone") as FeatureTone, key = `${tone}/${count}/${selected}`;
-  let style = countLooks.get(key);
-  if (!style) {
-    const label = shortCount(count), radius = Math.max(8 + 2.5 * Math.log10(Math.max(count, 1)), label.length * 3.6 + 4);
-    style = new Style({
-      image: new Circle({ radius, fill: new Fill({ color: "rgba(20,25,20,.82)" }),
-        stroke: new Stroke({ color: selected ? "#ffffff" : TONES[tone], width: selected ? 2.5 : 1.5 }) }),
-      text: new Text({ text: label, font: "bold 10px ui-monospace, monospace", fill: new Fill({ color: "#f7f1dc" }) }),
-    });
-    if (countLooks.size > 2000) countLooks.clear();
-    countLooks.set(key, style);
-  }
-  return style;
-}
-
-/** A counted area: its rectangle tinted, with the count over it. */
+/** A region: its rectangle tinted, with its label over it. */
 function regionStyle(feature: FeatureLike, selected: boolean): Style {
   const color = TONES[feature.get("tone") as FeatureTone];
   return new Style({
@@ -177,7 +166,6 @@ export function featureStyle(feature: FeatureLike, selected: string | undefined,
   const kind = feature.get("kind");
   if (kind === "edge") return edgeStyle(feature, isSelected, resolution);
   if (kind === "point") return markStyle(feature, resolution, isSelected);
-  if (kind === "count") return countStyle(feature, isSelected);
   return regionStyle(feature, isSelected);
 }
 

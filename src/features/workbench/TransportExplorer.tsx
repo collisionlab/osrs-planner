@@ -10,8 +10,8 @@ import type { WorldBox } from "../../map/insets/projection";
 import { TONES } from "../../map/insets/routeStyles";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "./provenance";
 import { useRoutingLayers } from "./RoutingPanel";
-import { clusterKey, EXPLORER_LAYERS, loadDetail, loadMeta, loadView, parseTile, readState, searchTransports, sourceUrl, toneOf, toneOfType,
-  typeName, viewOverlay, writeState, type ExplorerState, type TransportDetail, type TransportMeta, type TransportSummary,
+import { EXPLORER_LAYERS, loadDetail, loadMeta, loadView, parseTile, readState, searchTransports, sourceUrl, toneOf, toneOfType,
+  TRANSPORTS_MAX_RESOLUTION, typeName, viewOverlay, writeState, type ExplorerState, type TransportDetail, type TransportMeta, type TransportSummary,
   type TransportView } from "./transports";
 import "./workbench.css";
 
@@ -93,23 +93,25 @@ export function TransportExplorer() {
     return () => abort.abort();
   }, []);
 
-  // The transports in view: asked for after each move, a box per area drawn.
+  // The transports in view: asked for after each move, a box per area drawn, when zoomed in far
+  // enough to tell them apart.
   const [boxes, setBoxes] = useState<WorldBox[]>();
+  const [zoomedOut, setZoomedOut] = useState(false);
   const [view, setView] = useState<TransportView>();
   const [loading, setLoading] = useState(false);
   const typesKey = state.types?.join(",");
   const shownLayers = state.layers ?? ["transports"];
   const transportsOn = shownLayers.includes("transports");
   useEffect(() => {
-    if (!transportsOn) { setView(undefined); setViewBoxes(undefined); setLoading(false); return; }
+    if (!transportsOn || zoomedOut) { setView(undefined); setViewBoxes(undefined); setLoading(false); return; }
     if (!boxes) return;
-    if (!boxes.length) { setView({ total: 0, transports: [], clusters: [] }); setViewBoxes([]); return; }
+    if (!boxes.length) { setView({ total: 0, transports: [] }); setViewBoxes([]); return; }
     const abort = new AbortController();
     setLoading(true);
     loadView(boxes, state.types, abort.signal).then(loaded => { setView(loaded); setViewBoxes(boxes); setLoading(false); },
       reason => { if (!abort.signal.aborted) { setError(String(reason instanceof Error ? reason.message : reason)); setLoading(false); } });
     return () => abort.abort();
-  }, [boxes, typesKey, transportsOn]);
+  }, [boxes, typesKey, transportsOn, zoomedOut]);
 
   const [detail, setDetail] = useState<TransportDetail>();
   useEffect(() => {
@@ -156,12 +158,6 @@ export function TransportExplorer() {
   const overlay = useMemo(() => transportOverlay && { ...transportOverlay, routing: routing.overlay }, [transportOverlay, routing.overlay]);
   const [focusTile, setFocusTile] = useState<{ point: WorldPoint }>();
   const onSelectFeatures = (keys: string[], point?: WorldPoint) => {
-    const cluster = keys.find(key => key.startsWith("cluster:"));
-    if (cluster) {
-      const counted = view?.clusters[Number(cluster.slice(8))];
-      if (counted) setFocusBox({ plane: counted.plane, x1: counted.x1 - 4, y1: counted.y1 - 4, x2: counted.x2 + 4, y2: counted.y2 + 4 });
-      return;
-    }
     if (point) lookAt(point, keys);
     if (keys.length === 1) select(keys[0], false);
   };
@@ -211,7 +207,8 @@ export function TransportExplorer() {
   </details>;
   const layers: MapLayerEntry[] = [
     { id: "transports", label: "Transports", swatch: `linear-gradient(90deg, ${TONES.object} 33%, ${TONES.journey} 33% 66%, ${TONES.teleport} 66%)`, on: transportsOn, options: typeFilter,
-      title: "Every effective transport with an end in view: listed and drawn when few enough, else counted where they are" },
+      status: zoomedOut ? "Zoom in to see transports" : undefined,
+      title: "Every effective transport with an end in view, drawn on its tiles once zoomed in far enough to tell them apart" },
     ...routing.layers,
   ];
   const toggle = (id: string, on: boolean) => {
@@ -236,8 +233,9 @@ export function TransportExplorer() {
   const lines = provenance(meta, collisionManifest);
   const mapRef = useRef<{ centreTile(): { point: WorldPoint; zoom: number } }>(undefined);
   // After each move: what's in view, and where the map is (for the URL).
-  const recordView = (inView: WorldBox[]) => {
+  const recordView = (inView: WorldBox[], resolution: number) => {
     setBoxes(inView);
+    setZoomedOut(resolution > TRANSPORTS_MAX_RESOLUTION);
     const at = mapRef.current?.centreTile();
     if (at) update({ at });
   };
@@ -280,7 +278,8 @@ export function TransportExplorer() {
           </>}
         </> : <>
           <p className="wb-list-heading" role="status">{results ? <>{results.length}{results.length === 50 ? "+" : ""} found for “{state.query}” <button type="button" className="wb-link" onClick={() => { setResults(undefined); setQuery(""); update({ query: undefined }); }}>clear</button></>
-            : !transportsOn ? "The transports layer is off." : !view ? "Loading…" : view.clusters.length ? `${view.total.toLocaleString()} in view; zoom in to list them`
+            : !transportsOn ? "The transports layer is off." : zoomedOut ? "Zoom in to see transports." : !view ? "Loading…"
+            : view.transports.length < view.total ? `${view.total.toLocaleString()} in view; zoom in to list them`
             : `${view.total} in view${loading ? " (updating…)" : ""}`}</p>
           <ol>{groups.slice(0, LISTED).map(group => <li key={group[0].id}>
             <SummaryButton group={group} selected={group.some(summary => summary.id === state.selected)} onSelect={() => choose(group[0])} />

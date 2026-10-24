@@ -41,7 +41,7 @@ async function mock(page: Page, { investigationsFile = investigations as string 
     if (rest === "" && url.searchParams.get("view")) {
       const boxes = url.searchParams.get("view")!.split(";").map(part => part.split(",").map(Number) as Box);
       const found = transports.transports.filter(t => boxes.some(box => inBox(t.origin, box) || inBox(t.destination, box)));
-      return route.fulfill({ json: { total: found.length, transports: found, clusters: [] } });
+      return route.fulfill({ json: { total: found.length, transports: found } });
     }
     return route.fulfill({ status: 404, json: { error: "not mocked" } });
   });

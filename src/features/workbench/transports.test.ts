@@ -9,13 +9,23 @@ const box = { plane: 0, x1: 0, y1: 0, x2: 100, y2: 100 };
 
 describe("transport explorer", () => {
   it("draws a transport's edge and tiles, a teleport's landing alone, and nothing of an end out of view", () => {
-    expect(transportFeatures(summary("door", p(1, 1), p(2, 1))).map(f => f.kind)).toEqual(["edge", "point", "point"]);
+    expect(transportFeatures(summary("stairs", p(1, 1), p(3, 1))).map(f => f.kind)).toEqual(["edge", "point", "point"]);
     const teleport = transportFeatures(summary("tele", null, p(5, 5), "TELEPORTATION_ITEM"));
     expect(teleport).toEqual([{ kind: "point", key: "tele", point: p(5, 5), tone: "teleport", role: "destination" }]);
     // A ship leaving the view: only its quay is drawn.
     expect(transportFeatures(summary("ship", p(50, 50), p(900, 900)), [box])).toEqual([
       { kind: "point", key: "ship", point: p(50, 50), tone: "object", role: "origin" }]);
     expect(transportFeatures(summary("ladder", p(50, 50), p(50, 50, 1)), [box]).map(f => f.kind)).toEqual(["point"]);
+  });
+
+  it("draws a hop between neighbouring tiles as one bar, unless it is the selection", () => {
+    expect(transportFeatures(summary("door", p(1, 1), p(2, 1)))).toEqual([{ kind: "edge", key: "door", from: p(1, 1), to: p(2, 1), tone: "object", hop: true }]);
+    expect(transportFeatures(summary("door", p(1, 1), p(2, 1)), undefined, true).map(f => f.kind)).toEqual(["edge", "point", "point"]);
+    // Diagonal neighbours, and tiles a floor apart, keep their tiles.
+    expect(transportFeatures(summary("gap", p(1, 1), p(2, 2))).map(f => f.kind)).toEqual(["edge", "point", "point"]);
+    expect(transportFeatures(summary("ladder", p(1, 1), p(2, 1, 1))).map(f => f.kind)).toEqual(["edge", "point", "point"]);
+    // Half out of view: nothing, as a bar can't be half drawn.
+    expect(transportFeatures(summary("door", p(100, 1), p(101, 1)), [box])).toEqual([]);
   });
 
   it("colours transports by kind", () => {
@@ -26,7 +36,8 @@ describe("transport explorer", () => {
   });
 
   it("anchors the selection, wherever it is, and draws it over the rest", () => {
-    const view: TransportView = { total: 2, transports: [summary("a", p(1, 1), p(2, 2)), summary("b", p(3, 3), p(4, 4))], clusters: [] };
+    const view: TransportView = { total: 2, transports: [summary("a", p(1, 1), p(2, 2)), summary("b", p(3, 3), p(4, 4))] };
+    // A door, but drawn whole while selected.
     const far = summary("far", p(3000, 3000), p(3001, 3000));
     const overlay = viewOverlay(view, far, undefined, [box]);
     expect(overlay.selected).toBe("far");
@@ -36,20 +47,10 @@ describe("transport explorer", () => {
     expect(viewOverlay(view, view.transports[0], undefined, [box]).features.filter(f => f.key === "a")).toHaveLength(3);
   });
 
-  it("draws counts instead of transports when there are too many, however many there are", () => {
-    const clusters = Array.from({ length: 150 }, (_, i) => ({ plane: 0, x1: i * 64, y1: 0, x2: i * 64 + 63, y2: 63, x: i * 64 + 5, y: 7, count: 1000 }));
-    const overlay = viewOverlay({ total: 150_000, transports: [], clusters }, undefined);
-    expect(overlay.features).toHaveLength(150);
-    expect(overlay.features.every(f => f.kind === "count" && f.count === 1000)).toBe(true);
+  it("draws nothing but the selection for a view too big to list", () => {
+    const overlay = viewOverlay({ total: 150_000, transports: [] }, undefined);
+    expect(overlay.features).toEqual([]);
     expect(overlay.anchors).toEqual([]);
-  });
-
-  it("puts a count where its transports are, or mid-cell from a service that doesn't say", () => {
-    const cluster = { plane: 1, x1: 100, y1: 200, x2: 120, y2: 260, count: 4 };
-    const [placed] = viewOverlay({ total: 4, transports: [], clusters: [{ ...cluster, x: 101, y: 259 }] }, undefined).features;
-    expect(placed).toMatchObject({ kind: "count", point: p(101, 259, 1) });
-    const [middle] = viewOverlay({ total: 4, transports: [], clusters: [cluster] }, undefined).features;
-    expect(middle).toMatchObject({ kind: "count", point: p(110, 230, 1) });
   });
 
   it("keeps the selection, place, types and search in the URL", () => {
