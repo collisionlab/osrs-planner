@@ -20,17 +20,18 @@ export type FeatureTone =
    * a walking component, an evidence coordinate, an area's way in, and a link being drafted by hand. */
   | "area" | "candidate" | "suspect" | "component" | "evidence" | "entrance" | "draft";
 
+/** Each feature's `title`, where it has one, is what the map shows on hovering it. */
 export type MapFeature =
   /**
    * From one tile to another, with an arrowhead at `to`; dashed for a removed row. A `hop` joins two
    * neighbouring tiles (a door) and is drawn as a bar across the edge between them, without its tiles.
    * A `spoke` joins a station to its network's hub: a light line without an arrowhead.
    */
-  | { kind: "edge"; key: string; from: WorldPoint; to: WorldPoint; tone: FeatureTone; dashed?: boolean; hop?: boolean; spoke?: boolean }
+  | { kind: "edge"; key: string; from: WorldPoint; to: WorldPoint; tone: FeatureTone; dashed?: boolean; hop?: boolean; spoke?: boolean; title?: string }
   /** A network's hub, where its stations' spokes meet: a labelled node, not a tile. */
-  | { kind: "hub"; key: string; point: WorldPoint; tone: FeatureTone; label: string }
+  | { kind: "hub"; key: string; point: WorldPoint; tone: FeatureTone; label: string; title?: string }
   /** A tile: an origin is outlined, a destination filled. */
-  | { kind: "point"; key: string; point: WorldPoint; tone: FeatureTone; role: "origin" | "destination" }
+  | { kind: "point"; key: string; point: WorldPoint; tone: FeatureTone; role: "origin" | "destination"; title?: string }
   /** A rectangle of tiles (inclusive), labelled; `key` selects it like any feature. */
   | { kind: "region"; key: string; plane: number; bounds: [number, number, number, number]; tone: FeatureTone; label?: string; dashed?: boolean }
   /**
@@ -62,8 +63,10 @@ export interface FeatureOverlay {
    */
   anchors: MapFeature[];
   selected?: string;
-  /** Blocked tiles and walls around the anchors, when zoomed in far enough to see single tiles. */
+  /** The pathfinder's collision, drawn around the anchors' tiles when zoomed in far enough to see single tiles. */
   collision?: CollisionMap;
+  /** Draw the collision everywhere in view rather than around the anchors alone. */
+  collisionEverywhere?: boolean;
   /** Names for the areas these points are in, where the inset release hasn't named them. */
   names?: { point: WorldPoint; name: string }[];
   /** Inset regions to lay out besides those the anchors reach. */

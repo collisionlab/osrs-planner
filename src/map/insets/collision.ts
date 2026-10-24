@@ -37,6 +37,34 @@ export class CollisionMap {
     await Promise.all([...wanted].filter(([name]) => !this.tiles.has(name)).map(async ([name, [square, plane]]) => {
       this.tiles.set(name, await this.fetchTile(square, plane, signal).catch(() => null));
     }));
+    this.listeners.forEach(listener => listener());
+  }
+
+  private readonly pending = new Set<string>();
+  private readonly listeners = new Set<() => void>();
+
+  /** Called when a square asked for by `square` arrives. */
+  subscribe(listener: () => void) {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
+  }
+
+  /**
+   * A map square's plane: its bytes, `null` where it has no walkable tile, or `undefined` until it
+   * has arrived, which this asks for (once).
+   */
+  square(sx: number, sy: number, plane: number): Uint8Array | null | undefined {
+    const name = key(sx, sy, plane);
+    if (this.tiles.has(name)) return this.tiles.get(name);
+    if (!this.pending.has(name)) {
+      this.pending.add(name);
+      void this.fetchTile({ x: sx, y: sy }, plane).catch(() => null).then(bytes => {
+        this.tiles.set(name, bytes);
+        this.pending.delete(name);
+        this.listeners.forEach(listener => listener());
+      });
+    }
+    return undefined;
   }
 
   /** Whether the flag is set; `undefined` where nothing is loaded or the plane has no walkable tile. */

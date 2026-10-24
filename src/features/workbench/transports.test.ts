@@ -11,15 +11,16 @@ describe("transport explorer", () => {
   it("draws a transport's edge and tiles, a teleport's landing alone, and nothing of an end out of view", () => {
     expect(transportFeatures(summary("stairs", p(1, 1), p(3, 1))).map(f => f.kind)).toEqual(["edge", "point", "point"]);
     const teleport = transportFeatures(summary("tele", null, p(5, 5), "TELEPORTATION_ITEM"));
-    expect(teleport).toEqual([{ kind: "point", key: "tele", point: p(5, 5), tone: "teleport", role: "destination" }]);
+    expect(teleport).toEqual([{ kind: "point", key: "tele", point: p(5, 5), tone: "teleport", role: "destination", title: "tele\nanywhere → 5 5 0" }]);
     // A ship leaving the view: only its quay is drawn.
-    expect(transportFeatures(summary("ship", p(50, 50), p(900, 900)), [box])).toEqual([
+    expect(transportFeatures(summary("ship", p(50, 50), p(900, 900)), [box])).toMatchObject([
       { kind: "point", key: "ship", point: p(50, 50), tone: "object", role: "origin" }]);
     expect(transportFeatures(summary("ladder", p(50, 50), p(50, 50, 1)), [box]).map(f => f.kind)).toEqual(["point"]);
   });
 
   it("draws a hop between neighbouring tiles as one bar, unless it is the selection", () => {
-    expect(transportFeatures(summary("door", p(1, 1), p(2, 1)))).toEqual([{ kind: "edge", key: "door", from: p(1, 1), to: p(2, 1), tone: "object", hop: true }]);
+    expect(transportFeatures(summary("door", p(1, 1), p(2, 1)))).toEqual([{ kind: "edge", key: "door", from: p(1, 1), to: p(2, 1), tone: "object", hop: true,
+      title: "door\n1 1 0 → 2 1 0" }]);
     expect(transportFeatures(summary("door", p(1, 1), p(2, 1)), undefined, true).map(f => f.kind)).toEqual(["edge", "point", "point"]);
     // Diagonal neighbours, and tiles a floor apart, keep their tiles.
     expect(transportFeatures(summary("gap", p(1, 1), p(2, 2))).map(f => f.kind)).toEqual(["edge", "point", "point"]);
@@ -57,7 +58,10 @@ describe("transport explorer", () => {
     expect(overlay.features.filter(f => f.kind === "edge").map(f => f.kind === "edge" && [f.from, f.to, f.spoke, f.key])).toEqual([
       [p(10, 10), p(400, 400), true, "network:FAIRY_RING:0"], [p(50, 50), p(400, 400), true, "network:FAIRY_RING:0"]]);
     expect(overlay.features.filter(f => f.kind === "point").map(f => f.key)).toEqual(["station:10,10,0", "station:51,50,0", "station:50,50,0", "station:11,10,0"]);
-    expect(overlay.features.filter(f => f.kind === "hub")).toEqual([{ kind: "hub", key: "network:FAIRY_RING:0", point: p(400, 400), tone: "journey", label: "Fairy rings" }]);
+    expect(overlay.features.filter(f => f.kind === "hub")).toEqual([{ kind: "hub", key: "network:FAIRY_RING:0", point: p(400, 400), tone: "journey", label: "Fairy rings",
+      title: "Fairy rings: 3 stations" }]);
+    // A station's tile says which station it is.
+    expect(overlay.features.find(f => f.key === "station:10,10,0")?.title).toBe("Fairy rings: AIQ\nleave from 10 10 0");
     expect(stationOf("station:10,10,0")).toEqual(p(10, 10));
     expect(stationOf("0123456789ab")).toBeUndefined();
     // A selected network is highlighted; a selected ring is still drawn whole, with its real edge.

@@ -48,14 +48,14 @@ async function click(page: Page, p: Point) {
   await page.mouse.click(box.x + x, box.y + y);
 }
 
-/** The routing canvas's RGBA where a tile is drawn. */
-async function colour(page: Page, p: Point) {
-  return page.evaluate(p => {
+/** The routing canvas's RGBA where a tile is drawn, or the component colours' canvas's with `tints`. */
+async function colour(page: Page, p: Point, tints = false) {
+  return page.evaluate(([p, tints]) => {
     const [x, y] = (window as unknown as { insetMap: InsetMapHandle }).insetMap.pixel(p);
-    const canvas = document.querySelector<HTMLCanvasElement>("canvas[data-routing-layer]")!;
+    const canvas = document.querySelector<HTMLCanvasElement>(tints ? "canvas[data-routing-tints]" : "canvas[data-routing-layer]")!;
     const ratio = canvas.width / parseFloat(canvas.style.width);
     return [...canvas.getContext("2d")!.getImageData(Math.floor(x * ratio), Math.floor(y * ratio), 1, 1).data];
-  }, p);
+  }, [p, tints] as const);
 }
 const alpha = async (page: Page, p: Point) => (await colour(page, p))[3];
 
@@ -124,9 +124,11 @@ test("real dungeon partitions and negative terrain survive styles, inset draggin
   const upper = point(fixture.upper.point);
   await click(page, upper);
   await expect(page.getByLabel("Routing tile status")).toContainText(`production routing component ${fixture.upper.component}`);
-  // Selecting the new floor removes the old inspected floor from the layout.
+  // Selecting the new floor removes the old inspected floor from the layout; its component is coloured,
+  // and not highlighted for being clicked.
   await at(page, upper);
-  await expect.poll(() => alpha(page, upper)).toBeGreaterThan(0);
+  await expect.poll(async () => (await colour(page, upper, true))[3]).toBeGreaterThan(0);
+  expect(await alpha(page, upper)).toBe(0);
   expect(new Set(squares).size).toBe(squares.length);
 });
 

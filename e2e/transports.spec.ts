@@ -257,6 +257,38 @@ test("keeps the map zooming by wheel and keys after using the layer control", as
   await expect.poll(zoom).toBe(10);
 });
 
+test("names what is under the pointer and lights it", async ({ page }) => {
+  await mockCatalogue(page);
+  const tile = upstairs.origin!;
+  await open(page, `?at=${tile.x},${tile.y},${tile.plane}&z=10`);
+  await expect.poll(async () => (await featureCount(page)).point).toBeGreaterThan(0);
+  const [x, y] = await settledPixel(page, tile);
+  const box = (await page.locator(".inset-map").boundingBox())!;
+  await page.mouse.move(box.x + x, box.y + y);
+  await expect(page.locator(".map-tooltip")).toBeVisible();
+  await expect(page.locator(".map-tooltip")).toContainText("Climb-up Staircase 16671");
+  await page.mouse.move(box.x + 5, box.y + box.height - 5);
+  await expect(page.locator(".map-tooltip")).toBeHidden();
+});
+
+test("draws collision everywhere in view from its layer, boldly", async ({ page }) => {
+  await mockCatalogue(page);
+  await open(page, "?at=3210,3214,0&z=10&layers=collision");
+  // Blocked ground is painted: some of the canvas is coloured.
+  const painted = () => page.evaluate(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>("canvas[data-collision-layer]");
+    if (!canvas || !canvas.width) return 0;
+    const data = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data;
+    let count = 0;
+    for (let i = 3; i < data.length; i += 4 * 97) if (data[i]) count++;
+    return count;
+  });
+  await expect.poll(painted).toBeGreaterThan(100);
+  await expect(page.getByRole("group", { name: "Map layers" }).getByLabel("Collision legend")).toContainText("wall or door");
+  await open(page, "?at=3210,3214,0&z=6&layers=collision");
+  await expect(page.locator(".layer-status")).toContainText("Zoom in to see collision");
+});
+
 test("says when collision wasn't made from the transport data's revision", async ({ page }) => {
   await mockCatalogue(page);
   await open(page, "?at=3210,3214,0&z=9");

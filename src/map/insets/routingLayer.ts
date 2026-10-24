@@ -9,8 +9,6 @@ import { COMPONENT_ZOOMS, componentTilePath, squarePath, TILE_ORIGIN, visibleNeg
 
 // Magenta: no terrain style uses it, so the mask never reads as dirt or lava.
 const UNREACHABLE = "rgba(214,70,170,.5)";
-const SELECTED_FILL = "rgba(107,197,230,.36)";
-const SELECTED_LINE = "#8ce0f4";
 const BORDER = "rgba(226,236,240,.85)";
 const SEPARATOR = "#e8b765";
 const SEPARATOR_SELECTED = "#fff3a6";
@@ -50,25 +48,17 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
     const point = worldToMap({ x, y, plane });
     return map.getPixelFromCoordinate([point[0] + offset[0], point[1] + offset[1]]);
   };
-  const selectedIds = () => {
-    const options = overlay!.options;
-    return new Set([options.selectedComponent, options.selectedCrossing?.fromComponent, options.selectedCrossing?.toComponent]
-      .filter((id): id is number => id !== undefined));
-  };
-
   /** Tile fills only, one pixel per tile: scaled without smoothing they stay tile-crisp at every zoom. */
   const bitmap = (square: RoutingSquare) => {
     const cached = bitmaps.get(square);
     if (cached) return cached;
     const image = document.createElement("canvas");
     image.width = image.height = 64;
-    const ctx = image.getContext("2d")!, options = overlay!.options, selected = selectedIds();
+    const ctx = image.getContext("2d")!, options = overlay!.options;
     const fill = (colour: string, x: number, y: number) => { ctx.fillStyle = colour; ctx.fillRect(x, y, 1, 1); };
     for (let i = 0; i < 4096; i++) {
-      const x = i & 63, y = 63 - (i >> 6), owner = square.owners[i];
+      const x = i & 63, y = 63 - (i >> 6);
       if (options.unreachable && visibleNegative(square, i, options.minimumSize)) fill(UNREACHABLE, x, y);
-      if (owner < 0) continue;
-      if (selected.has(owner) && (options.components || options.separators)) fill(SELECTED_FILL, x, y);
     }
     bitmaps.set(square, image);
     while (bitmaps.size > CACHED_BITMAPS) bitmaps.delete(bitmaps.keys().next().value!);
@@ -109,18 +99,19 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
 
   /**
    * Tile-edge segments, in world tile-edge coordinates (tile centres are integers): borders between
-   * two production components, and the outline of the selected ones. Blocked tiles inside a component
-   * are already visible as gaps in its tint, so the edge of the search graph isn't outlined.
+   * two production components. Blocked tiles inside a component are already visible as gaps in its
+   * tint, so the edge of the search graph isn't outlined, and a component picked by a click isn't
+   * highlighted: its colour already shows it.
    */
   const segments = (square: RoutingSquare, sx: number, sy: number) => {
-    const options = overlay!.options, selected = selectedIds(), borders: number[] = [], outline: number[] = [];
+    const options = overlay!.options, borders: number[] = [];
     for (let i = 0; i < 4096; i++) {
       const flags = square.boundaries[i];
       if (!flags) continue;
-      const x = sx * 64 + (i & 63), y = sy * 64 + (i >> 6), mine = selected.has(square.owners[i]);
+      const x = sx * 64 + (i & 63), y = sy * 64 + (i >> 6);
       for (let side = 0; side < 4; side++) {
         const kind = (flags >> (side * 2)) & 3;
-        const target = !kind ? undefined : mine ? outline : kind === 2 && options.components ? borders : undefined;
+        const target = kind === 2 && options.components ? borders : undefined;
         if (!target) continue;
         // N, E, S, W edges of the tile's unit square.
         if (side === 0) target.push(x - .5, y + .5, x + .5, y + .5);
@@ -129,7 +120,7 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
         else target.push(x - .5, y - .5, x - .5, y + .5);
       }
     }
-    return { borders, outline };
+    return { borders };
   };
 
   const stroke = (ctx: CanvasRenderingContext2D, lines: number[], plane: number, offset: Coordinate) => {
@@ -143,10 +134,9 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
   };
 
   const drawSeparators = (ctx: CanvasRenderingContext2D, edges: Iterable<RoutingCrossing>, offset: Coordinate, resolution: number) => {
-    const { selectedCrossing, selectedComponent } = overlay!.options;
+    const { selectedCrossing } = overlay!.options;
     for (const edge of edges) {
-      const selected = edge.id === selectedCrossing?.id
-        || (selectedComponent !== undefined && (edge.fromComponent === selectedComponent || edge.toComponent === selectedComponent));
+      const selected = edge.id === selectedCrossing?.id;
       const a = pixel(edge.from[0], edge.from[1], edge.from[2], offset), b = pixel(edge.to[0], edge.to[1], edge.to[2], offset);
       ctx.strokeStyle = selected ? SEPARATOR_SELECTED : SEPARATOR;
       ctx.lineWidth = selected ? 2.5 : 1.5;
@@ -200,7 +190,7 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
         tint.restore();
         continue;
       }
-      const edges = new Map<number, RoutingCrossing>(), borders: number[][] = [], outlines: number[][] = [];
+      const edges = new Map<number, RoutingCrossing>(), borders: number[][] = [];
       for (let sx = box.x1 >> 6; sx <= box.x2 >> 6; sx++) {
         for (let sy = box.y1 >> 6; sy <= box.y2 >> 6; sy++) {
           // Skip squares outside irregular terrain before loading them.
@@ -214,7 +204,6 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
           ctx.drawImage(bitmap(square), a[0], a[1], b[0] - a[0], b[1] - a[1]);
           const lines = segments(square, sx, sy);
           borders.push(lines.borders);
-          outlines.push(lines.outline);
           square.edges.forEach(edge => edges.set(edge.id, edge));
         }
       }
@@ -222,9 +211,6 @@ export function routingLayer(map: OLMap, contexts: () => RoutingPlacement[]) {
       ctx.strokeStyle = BORDER;
       ctx.lineWidth = 1.5;
       borders.forEach(lines => stroke(ctx, lines, shape.plane, offset));
-      ctx.strokeStyle = SELECTED_LINE;
-      ctx.lineWidth = 2;
-      outlines.forEach(lines => stroke(ctx, lines, shape.plane, offset));
       if (options.separators && resolution <= SEPARATOR_RESOLUTION) drawSeparators(ctx, edges.values(), offset, resolution);
       ctx.restore();
       tint.restore();
