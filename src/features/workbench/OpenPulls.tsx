@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { loadOpenPulls, openPullPath, type OpenPulls } from "./api";
 
+/** Shown before "All". */
+const SHOWN = 6;
+
 /** The repository the workbench lists open pull requests of (the service's default). */
 export const LISTED = { owner: "Skretzo", repo: "shortest-path" };
 
@@ -27,14 +30,15 @@ function ago(iso: string) {
 /** The home page's list: each open pull request that changes transports, linked to its review. */
 export function OpenPullList() {
   const { list, error } = useOpenPulls(LISTED.owner, LISTED.repo);
-  const repository = `${LISTED.owner}/${LISTED.repo}`;
+  const [all, setAll] = useState(false);
+  const shown = all ? list?.pulls : list?.pulls.slice(0, SHOWN);
   return <section className="wb-open" aria-label="Open pull requests">
-    <h2>Open pull requests in {repository} that change transports</h2>
+    <h3>Open pull requests that change transports</h3>
     {error ? <p className="wb-hint">The list is unavailable: {error}</p>
       : !list ? <p className="wb-hint" role="status">Loading the list…</p>
       : !list.refreshedAt ? <p className="wb-hint" role="status">The service is reading the pull requests; try again in a minute.</p>
       : !list.pulls.length ? <p className="wb-hint">None right now.</p>
-      : <ul>{list.pulls.map(pull => <li key={pull.number}>
+      : <ul>{shown!.map(pull => <li key={pull.number}>
         <Link to={openPullPath(list.repository, pull)}>
           <span className="wb-open-number">#{pull.number}</span>
           <span className="wb-open-title">{pull.title}</span>
@@ -42,7 +46,8 @@ export function OpenPullList() {
           <span className="wb-open-meta">{pull.author} · {pull.units} {pull.units === 1 ? "change" : "changes"} · <span className="added">+{pull.counts.added}</span> <span className="removed">−{pull.counts.removed}</span> <span className="changed">~{pull.counts.changed}</span></span>
         </Link>
       </li>)}</ul>}
-    {list?.refreshedAt && <p className="wb-hint">Listed {ago(list.refreshedAt)}; the list is refreshed every few minutes.</p>}
+    {list && list.pulls.length > SHOWN && !all && <button type="button" className="wb-more" onClick={() => setAll(true)}>All {list.pulls.length}</button>}
+    {list?.refreshedAt && <p className="wb-hint">Listed {ago(list.refreshedAt)}.</p>}
   </section>;
 }
 

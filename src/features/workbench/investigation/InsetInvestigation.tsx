@@ -6,9 +6,11 @@ import { insetPin, mapLayers, savedStyle, saveStyle, type MapLayer, type MapStyl
 import { loadInsetAssets, type InsetAssets } from "../../../map/insets/assets";
 import { CollisionMap, releaseTiles } from "../../../map/insets/collision";
 import { COLLISION_RADIUS } from "../../../map/insets/composition";
+import { LayerControl, toggleLayer } from "../../../map/insets/LayerControl";
 import { catalogueClassifier } from "../../../map/insets/preview";
 import type { WorldBox } from "../../../map/insets/projection";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "../provenance";
+import { ROUTING_LAYERS, useRoutingLayers } from "../RoutingPanel";
 import { loadMeta, loadView, type TransportMeta, type TransportView } from "../transports";
 import "../workbench.css";
 import { AreaBrowser } from "./AreaBrowser";
@@ -142,7 +144,7 @@ export function InsetInvestigation() {
     setNearby(undefined);
     if (!ends.length) return;
     const abort = new AbortController();
-    loadView(ends.map(nearbyBox), undefined, abort.signal).then(setNearby, () => setNearby({ total: 0, transports: [], clusters: [] }));
+    loadView(ends.map(nearbyBox), undefined, abort.signal).then(setNearby, () => setNearby({ total: 0, transports: [] }));
     return () => abort.abort();
   }, [endsKey]);
 
@@ -158,9 +160,16 @@ export function InsetInvestigation() {
   }, [looked, collision]);
   const collisionReady = collisionFor === JSON.stringify(looked);
 
-  const overlay = useMemo(() => data && investigationOverlay({ data, area, plane, mode: state.mode, region: state.region, item: state.item,
+  const routing = useRoutingLayers(inspected, setFocusBox, state.layers ?? []);
+  const toggle = (id: string, on: boolean) => {
+    const next = toggleLayer(state.layers ?? [], id, on, ROUTING_LAYERS);
+    update({ layers: next.length ? next : undefined });
+  };
+  const baseOverlay = useMemo(() => data && investigationOverlay({ data, area, plane, mode: state.mode, region: state.region, item: state.item,
     beside: !!state.beside, topology, candidate, transports, draft, inspected, classify,
     collision: collisionReady ? collision : undefined }), [data, area, plane, state.mode, state.region, state.item, state.beside, topology, checks, candidate, transports, draft, inspected, classify, collisionReady, collision]);
+
+  const overlay = useMemo(() => baseOverlay ? { ...baseOverlay, routing: routing.overlay } : undefined, [baseOverlay, routing.overlay]);
 
   const mapRef = useRef<MapHandle>(undefined);
   const onPick = (point: WorldPoint) => {
@@ -212,8 +221,8 @@ export function InsetInvestigation() {
         : <nav className="wb-units" aria-label="Areas"><p className="wb-list-heading" role="status">{error ? "Unavailable" : "Loading areas…"}</p></nav>}
       <section className="wb-map wb-insets-map" aria-label="Map">
         {insetPin ? assets && <Suspense fallback={<div className="route-map" role="status">Loading inset map…</div>}>
-          <InsetMap assets={assets} areaPicker={false} overlay={overlay || undefined} style={style} insets onPick={onPick} onFallback={() => {}}
-            onSelectFeatures={onSelectFeatures} keepView fitAnchors={false} fitSelection={false}
+          <InsetMap assets={assets} areaPicker={false} overlay={overlay || undefined} style={style} insets keepFocus onPick={onPick} onFallback={() => {}}
+            onSelectFeatures={onSelectFeatures} onRoutingCrossing={routing.selectCrossing} keepView fitAnchors={false} fitSelection={false}
             initialCentre={state.at ?? LUMBRIDGE} focusRegions={focusRegions} focusTile={focusTile} focusBox={focusBox}
             onPlane={(_, next) => choosePlane(next)} onView={() => { const at = mapRef.current?.centreTile(); if (at) update({ at }); }}
             onReady={instance => { mapRef.current = instance; }} />
@@ -230,6 +239,7 @@ export function InsetInvestigation() {
         {insetPin && styles.length > 1 && <div className="map-style-toggle wb-style" role="group" aria-label="Map style">
           {styles.map(([id, { label }]) => <button key={id} type="button" aria-pressed={style === id} onClick={() => { setStyle(id); saveStyle(id); }}>{label}</button>)}
         </div>}
+        {insetPin && <LayerControl layers={routing.layers} onToggle={toggle} />}
         <div className="wb-tilebar" role="status" aria-label="Inspected tile">
           {picking ? `Click the map to choose the ${picking === "seed" ? "seed tile" : picking === "anchor" ? "anchor point" : picking}.`
             : inspected ? <><span className="wb-mono">{inspected.x} {inspected.y} {inspected.plane}</span> · {classify(inspected) === "main-world" ? "main map" : <span className="wb-mono">{classify(inspected)}</span>}</>
@@ -247,6 +257,7 @@ export function InsetInvestigation() {
             </div>
             {selectedRegion && <p className="wb-note">Region <span className="wb-mono">{selectedRegion.id}</span> · plane {selectedRegion.plane} · {selectedRegion.tileCount.toLocaleString()} tiles · bounds <span className="wb-mono">{selectedRegion.bounds.join(", ")}</span></p>}
           </div>
+          {routing.panel}
           {state.mode === "topology"
             ? <TopologyPanel data={data} area={area} state={topologyState} checks={checks} topology={topology} candidate={candidate} item={state.item}
               plugin={meta?.plugin} releasePlugin={data.plugin} transports={transports} nearby={nearby?.transports} classify={classify} collision={collisionReady ? collision : undefined}
@@ -255,16 +266,16 @@ export function InsetInvestigation() {
             : <LabellingPanel data={data} area={area} region={state.region} item={state.item} plugin={data.plugin ?? meta?.plugin} onItem={item => update({ item })}
               onShow={showPoint} onRegion={chooseRegion} onArea={id => { const next = data.byId.get(id); if (next) chooseArea(next); }}
               correction={correction} onCorrection={setCorrection} picking={picking} onPicking={setPicking} shows={point => !!mapRef.current?.shows(point)} />}
-        </> : <div className="wb-panel-body"><p className="wb-note">Choose an area to investigate. Areas with outstanding issues come first; provisional ones are regions nobody has named.</p>
-          {data && <p className="wb-note">{data.investigations.state === "loaded" ? "Worklist: investigations.json." : `${data.investigations.reason}`}</p>}
-          <p className="wb-note">Topology: {topologyState.state === "loaded" ? `report by ${topologyState.report.generator.repository}@${topologyState.report.generator.rev.slice(0, 7)}` : topologyState.state === "loading" ? "loading…" : topologyState.reason}</p></div>}
+        </> : <><div className="wb-panel-body"><p className="wb-note">Choose an area to investigate, or click the map.</p></div>{routing.panel}</>}
       </aside>
     </div>
     <footer className="wb-footer wb-provenance">
-      {lines.map(line => <span key={line.subject} className={`wb-prov ${line.status}`}><b>{line.subject}</b> {line.text}</span>)}
-      <span className={`wb-prov ${topologyState.state === "loaded" ? checks?.verified ? "ok" : "differs" : "unknown"}`}><b>Topology</b> {topologyState.state === "loaded"
-        ? `${topologyState.report.generator.repository.split("/").at(-1)}@${topologyState.report.generator.rev.slice(0, 7)}, cache ${topologyState.report.collision.cacheId}${checks?.verified ? "" : " — unverified against this page"}`
-        : topologyState.state === "loading" ? "loading" : "unavailable"}</span>
+      {lines.map(line => <span key={line.subject} className={`wb-prov ${line.status}`} title={line.text}><b>{line.subject}</b> {line.label}</span>)}
+      {topologyState.state === "loaded" ? <span className={`wb-prov ${checks?.verified ? "ok" : "differs"}`}
+        title={`${topologyState.report.generator.repository}@${topologyState.report.generator.rev.slice(0, 7)}, cache ${topologyState.report.collision.cacheId}${checks?.verified ? "" : " — unverified against this page"}`}>
+        <b>Topology</b> {topologyState.report.generator.rev.slice(0, 7)}{checks?.verified ? "" : " (unverified against this page)"}</span>
+        : <span className="wb-prov unknown" title={topologyState.state === "loading" ? undefined : topologyState.reason}><b>Topology</b> {topologyState.state === "loading" ? "loading" : "unavailable"}</span>}
+      {routing.provenance && <span className="wb-prov ok" title="Verified against these tiles"><b>Routing</b> {routing.provenance}</span>}
     </footer>
   </div>;
 }

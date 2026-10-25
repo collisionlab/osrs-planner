@@ -133,7 +133,50 @@ class TransportCatalogTest {
         TransportCatalog.View counted = catalog.view(List.of(new TransportCatalog.Box(0, 0, 0, 1000, 1000)), Set.of(), 2);
         assertEquals(5, counted.total);
         assertTrue(counted.transports.isEmpty());
-        assertEquals(5, counted.clusters.stream().mapToInt(cluster -> cluster.count).sum());
+    }
+
+    @Test
+    void joinsNetworkStationsToAHubPerConnectedPart() {
+        TransportCatalog catalog = TransportCatalog.build(Map.of(
+            // Two lines of canoes that never meet; a station's two tiles are one station.
+            "CANOE", HEADER
+                + "100 100 0\t200 100 0\tPaddle Canoe 1\t\t\t\t5\tEast\n"
+                + "101 101 0\t200 100 0\tPaddle Canoe 1\t\t\t\t5\tEast\n"
+                + "200 100 0\t100 100 0\tPaddle Canoe 2\t\t\t\t5\tWest\n"
+                + "200 100 0\t300 400 0\tPaddle Canoe 2\t\t\t\t5\t\n"
+                + "1000 1000 0\t1100 1000 0\tPaddle Canoe 3\t\t\t\t5\t\n"
+                // Underground stations don't pull the hub off the surface.
+                + "1100 1000 0\t1100 9000 0\tPaddle Canoe 4\t\t\t\t5\t\n"
+                + "1100 9000 0\t1100 1000 0\tPaddle Canoe 5\t\t\t\t5\t\n",
+            "TRANSPORT", HEADER + "100 99 0\t100 98 0\tOpen Door 7\t\t\t\t\t\n"), id -> "Item " + id);
+        TransportCatalog.View view = catalog.view(List.of(new TransportCatalog.Box(0, 90, 90, 210, 110)), Set.of(), 100);
+        assertEquals(1, view.networks.size());
+        TransportCatalog.Network first = view.networks.get(0);
+        assertEquals("CANOE:0", first.id);
+        assertEquals("Canoes", first.name);
+        assertEquals(List.of("100 100 0", "200 100 0"), first.stations.stream().map(station -> station.point.toString()).collect(Collectors.toList()));
+        // Named by what the canoes arriving there call it.
+        assertEquals(List.of("West", "East"), first.stations.stream().map(station -> station.name).collect(Collectors.toList()));
+        assertEquals("150 100 0", first.hub.toString());
+        assertTrue(view.transports.stream().filter(summary -> summary.type.equals("CANOE")).allMatch(summary -> "CANOE:0".equals(summary.network)));
+        assertNull(view.transports.stream().filter(summary -> summary.type.equals("TRANSPORT")).findFirst().orElseThrow().network);
+        TransportCatalog.Network second = catalog.view(List.of(new TransportCatalog.Box(0, 990, 990, 1010, 1010)), Set.of(), 100).networks.get(0);
+        assertEquals("CANOE:1", second.id);
+        assertEquals(3, second.stations.size());
+        assertEquals("1050 1000 0", second.hub.toString());
+        // Too many to list: no networks either.
+        assertTrue(catalog.view(List.of(new TransportCatalog.Box(0, 0, 0, 2000, 2000)), Set.of(), 2).networks.isEmpty());
+    }
+
+    @Test
+    void namesEveryBundledNetwork() {
+        Set<String> types = bundled.entries().stream().filter(entry -> entry.network != null).map(entry -> entry.transport.getType().name())
+            .collect(Collectors.toSet());
+        assertEquals(TransportCatalog.NETWORK_TYPES, types);
+        assertEquals(bundled.networks().stream().map(network -> network.type).collect(Collectors.toSet()), types);
+        // A fairy ring is one station, however many tiles it leaves from; every ring is one network.
+        assertEquals(1, bundled.entries().stream().filter(entry -> entry.network != null && entry.network.startsWith("FAIRY_RING:"))
+            .map(entry -> entry.network).distinct().count());
     }
 
     @Test
@@ -152,7 +195,6 @@ class TransportCatalogTest {
         long millis = (System.nanoTime() - started) / 1_000_000;
         assertEquals(catalog.size(), world.total);
         assertTrue(world.transports.isEmpty());
-        assertTrue(world.clusters.size() <= 4 * TransportCatalog.CLUSTER_CELLS, world.clusters.size() + " clusters");
         assertTrue(millis < 2000, millis + " ms");
         TransportCatalog.View close = catalog.view(List.of(new TransportCatalog.Box(0, 2000, 3000, 2040, 3040)), Set.of(), TransportCatalog.VIEW_LIMIT);
         assertFalse(close.transports.isEmpty());

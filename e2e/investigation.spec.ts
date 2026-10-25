@@ -41,7 +41,7 @@ async function mock(page: Page, { investigationsFile = investigations as string 
     if (rest === "" && url.searchParams.get("view")) {
       const boxes = url.searchParams.get("view")!.split(";").map(part => part.split(",").map(Number) as Box);
       const found = transports.transports.filter(t => boxes.some(box => inBox(t.origin, box) || inBox(t.destination, box)));
-      return route.fulfill({ json: { total: found.length, transports: found, clusters: [] } });
+      return route.fulfill({ json: { total: found.length, transports: found } });
     }
     return route.fulfill({ status: 404, json: { error: "not mocked" } });
   });
@@ -105,12 +105,23 @@ test("shows a region with no name or entrance where it really is, joined to noth
   await expect(details(page).getByText("suggestion").first()).toBeVisible();
 });
 
+/** Where a tile is drawn once the map has settled: the same pixel twice running. */
+async function settledPixel(page: Page, point: Point) {
+  let last: number[] | null = null;
+  await expect.poll(async () => {
+    const now = await page.evaluate(p => (window as unknown as { insetMap: Handle }).insetMap.pixel(p), point) as number[] | null;
+    const settled = !!now && JSON.stringify(now) === JSON.stringify(last);
+    last = now;
+    return settled;
+  }, { intervals: [250] }).toBe(true);
+  return last!;
+}
+
 test("selects a region by clicking its terrain and reports the tile", async ({ page }) => {
   await mock(page);
   await open(page, "?area=area:taverley-dungeon&plane=1&mode=labelling");
   await expect.poll(() => masks(page)).toBe(2);
-  await page.waitForTimeout(800);
-  const [x, y] = await map(page, handle => handle.pixel({ x: 2962, y: 9800, plane: 1 }));
+  const [x, y] = await settledPixel(page, { x: 2962, y: 9800, plane: 1 });
   await page.locator(".inset-map").click({ position: { x, y } });
   await expect(page).toHaveURL(/region=p1-2887-9797-df2334d7b8/);
   await expect(page.getByRole("status", { name: "Inspected tile" })).toContainText("2962 9800 1");
@@ -121,6 +132,7 @@ test("inspects a candidate link between two regions, with its evidence and rows"
   await mock(page);
   await open(page, `?area=area:taverley-dungeon&region=${TAVERLEY}`);
   const panel = details(page);
+  await panel.getByText("Checks and what “reached” means").click();
   await expect(panel.getByText("cache 2746, as the insets")).toBeVisible();
   await panel.getByRole("button", { name: /2905 9681 0 → 2791 9819 1/ }).click();
   await expect(page).toHaveURL(/sel=cand:k-taverley-upper/);
@@ -151,7 +163,6 @@ test("lists a correctly mapped dungeon's several walking components without call
   const table = panel.getByRole("region", { name: "Walking components" }).getByRole("table");
   await expect(table.locator("tbody tr")).toHaveCount(4);
   await expect(table.locator(".wb-bad")).toHaveCount(0);
-  await expect(panel).toContainText("A dungeon is usually several walking components");
   await expect(panel.getByRole("region", { name: "Candidate links" })).toContainText("None.");
   const browser = page.getByRole("navigation", { name: "Areas" });
   await expect(browser.getByRole("button", { name: /Cerberus' Lair/ }).locator(".wb-flag.gap")).toHaveCount(0);
@@ -216,7 +227,7 @@ test("refuses investigation data made from another release, and keeps working fr
   await mock(page, { investigationsFile: other });
   await open(page, "");
   await expect(page.getByRole("alert").filter({ hasText: "investigations.json was not used: investigations.json was made from another regions.json" })).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Areas" }).locator(".wb-list-heading")).toContainText(/of [1-9],\d{3} areas/);
+  await expect(page.getByRole("navigation", { name: "Areas" }).locator(".wb-list-heading")).toContainText(/[1-9],\d{3} areas/);
 });
 
 test("marks a report from another cache or plugin as unverified", async ({ page }) => {
@@ -234,8 +245,9 @@ test("works without a topology report and says it is unavailable", async ({ page
   await mock(page, { reportStatus: 404 });
   await open(page, "?area=area:taverley-dungeon");
   const panel = details(page);
-  await expect(panel.getByRole("status").filter({ hasText: "Diagnostics unavailable" })).toContainText("this build has no topology report");
-  await expect(panel.getByRole("table", { name: "Incoming connections" })).toBeVisible();
+  // Nothing about the report in the panel; the connections still are.
+  await expect(panel.getByRole("region", { name: "Topology report" })).toHaveCount(0);
+  await expect(panel.getByRole("region", { name: "Ways in" })).toBeVisible();
   await expect(panel.getByRole("region", { name: "Walking components" })).toHaveCount(0);
   await panel.getByRole("tab", { name: "Labelling" }).click();
   await expect(panel.getByRole("region", { name: "Evidence" }).locator("tbody tr").first()).toBeVisible();
@@ -253,6 +265,7 @@ test("investigates a new link by hand and drafts a row without inventing its fie
   await mock(page);
   await open(page, "?area=area:taverley-dungeon");
   const panel = details(page);
+  await panel.getByText("Investigate a new link", { exact: true }).click();
   const link = panel.getByRole("region", { name: "Investigate a new link" });
   await link.getByLabel("origin tile").fill("2905 9681 0");
   await link.getByLabel("destination tile").fill("2791 9819 1");
@@ -289,7 +302,7 @@ test("drafts an annotation only from what the developer chose", async ({ page })
   await expect(problems).toContainText("Choose a seed tile");
   await form.getByRole("button", { name: "Pick the seed tile on the map" }).click();
   await page.waitForTimeout(500);
-  const [x, y] = await map(page, handle => handle.pixel({ x: 3711, y: 8703, plane: 0 }));
+  const [x, y] = await settledPixel(page, { x: 3711, y: 8703, plane: 0 });
   await page.locator(".inset-map").click({ position: { x, y } });
   const draft = details(page).getByLabel("Annotation draft");
   await expect(draft).toContainText(`"componentId": "${NAMELESS}"`);

@@ -47,11 +47,21 @@ public final class TransportCatalog {
     static final String RESOURCES = "src/main/resources";
     /** Index cells, in tiles a side. */
     private static final int CELL_SHIFT = 6;
-    /** A view with more transports than this answers with counts per area instead. */
-    public static final int VIEW_LIMIT = 800;
-    /** Cluster cells a box is split into at most, about. */
-    static final int CLUSTER_CELLS = 160;
+    /**
+     * A view with more transports than this answers with their number alone. The explorer asks only
+     * when zoomed in to about 4 pixels a tile, where the densest view (around Varrock) has about 1,000.
+     */
+    public static final int VIEW_LIMIT = 2500;
     public static final int SEARCH_LIMIT = 50;
+    /**
+     * Transports between stations, any station to many others: drawn as each station joined to its
+     * network's hub rather than to every other station. Ships and boats go one place to another and
+     * stay edges.
+     */
+    static final Set<String> NETWORK_TYPES = Set.of("CANOE", "CHARTER_SHIP", "FAIRY_RING", "GNOME_GLIDER", "HOT_AIR_BALLOON",
+        "MAGIC_CARPET", "MAGIC_MUSHTREE", "MINECART", "QUETZAL", "SPIRIT_TREE", "WILDERNESS_OBELISK");
+    /** Tiles further north are underground or instanced, not the surface a hub belongs on. */
+    private static final int SURFACE_MAX_Y = 4200;
 
     /** A world tile. */
     public static final class Point {
@@ -146,6 +156,8 @@ public final class TransportCatalog {
         public final String construction;
         /** The destination before the plugin moved it to the house's landing tile, or null. */
         public final Point remappedFrom;
+        /** The {@link Network} it belongs to, or null. */
+        public final String network;
 
         Summary(Entry entry) {
             this.id = entry.id;
@@ -157,6 +169,27 @@ public final class TransportCatalog {
             this.teleport = entry.origin == null;
             this.construction = entry.construction;
             this.remappedFrom = entry.remappedFrom;
+            this.network = entry.network;
+        }
+    }
+
+    /**
+     * Stations joined by one type of transport (fairy rings, a line of minecarts): one connected
+     * part of that type's transports, so separate lines are separate networks. The map joins each
+     * station to {@code hub}, the middle of its stations on the surface (of them all, if none is),
+     * instead of drawing every station's way to every other.
+     */
+    public static final class Network {
+        public final String id, type, name;
+        public final Point hub;
+        public final List<Station> stations;
+
+        Network(String id, String type, String name, Point hub, List<Station> stations) {
+            this.id = id;
+            this.type = type;
+            this.name = name;
+            this.hub = hub;
+            this.stations = stations;
         }
     }
 
@@ -186,30 +219,30 @@ public final class TransportCatalog {
         }
     }
 
-    /** Transports somewhere in a cluster's bounds, too many to list at this zoom. */
-    public static final class Cluster {
-        public final int plane, x1, y1, x2, y2, count;
+    /**
+     * Where a network's transports leave from: a tile of the station (its several tiles are one), and
+     * its name, from what the transports arriving there call it (empty if none says).
+     */
+    public static final class Station {
+        public final Point point;
+        public final String name;
 
-        Cluster(int plane, int x1, int y1, int x2, int y2, int count) {
-            this.plane = plane;
-            this.x1 = x1;
-            this.y1 = y1;
-            this.x2 = x2;
-            this.y2 = y2;
-            this.count = count;
+        Station(Point point, String name) {
+            this.point = point;
+            this.name = name;
         }
     }
 
-    /** The transports with an end in a view: listed, or counted by area when there are too many. */
+    /** The transports with an end in a view: listed, or only counted when there are too many; and the networks of those listed. */
     public static final class View {
         public final int total;
         public final List<Summary> transports;
-        public final List<Cluster> clusters;
+        public final List<Network> networks;
 
-        View(int total, List<Summary> transports, List<Cluster> clusters) {
+        View(int total, List<Summary> transports, List<Network> networks) {
             this.total = total;
             this.transports = transports;
-            this.clusters = clusters;
+            this.networks = networks;
         }
     }
 
@@ -233,6 +266,8 @@ public final class TransportCatalog {
         final Point origin, destination, remappedFrom;
         final String construction;
         final List<Source> sources;
+        /** Its network's id, or null. */
+        String network;
 
         Entry(Transport transport, String file, Point remappedFrom, String construction, List<Source> sources) {
             this.transport = transport;
@@ -255,6 +290,7 @@ public final class TransportCatalog {
     /** Each transport under the cells of both of its ends. */
     private final Map<Long, List<Entry>> cells = new HashMap<>();
     private final IntFunction<String> itemName;
+    private final Map<String, Network> networks = new LinkedHashMap<>();
 
     TransportCatalog(List<Entry> entries, IntFunction<String> itemName) {
         this.entries = entries;
@@ -276,6 +312,103 @@ public final class TransportCatalog {
                     }
                 }
             }
+        }
+        findNetworks();
+    }
+
+    /** Each network type's transports, split into connected parts over the tiles they join. */
+    private void findNetworks() {
+        Map<String, List<Entry>> byType = new TreeMap<>();
+        for (Entry entry : entries) {
+            if (entry.origin != null && NETWORK_TYPES.contains(entry.transport.getType().name())) {
+                byType.computeIfAbsent(entry.transport.getType().name(), key -> new ArrayList<>()).add(entry);
+            }
+        }
+        byType.forEach((type, members) -> {
+            Map<Point, Point> parent = new HashMap<>();
+            for (Entry entry : members) {
+                union(parent, entry.origin, entry.destination);
+            }
+            // Parts in the order their first transport comes, so ids stay put while the data does.
+            Map<Point, List<Entry>> parts = new LinkedHashMap<>();
+            for (Entry entry : members) {
+                parts.computeIfAbsent(find(parent, entry.origin), key -> new ArrayList<>()).add(entry);
+            }
+            String name = type.charAt(0) + type.substring(1).toLowerCase().replace('_', ' ') + "s";
+            int n = 0;
+            for (List<Entry> part : parts.values()) {
+                String id = type + ":" + n++;
+                List<Point> points = stations(part.stream().map(entry -> entry.origin).distinct().collect(Collectors.toList()));
+                List<Station> stations = points.stream().map(point -> new Station(point, stationName(part, point))).collect(Collectors.toList());
+                List<Point> surface = points.stream().filter(point -> point.plane == 0 && point.y < SURFACE_MAX_Y).collect(Collectors.toList());
+                List<Point> placed = surface.isEmpty() ? points : surface;
+                Point hub = new Point((int) Math.round(placed.stream().mapToInt(point -> point.x).average().orElse(0)),
+                    (int) Math.round(placed.stream().mapToInt(point -> point.y).average().orElse(0)), 0);
+                networks.put(id, new Network(id, type, name, hub, stations));
+                part.forEach(entry -> entry.network = id);
+            }
+        });
+    }
+
+    /** Tiles of one station (an obelisk's, a spirit tree's) this close, a side, are one station. */
+    static final int STATION_REACH = 4;
+
+    /** Origins grouped into stations, each named by its tile nearest the middle of its group. */
+    static List<Point> stations(List<Point> origins) {
+        Map<Point, Point> parent = new HashMap<>();
+        for (int i = 0; i < origins.size(); i++) {
+            for (int j = i + 1; j < origins.size(); j++) {
+                Point a = origins.get(i), b = origins.get(j);
+                if (near(a, b)) {
+                    union(parent, a, b);
+                }
+            }
+        }
+        Map<Point, List<Point>> groups = new LinkedHashMap<>();
+        origins.forEach(origin -> groups.computeIfAbsent(find(parent, origin), key -> new ArrayList<>()).add(origin));
+        return groups.values().stream().map(group -> {
+            double x = group.stream().mapToInt(point -> point.x).average().orElse(0), y = group.stream().mapToInt(point -> point.y).average().orElse(0);
+            return group.stream().min(Comparator.comparingDouble(point -> Math.hypot(point.x - x, point.y - y))).orElseThrow();
+        }).collect(Collectors.toList());
+    }
+
+    /** What most transports arriving near a station call where they go. */
+    private static String stationName(List<Entry> part, Point station) {
+        Map<String, Integer> names = new HashMap<>();
+        for (Entry entry : part) {
+            String info = entry.transport.getDisplayInfo();
+            if (info != null && !info.isEmpty() && near(entry.destination, station, NAME_REACH)) {
+                names.merge(info, 1, Integer::sum);
+            }
+        }
+        return names.entrySet().stream().max(Map.Entry.<String, Integer>comparingByValue().thenComparing(Map.Entry.comparingByKey(Comparator.reverseOrder())))
+            .map(Map.Entry::getKey).orElse("");
+    }
+
+    /** Transports arriving this close to a station, a side, name it: a landing can be a few steps off. */
+    static final int NAME_REACH = 12;
+
+    private static boolean near(Point a, Point b) {
+        return near(a, b, STATION_REACH);
+    }
+
+    private static boolean near(Point a, Point b, int reach) {
+        return a.plane == b.plane && Math.abs(a.x - b.x) <= reach && Math.abs(a.y - b.y) <= reach;
+    }
+
+    private static Point find(Map<Point, Point> parent, Point point) {
+        Point root = point;
+        while (!parent.getOrDefault(root, root).equals(root)) {
+            root = parent.get(root);
+        }
+        parent.put(point, root);
+        return root;
+    }
+
+    private static void union(Map<Point, Point> parent, Point a, Point b) {
+        Point ra = find(parent, a), rb = find(parent, b);
+        if (!ra.equals(rb)) {
+            parent.put(ra, rb);
         }
     }
 
@@ -434,6 +567,11 @@ public final class TransportCatalog {
     }
 
     /** Every transport type, with how many effective transports it has. */
+    /** Every network, for drawing them at any zoom. */
+    public List<Network> networks() {
+        return List.copyOf(networks.values());
+    }
+
     public List<TypeCount> types() {
         Map<String, Integer> counts = new TreeMap<>();
         Map<String, Boolean> teleport = new HashMap<>();
@@ -455,7 +593,7 @@ public final class TransportCatalog {
 
     /**
      * The transports of the given types (all when empty) with an end in any of the boxes: listed when
-     * there are at most {@code limit}, else counted in cells of each box.
+     * there are at most {@code limit}, else only counted.
      */
     public View view(List<Box> boxes, Set<String> types, int limit) {
         Set<Entry> found = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -474,42 +612,11 @@ public final class TransportCatalog {
         if (found.size() <= limit) {
             List<Summary> listed = found.stream().sorted(Comparator.comparing((Entry entry) -> entry.file).thenComparing(entry -> entry.id))
                 .map(Summary::new).collect(Collectors.toList());
-            return new View(found.size(), listed, List.of());
+            List<Network> shown = listed.stream().map(summary -> summary.network).filter(Objects::nonNull).distinct()
+                .map(networks::get).collect(Collectors.toList());
+            return new View(found.size(), listed, shown);
         }
-        return new View(found.size(), List.of(), clusters(boxes, found));
-    }
-
-    /** Counts per cell of each box, each transport once, under its first end in a box. */
-    private static List<Cluster> clusters(List<Box> boxes, Set<Entry> found) {
-        Map<String, int[]> counts = new LinkedHashMap<>();
-        for (Entry entry : found) {
-            for (Box box : boxes) {
-                Point end = box.contains(entry.origin) ? entry.origin : box.contains(entry.destination) ? entry.destination : null;
-                if (end == null) {
-                    continue;
-                }
-                int size = clusterSize(box);
-                int cx = Math.floorDiv(end.x - box.x1, size), cy = Math.floorDiv(end.y - box.y1, size);
-                int[] cluster = counts.computeIfAbsent(boxes.indexOf(box) + ":" + cx + ":" + cy,
-                    key -> new int[] {box.plane, end.x, end.y, end.x, end.y, 0});
-                cluster[1] = Math.min(cluster[1], end.x);
-                cluster[2] = Math.min(cluster[2], end.y);
-                cluster[3] = Math.max(cluster[3], end.x);
-                cluster[4] = Math.max(cluster[4], end.y);
-                cluster[5]++;
-                break;
-            }
-        }
-        return counts.values().stream().map(c -> new Cluster(c[0], c[1], c[2], c[3], c[4], c[5])).collect(Collectors.toList());
-    }
-
-    /** A box's cluster cell side, in tiles: a power of two that splits it into about {@link #CLUSTER_CELLS}. */
-    static int clusterSize(Box box) {
-        int size = 8;
-        while (box.area() / ((long) size * size) > CLUSTER_CELLS) {
-            size *= 2;
-        }
-        return size;
+        return new View(found.size(), List.of(), List.of());
     }
 
     /**

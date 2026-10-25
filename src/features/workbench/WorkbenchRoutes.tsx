@@ -50,20 +50,22 @@ function WorkbenchHome({ missing }: { missing?: boolean }) {
   return <div className="wb-page">
     <header className="wb-header"><span className="wb-brand">Workbench</span><span className="wb-tool">Tools for the plugin's data</span></header>
     <main className="wb-home">
-      <h1>Transport review</h1>
-      <p>See a pull request's transport and destination rows on the map: each change, the areas it connects, and the tiles the pathfinder can and can't walk.</p>
-      <form onSubmit={submit}>
-        <input aria-label="GitHub URL" placeholder="https://github.com/Skretzo/shortest-path/pull/844" value={url} onChange={event => setUrl(event.target.value)} />
-        <button type="submit">Review</button>
-      </form>
-      <p className="wb-hint">Or swap the host in any GitHub URL: <code>github.com/…/pull/844</code> → <code>{window.location.host}/github/…/pull/844</code>. Branches without a pull request work too, as <code>…/compare/master...my-branch</code>.</p>
       {error && <p role="alert">{error}</p>}
-      <OpenPullList />
-      <h1>Transport explorer</h1>
-      <p><Link to="/candidates">Transport candidates</Link>: inspect geometric suggestions against bundled data, map tiles and collision, with checked-in review decisions.</p>
-      <p>Every transport the plugin builds from its data, on the map: what each needs, and the rows it came from. <Link to="/transports">Open the explorer</Link></p>
-      <h1>Inset investigation</h1>
-      <p>Areas off the main map, region by region: their names and the evidence behind them, their anchors and connections, and where the world's topology may be missing a link. <Link to="/insets">Investigate insets</Link></p>
+      <nav className="wb-tools" aria-label="Tools">
+        <Link to="/candidates"><b>Transport candidates</b><span>Review proposed transport corrections against bundled data, map tiles and collision.</span></Link>
+        <Link to="/transports"><b>Transport explorer</b><span>Every transport on the map: where it goes, what it needs, and its row.</span></Link>
+        <Link to="/insets"><b>Inset investigation</b><span>Areas off the main map: their entrances, connections and names.</span></Link>
+        <a href="#review"><b>Pull request review</b><span>A pull request's transport changes on the map.</span></a>
+      </nav>
+      <section id="review" aria-label="Pull request review">
+        <h2>Review a pull request</h2>
+        <form onSubmit={submit}>
+          <input aria-label="GitHub URL" placeholder="https://github.com/Skretzo/shortest-path/pull/844" value={url} onChange={event => setUrl(event.target.value)}
+            title={`Or swap the host in any GitHub URL: ${window.location.host}/github/…/pull/844, or …/compare/master...my-branch`} />
+          <button type="submit">Review</button>
+        </form>
+        <OpenPullList />
+      </section>
     </main>
   </div>;
 }

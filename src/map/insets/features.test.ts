@@ -5,7 +5,7 @@ const p = (x: number, y: number, plane = 0) => ({ x, y, plane });
 const door: MapFeature = { kind: "edge", key: "door", from: p(10, 10), to: p(12, 10), tone: "object" };
 const cave: MapFeature = { kind: "edge", key: "cave", from: p(10, 10), to: p(500, 9000), tone: "object" };
 const landing: MapFeature = { kind: "point", key: "tele", point: p(20, 20), tone: "teleport", role: "destination" };
-const counted: MapFeature = { kind: "region", key: "count", plane: 1, bounds: [0, 0, 63, 63], tone: "count", label: "12" };
+const counted: MapFeature = { kind: "region", key: "area", plane: 1, bounds: [0, 0, 63, 63], tone: "area", label: "12" };
 const classify = (point: { y: number }) => point.y > 6000 ? "cave" : "main-world";
 
 describe("map features", () => {

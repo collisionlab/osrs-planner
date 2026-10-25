@@ -50,7 +50,7 @@ export function TopologyPanel(props: {
   picking?: PickTarget; onPicking(target?: PickTarget): void;
   onItem(key?: string): void; onShow(point: WorldPoint): void; onBox(box: WorldBox): void;
 }) {
-  const { data, area, state, checks, topology, item, transports } = props;
+  const { data, area, state, checks, topology, item } = props;
   const report = state.state === "loaded" ? state.report : undefined;
   const verified = !!checks?.verified;
   const select = (k: string, point?: Triple) => { props.onItem(k); if (point) props.onShow(tilePoint(point)); };
@@ -62,17 +62,16 @@ export function TopologyPanel(props: {
   const internal = connections.length - incoming.length - outgoing.length;
   const entrances = area.regionIds.flatMap(id => (data.anchors.regions[id]?.anchors || []).filter(anchor => anchor.entrance && anchor.hops === 1));
   return <div className="wb-panel-body">
-    <Section title="Topology report" label="Topology report">
-      {state.state === "loading" ? <p className="wb-note">Loading…</p>
-        : state.state !== "loaded" ? <p className="wb-unavailable" role="status"><b>{state.state === "invalid" ? "Report rejected" : "Diagnostics unavailable"}:</b> {state.reason} Walking components, candidate links and suspect ends aren't shown; the inset release's own connections below still are.</p>
-        : <>
-          <ul className="wb-checks">{checks?.checks.map(check => <li key={check.subject} className={check.ok === true ? "ok" : check.ok === false ? "differs" : "unknown"}><b>{check.subject}</b> {check.text}</li>)}</ul>
-          {!verified && <p className="wb-warning" role="alert">Unverified: the report was not made from the same data as this page shows, so its conclusions below are leads, not findings.</p>}
-          <p className="wb-note"><b>Reachable</b> means: {report!.reachability} It says nothing about requirements, and a reachable component can still have a missing link.</p>
-        </>}
-    </Section>
+    {state.state === "invalid" && <p className="wb-warning" role="alert">Topology report rejected: {state.reason}</p>}
+    {report && <Section title="Topology report" label="Topology report">
+      {!verified && <p className="wb-warning" role="alert">Unverified: the report was not made from the same data as this page shows, so its conclusions below are leads, not findings.</p>}
+      <details className="wb-more-detail">
+        <summary>Checks and what “reached” means</summary>
+        <ul className="wb-checks">{checks?.checks.map(check => <li key={check.subject} className={check.ok === true ? "ok" : check.ok === false ? "differs" : "unknown"}><b>{check.subject}</b> {check.text}</li>)}</ul>
+        <p className="wb-note"><b>Reachable</b> means: {report.reachability} It says nothing about requirements, and a reachable component can still have a missing link.</p>
+      </details>
+    </Section>}
     {report && <Section title="Walking components" note={`${topology?.components.length ?? 0} significant${topology?.fragments ? `, ${topology.fragments} small fragment${topology.fragments === 1 ? "" : "s"} not shown` : ""}`}>
-      <p className="wb-note">A dungeon is usually several walking components joined by its own doors, ladders and shortcuts. Only a significant component that nothing reaches is a possible gap.</p>
       {topology?.components.length ? <table className="wb-rows"><thead><tr><th>Component</th><th>Plane</th><th>Tiles</th><th>Reached</th><th>In / out</th></tr></thead>
         <tbody>{topology.components.map(({ component, overlap }) => <tr key={component.id} className={item === key.component(component.id) ? "selected" : undefined}
           onClick={() => { props.onItem(key.component(component.id)); const [x1, y1, x2, y2] = component.bounds; props.onBox({ plane: component.plane, x1, y1, x2, y2 }); }}>
@@ -96,32 +95,29 @@ export function TopologyPanel(props: {
         <div>{suspect.sources.map(source => <span key={source.line}><RowLink plugin={report.plugin} file={source.file} line={source.line} /> </span>)} <ExplorerLink point={suspect.point} /></div>
       </li>)}</ul> : <p className="wb-note">None.</p>}
     </Section>}
-    <Section title="Entrances and connections" note="matched by the inset release">
-      <p className="wb-note">{entrances.length} surface entrance tile{entrances.length === 1 ? "" : "s"} · {incoming.length} in · {outgoing.length} out · {internal} within the area.
-        {props.releasePlugin ? "" : " Row links open the explorer's plugin commit; the release only records its transports' hash, so lines may have moved."}</p>
-      <ConnectionTable title="Incoming" rows={incoming} plugin={props.releasePlugin ?? props.plugin} onShow={props.onShow} />
-      <ConnectionTable title="Outgoing" rows={outgoing} plugin={props.releasePlugin ?? props.plugin} onShow={props.onShow} />
+    <Section title="Connections" note={`${entrances.length} surface entrance${entrances.length === 1 ? "" : "s"}`}>
+      <ConnectionList title="Ways in" rows={incoming} plugin={props.releasePlugin ?? props.plugin} onShow={props.onShow} />
+      <ConnectionList title="Ways out" rows={outgoing} plugin={props.releasePlugin ?? props.plugin} onShow={props.onShow} />
+      {!incoming.length && !outgoing.length && <p className="wb-note">No known way in or out.</p>}
+      {(incoming[0] || outgoing[0])?.source && <p><ExplorerLink point={(incoming[0] || outgoing[0]).source!.point}>Open in the transport explorer ↗</ExplorerLink></p>}
     </Section>
-    <Section title="Transports here" note="from the explorer's catalogue">
-      {!transports ? <p className="wb-note">Loading…</p> : transports.view.clusters.length ? <p className="wb-note">{transports.view.total.toLocaleString()} transports, too many to draw; open the explorer to list them.</p>
-        : <ul className="wb-list wb-compact">{transports.view.transports.slice(0, 60).map(summary => <li key={summary.id} className={item === key.transport(summary.id) ? "selected" : undefined}>
-          <button type="button" className="wb-link" onClick={() => { props.onItem(key.transport(summary.id)); props.onShow(summary.origin || summary.destination); }}>{summary.label || typeName(summary.type)}</button>
-          {" "}<span className="wb-note wb-mono">{summary.origin ? tileText(summary.origin) : "anywhere"} → {tileText(summary.destination)}</span> <ExplorerLink id={summary.id}>explorer ↗</ExplorerLink>
-        </li>)}{transports.view.transports.length > 60 && <li className="wb-note">and {transports.view.transports.length - 60} more</li>}</ul>}
-    </Section>
-    <LinkInvestigator {...props} verified={verified} report={report} />
+    <details className="wb-more-detail wb-investigate">
+      <summary>Investigate a new link</summary>
+      <LinkInvestigator {...props} verified={verified} report={report} />
+    </details>
   </div>;
 }
 
-function ConnectionTable({ title, rows, plugin, onShow }: { title: string; rows: InvestigationData["anchors"]["connections"][string][]; plugin?: Revision; onShow(point: WorldPoint): void }) {
+function ConnectionList({ title, rows, plugin, onShow }: { title: string; rows: InvestigationData["anchors"]["connections"][string][]; plugin?: Revision; onShow(point: WorldPoint): void }) {
   if (!rows.length) return null;
-  return <table className="wb-rows wb-sources" aria-label={`${title} connections`}><thead><tr><th>{title}</th><th>From → to</th><th>Row</th></tr></thead>
-    <tbody>{rows.slice(0, 40).map(connection => <tr key={connection.id}>
-      <td>{connection.action || connection.label || connection.reason}<div className="wb-note">{connection.policy}{connection.policy === "review" ? `: ${connection.reason}` : ""}</div></td>
-      <td>{connection.source ? <TileButton point={connection.source.point} onShow={onShow} /> : <i>anywhere</i>} → {connection.target ? <TileButton point={connection.target.point} onShow={onShow} /> : <i>?</i>}</td>
-      <td>{connection.sources.map((source, index) => source.line ? <span key={index}><RowLink plugin={plugin} file={source.file} line={source.line} /> </span> : <span key={index} className="wb-note">{source.file} </span>)}
-        {connection.source && <ExplorerLink point={connection.source.point}>explorer ↗</ExplorerLink>}</td>
-    </tr>)}{rows.length > 40 && <tr><td colSpan={3} className="wb-note">and {rows.length - 40} more</td></tr>}</tbody></table>;
+  return <section aria-label={title}>
+    <h4>{title} <small>{rows.length}</small></h4>
+    <ul className="wb-list wb-compact">{rows.slice(0, 40).map(connection => <li key={connection.id} title={connection.policy === "review" ? connection.reason : undefined}>
+      {connection.action || connection.label || connection.reason}{" "}
+      <span className="wb-mono">{connection.source ? <TileButton point={connection.source.point} onShow={onShow} /> : <i>anywhere</i>} → {connection.target ? <TileButton point={connection.target.point} onShow={onShow} /> : <i>?</i>}</span>
+      {" "}{connection.sources.filter(source => source.line).slice(0, 1).map(source => <RowLink key={source.file + source.line} plugin={plugin} file={source.file} line={source.line} />)}
+    </li>)}{rows.length > 40 && <li className="wb-note">and {rows.length - 40} more</li>}</ul>
+  </section>;
 }
 
 function CandidateDetail(props: Parameters<typeof TopologyPanel>[0] & { candidate: LinkCandidate; verified: boolean }) {
@@ -170,7 +166,8 @@ function LinkInvestigator(props: Parameters<typeof TopologyPanel>[0] & { verifie
     </div>
     {draft[which] && <TileFacts point={draft[which]!} data={props.data} classify={props.classify} collision={props.collision} report={props.report} verified={props.verified} nearby={nearby} />}
   </div>;
-  return <Section title="Investigate a new link" note="evidence gathering; nothing is written">
+  return <section className="wb-section" aria-label="Investigate a new link">
+    <p className="wb-note">Gather evidence for a missing link; nothing is written anywhere.</p>
     {end("origin")}{end("destination")}
     {spec && <>
       <p className={matches.length ? "wb-warning" : "wb-note"} role="status">{matches.length
@@ -189,6 +186,6 @@ function LinkInvestigator(props: Parameters<typeof TopologyPanel>[0] & { verifie
         <button type="button" className="wb-small" onClick={() => { onDraft({}); setText({ origin: "", destination: "" }); }}>Clear</button>
       </div>
     </>}
-  </Section>;
+  </section>;
 }
 

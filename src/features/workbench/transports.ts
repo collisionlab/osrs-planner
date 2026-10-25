@@ -2,6 +2,7 @@ import type { WorldPoint } from "../../domain/contracts";
 import type { CollisionMap } from "../../map/insets/collision";
 import type { FeatureOverlay, FeatureTone, MapFeature } from "../../map/insets/features";
 import type { WorldBox } from "../../map/insets/projection";
+import { readLayers } from "../../map/insets/LayerControl";
 
 /**
  * The transport explorer's data, from the planner service (`shortestpath.workbench.TransportCatalog`):
@@ -32,6 +33,21 @@ export interface TransportSummary {
   construction: "row" | "paired" | "teleport";
   /** Where the row said it went, before the plugin moved it to the house's landing tile. */
   remappedFrom: WorldPoint | null;
+  /** The network it joins (see `TransportNetwork`), if any (not from an older service). */
+  network?: string | null;
+}
+
+/**
+ * Stations joined by one type of transport, such as the fairy rings or a line of minecarts: drawn
+ * as each station joined to `hub`, not to every other station.
+ */
+export interface TransportNetwork {
+  id: string;
+  type: string;
+  name: string;
+  hub: WorldPoint;
+  /** A tile of each station, and its name (what transports arriving there call it; may be empty). */
+  stations: { point: WorldPoint; name: string }[];
 }
 
 export interface TransportSource {
@@ -55,8 +71,14 @@ export interface TransportDetail extends TransportSummary {
   sources: TransportSource[];
 }
 
-export interface Cluster { plane: number; x1: number; y1: number; x2: number; y2: number; count: number }
-export interface TransportView { total: number; transports: TransportSummary[]; clusters: Cluster[] }
+/** The transports with an end in view, listed when at most `viewLimit`, else only counted (`total`); and their networks. */
+export interface TransportView { total: number; transports: TransportSummary[]; networks?: TransportNetwork[] }
+
+/**
+ * The coarsest map resolution (map units a screen pixel) transports are drawn at: a tile 4 pixels
+ * wide. Further out a transport is a speck, and how many there are in an area says nothing.
+ */
+export const TRANSPORTS_MAX_RESOLUTION = 8;
 
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`/api/workbench/v1/transports${path}`, { signal });
@@ -74,6 +96,8 @@ export const loadMeta = (signal?: AbortSignal) => get<TransportMeta>("/meta", si
 export const loadDetail = (id: string, signal?: AbortSignal) => get<TransportDetail>(`/${encodeURIComponent(id)}`, signal);
 export const loadView = (boxes: WorldBox[], types: string[] | undefined, signal?: AbortSignal) =>
   get<TransportView>(`?view=${encodeURIComponent(boxesQuery(boxes))}${types ? `&${typesQuery(types)}` : ""}`, signal);
+/** Every network: few enough (a dozen or so) to draw at any zoom. */
+export const loadNetworks = (signal?: AbortSignal) => get<TransportNetwork[]>("/networks", signal);
 export const searchTransports = (query: string, types: string[] | undefined, signal?: AbortSignal) =>
   get<TransportSummary[]>(`/search?q=${encodeURIComponent(query)}${types ? `&${typesQuery(types)}` : ""}`, signal);
 
@@ -92,47 +116,105 @@ export const typeName = (type: string) => type.charAt(0) + type.slice(1).toLower
 
 const inBox = (point: WorldPoint, box: WorldBox) => point.plane === box.plane && point.x >= box.x1 && point.x <= box.x2 && point.y >= box.y1 && point.y <= box.y2;
 
+/** Neighbouring tiles on one plane, side by side (not diagonal): a hop across the edge between them. */
+const hop = (from: WorldPoint, to: WorldPoint) => from.plane === to.plane && Math.abs(from.x - to.x) + Math.abs(from.y - to.y) === 1;
+
 /**
  * A transport's features: its tiles, and the edge between them, or a teleport's landing alone (no
  * origin is made up). Given the boxes in view, an edge leaving the view isn't drawn (a fairy ring
- * would otherwise cross the map to every other ring), nor an end outside it.
+ * would otherwise cross the map to every other ring), nor an end outside it. A hop between
+ * neighbouring tiles (a door) is one bar over their shared edge, unless it is `whole` (selected).
  */
-export function transportFeatures(summary: TransportSummary, inView?: WorldBox[]): MapFeature[] {
-  const tone = toneOf(summary), key = summary.id;
+const where = (point: WorldPoint | null) => point ? `${point.x} ${point.y} ${point.plane}` : "anywhere";
+/** What hovering a transport shows: its name, and where it goes from and to. */
+export const transportTitle = (summary: TransportSummary) =>
+  `${summary.label || typeName(summary.type)}\n${where(summary.origin)} → ${where(summary.destination)}`;
+
+export function transportFeatures(summary: TransportSummary, inView?: WorldBox[], whole = false): MapFeature[] {
+  const tone = toneOf(summary), key = summary.id, title = transportTitle(summary);
   const shown = (point: WorldPoint) => !inView || inView.some(box => inBox(point, box));
+  if (!whole && summary.origin && hop(summary.origin, summary.destination))
+    return shown(summary.origin) && shown(summary.destination) ? [{ kind: "edge", key, from: summary.origin, to: summary.destination, tone, hop: true, title }] : [];
   const features: MapFeature[] = [];
-  if (summary.origin && shown(summary.origin) && shown(summary.destination)) features.push({ kind: "edge", key, from: summary.origin, to: summary.destination, tone });
-  if (summary.origin && shown(summary.origin)) features.push({ kind: "point", key, point: summary.origin, tone, role: "origin" });
-  if (shown(summary.destination)) features.push({ kind: "point", key, point: summary.destination, tone, role: "destination" });
+  if (summary.origin && shown(summary.origin) && shown(summary.destination)) features.push({ kind: "edge", key, from: summary.origin, to: summary.destination, tone, title });
+  if (summary.origin && shown(summary.origin)) features.push({ kind: "point", key, point: summary.origin, tone, role: "origin", title });
+  if (shown(summary.destination)) features.push({ kind: "point", key, point: summary.destination, tone, role: "destination", title });
   return features;
 }
 
-export const clusterKey = (index: number) => `cluster:${index}`;
-
-/**
- * The overlay for a view: each listed transport (what of it is in view), or each counted area when
- * there were too many, plus the whole selected transport (whether or not it is in view), which the
- * map lays out and draws collision around.
- */
-export function viewOverlay(view: TransportView | undefined, selected: TransportSummary | undefined, collision?: CollisionMap,
-  inView?: WorldBox[]): FeatureOverlay {
-  const features: MapFeature[] = [];
-  view?.clusters.forEach((cluster, index) => features.push({ kind: "region", key: clusterKey(index), plane: cluster.plane,
-    bounds: [cluster.x1, cluster.y1, cluster.x2, cluster.y2], tone: "count", label: String(cluster.count) }));
-  for (const summary of view?.transports || []) if (summary.id !== selected?.id) features.push(...transportFeatures(summary, inView));
-  const anchors = selected ? transportFeatures(selected) : [];
-  // The selection is drawn last, over the rest.
-  return { features: [...features, ...anchors], anchors, selected: selected?.id, collision };
+const tileKey = (point: WorldPoint) => `${point.x},${point.y},${point.plane}`;
+/** A network's features' key: its hub and spokes select it. */
+export const networkKey = (id: string) => `network:${id}`;
+/** A network station's tiles' key, which selects the tile. */
+export const stationKey = (point: WorldPoint) => `station:${tileKey(point)}`;
+export function stationOf(key: string): WorldPoint | undefined {
+  const match = /^station:(\d+),(\d+),(\d)$/.exec(key);
+  return match ? { x: Number(match[1]), y: Number(match[2]), plane: Number(match[3]) } : undefined;
 }
 
-/** What the page's URL holds: the selected transport, where the map is, the types shown and a search. */
+/**
+ * The overlay for a view: each listed transport (what of it is in view), plus the whole selected
+ * transport (whether or not it is in view), which the map lays out and draws collision around.
+ * A network's transports are their tiles, each drawn once, and each station in view has a spoke to
+ * the network's hub, wherever that is; `network` is a selected network. The networks drawn are
+ * `hubs.networks` (every one shown, at any zoom, its stations in `hubs.inView`), else the view's.
+ * Zoomed out, where tiles are specks, a station is a small node.
+ */
+export function viewOverlay(view: TransportView | undefined, selected: TransportSummary | undefined, collision?: CollisionMap,
+  inView?: WorldBox[], network?: string, hubs?: { networks: TransportNetwork[]; inView?: WorldBox[] }): FeatureOverlay {
+  const features: MapFeature[] = [];
+  const shown = (point: WorldPoint) => !inView || inView.some(box => inBox(point, box));
+  const nearHub = (point: WorldPoint) => { const boxes = hubs ? hubs.inView : inView; return !boxes || boxes.some(box => inBox(point, box)); };
+  // Every network known draws its transports as tiles; those in `hubs` (else the view's) get spokes and a hub.
+  const networks = new Map([...view?.networks || [], ...hubs?.networks || []].map(each => [each.id, each]));
+  const withHubs = hubs ? hubs.networks : view?.networks || [];
+  const tiles = new Set<string>();
+  for (const summary of view?.transports || []) {
+    if (summary.id === selected?.id) continue;
+    if (!summary.network || !networks.has(summary.network)) { features.push(...transportFeatures(summary, inView)); continue; }
+    const tone = toneOf(summary), network = networks.get(summary.network)!;
+    for (const [point, role] of [[summary.origin, "origin"], [summary.destination, "destination"]] as const) {
+      if (!point || !shown(point) || tiles.has(`${role}/${tileKey(point)}`)) continue;
+      tiles.add(`${role}/${tileKey(point)}`);
+      const station = network.stations.find(each => each.point.plane === point.plane && Math.abs(each.point.x - point.x) <= 12 && Math.abs(each.point.y - point.y) <= 12);
+      const title = `${network.name}${station?.name ? `: ${station.name}` : ""}\n${role === "origin" ? "leave from" : "arrive at"} ${where(point)}`;
+      features.push({ kind: "point", key: stationKey(point), point, tone, role, title });
+    }
+  }
+  const spokes: MapFeature[] = [], nodes: MapFeature[] = [];
+  for (const each of withHubs) {
+    const key = networkKey(each.id), tone = toneOf({ type: each.type, teleport: false });
+    const title = `${each.name}: ${each.stations.length} stations`;
+    for (const { point: station, name } of each.stations.filter(station => nearHub(station.point))) {
+      spokes.push({ kind: "edge", key, from: station, to: each.hub, tone, spoke: true, title });
+      nodes.push({ kind: "hub", key: stationKey(station), point: station, tone, label: "", station: true, title: `${each.name}${name ? `: ${name}` : ""}` });
+    }
+    nodes.push({ kind: "hub", key, point: each.hub, tone, label: each.name, title });
+  }
+  const anchors = selected ? transportFeatures(selected, undefined, true) : [];
+  // Spokes under the tiles, hubs over them, and the selection last, over the rest.
+  return { features: [...spokes, ...features, ...nodes, ...anchors], anchors, selected: selected?.id ?? (network && networkKey(network)), collision };
+}
+
+/** The explorer's map layers, in the order the layer control lists them. */
+export const EXPLORER_LAYERS = ["transports", "banks", "collision", "components", "separators", "unreachable"];
+
+/** What the page's URL holds: the selected transport, where the map is, the types and layers shown and a search. */
 export interface ExplorerState {
   selected?: string;
   at?: { point: WorldPoint; zoom: number };
   /** Undefined for every type. */
   types?: string[];
   query?: string;
+  /** Undefined for the transports alone. */
+  layers?: string[];
+  /** False to draw networks' stations without their hubs and spokes. */
+  hubs?: false;
 }
+
+/** Transports by family, as they are coloured: objects used where they stand, journeys, teleports. */
+export const FAMILIES: { tone: FeatureTone; label: string }[] = [
+  { tone: "object", label: "Objects and shortcuts" }, { tone: "journey", label: "Journeys and networks" }, { tone: "teleport", label: "Teleports" }];
 
 const POINT = /^(\d{1,5}),(\d{1,5}),([0-3])$/;
 export function readState(search: string): ExplorerState {
@@ -146,6 +228,9 @@ export function readState(search: string): ExplorerState {
   if (types !== null) state.types = types.split(",").filter(type => /^[A-Z_]+$/.test(type));
   const query = params.get("q");
   if (query) state.query = query;
+  const layers = readLayers(params, EXPLORER_LAYERS);
+  if (layers) state.layers = layers;
+  if (params.get("hubs") === "0") state.hubs = false;
   return state;
 }
 
@@ -155,6 +240,8 @@ export function writeState(state: ExplorerState): string {
   if (state.at) { params.set("at", `${state.at.point.x},${state.at.point.y},${state.at.point.plane}`); params.set("z", String(state.at.zoom)); }
   if (state.types) params.set("types", state.types.join(","));
   if (state.query) params.set("q", state.query);
+  if (state.layers) params.set("layers", state.layers.join(","));
+  if (state.hubs === false) params.set("hubs", "0");
   const text = params.toString().replace(/%2C/g, ",");
   return text ? `?${text}` : "";
 }

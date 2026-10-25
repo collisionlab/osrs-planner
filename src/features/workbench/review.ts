@@ -6,12 +6,14 @@ import type { ReviewUnit, RowChange, TransportRow } from "./api";
 /** One transport's edge and endpoint tiles, shared by PR review and candidate inspection. */
 function rowGeometry(key: string, row: TransportRow, tone: FeatureTone, omitUnchanged?: TransportRow, dashedPoints?: boolean): MapFeature[] {
   const features: MapFeature[] = [];
+  const where = (point?: WorldPoint | null) => point ? `${point.x} ${point.y} ${point.plane}` : "anywhere";
+  const title = `${tone === "removed" ? "Removed" : tone === "added" ? "Added" : "Edited"} row\n${where(row.origin)} → ${where(row.destination)}`;
   if (row.origin && row.destination) features.push({ kind: "edge", key, from: row.origin, to: row.destination,
-    tone, dashed: tone === "removed" });
+    tone, dashed: tone === "removed", title });
   for (const role of ["origin", "destination"] as const) {
     const point = row[role];
     if (point && !(omitUnchanged && samePoint(point, omitUnchanged[role]))) {
-      features.push({ kind: "point", key, point, tone, role, ...(dashedPoints === undefined ? {} : { dashed: dashedPoints }) });
+      features.push({ kind: "point", key, point, tone, role, title, ...(dashedPoints === undefined ? {} : { dashed: dashedPoints }) });
     }
   }
   return features;

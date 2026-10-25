@@ -131,9 +131,20 @@ which is exactly `PluginResources.transports()` (`TransportCatalogTest` checks t
 traces every effective transport to the rows it came from: one row, an origin row paired with a
 destination row (fairy rings and other networks), or a teleport's row (no origin is made up). The
 API answers a view at a time, `GET /api/workbench/v1/transports?view=plane,x1,y1,x2,y2;...` (a box
-per area drawn), listing at most 800 transports and otherwise counting them by area; also `/meta`,
+per area drawn), listing at most 2,500 transports and otherwise only counting them; also `/meta`,
 `/search?q=` (object id, `x y plane`, or text) and `/<id>`. URLs keep the selection, place, type
-filter and search (`?t=…&at=x,y,plane&z=…&types=…&q=…`).
+filter and search (`?t=…&at=x,y,plane&z=…&types=…&q=…`). The explorer draws transports on their
+tiles, in map units, and only once zoomed in to 4 pixels a tile; further out it draws none, since a
+count per area says nothing. A hop between neighbouring tiles (a door) is one bar over their edge.
+Networks (fairy rings, spirit trees, charter ships, canoes, minecarts and the like: one connected
+part of a type each) come with the view as stations and a hub at the middle of their surface
+stations; each station in view is joined to its hub rather than to every other station. A station's
+several tiles are one station, named by what the transports arriving there call it.
+
+The explorer's banks layer reads the plugin's `destinations/game_features/bank.tsv` through
+`GET /api/workbench/v1/banks` (all at once): tiles of one name close together are one bank, with
+what any of them needs. Bank tiles are drawn like transport tiles, outlined where a bank needs a
+quest, skill or unlock.
 
 Every page says where its layers come from. The service records the tooling and plugin commits it
 was built with (`TOOLING_REV`/`PLUGIN_REV` in the image build, else git); collision comes from the
@@ -228,3 +239,6 @@ routes. These routes are shared by the layout tests and gallery; no separate
 case list needs maintaining. They are historical regressions, not release data,
 and do not need refreshing when the game cache changes. Runtime catalogues are
 generated from the current cache by the sidecar.
+
+The Inset Investigation workbench also shows the pinned production routing graph's
+[routing partitions and structural negative mask](docs/routing-layers.md).

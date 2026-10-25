@@ -75,10 +75,10 @@ describe("candidate geometry", () => {
 
   it("distinguishes original tile outlines by dash as well as colour, including selection", () => {
     const feature = new Feature(); feature.setProperties({ tone: "removed", role: "origin", dashed: true });
-    expect(markStyle(feature, 1).getStroke()?.getLineDash()).toEqual([3, 3]);
-    expect(markStyle(feature, 1, true).getStroke()?.getLineDash()).toEqual([3, 3]);
+    expect(markStyle(feature, 1)[0].getStroke()?.getLineDash()).toEqual([3, 3]);
+    expect(markStyle(feature, 1, true)[0].getStroke()?.getLineDash()).toEqual([3, 3]);
     feature.set("dashed", false);
-    expect(markStyle(feature, 1).getStroke()?.getLineDash()).toBeNull();
+    expect(markStyle(feature, 1)[0].getStroke()?.getLineDash()).toBeNull();
   });
 
   it("reports plane changes and copies the candidate identity and evidence", () => {

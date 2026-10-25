@@ -31,6 +31,7 @@ import shortestpath.accounts.canonical.CanonicalAccounts;
 import shortestpath.routeapi.AccountJson;
 import shortestpath.routeapi.Catalog;
 import shortestpath.routeapi.RouteApi;
+import shortestpath.workbench.BankCatalog;
 import shortestpath.workbench.Provenance;
 import shortestpath.workbench.Reviews;
 import shortestpath.workbench.TransportCatalog;
@@ -69,6 +70,7 @@ public final class ServiceMain {
 
     /** The transport explorer's catalogue, built on first use (or by {@link #main} in the background). */
     private static final Supplier<TransportCatalog> transports = memoize(() -> TransportCatalog.load(ItemCatalog::name));
+    private static final Supplier<BankCatalog> banks = memoize(BankCatalog::load);
 
     private static <T> Supplier<T> memoize(Supplier<T> supplier) {
         return new Supplier<>() {
@@ -193,6 +195,7 @@ public final class ServiceMain {
         reviews.bindTo(metrics);
         Workbench.routes(app, reviews);
         Workbench.transportRoutes(app, transports, Provenance.bundled());
+        Workbench.bankRoutes(app, banks, Provenance.bundled());
         byte[] topology = Workbench.topologyReport(System.getenv("WORKBENCH_TOPOLOGY"));
         Workbench.topologyRoutes(app, () -> topology);
         app.exception(Reviews.NotServed.class, (error, ctx) -> error(ctx, 404, error.getMessage()));
