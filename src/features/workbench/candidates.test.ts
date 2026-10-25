@@ -129,3 +129,21 @@ describe("other BestPath suggestions", () => {
     expect(filterUnits(units, "", "proposed_new", "VardorvisSteps.java")).toHaveLength(1);
   });
 });
+
+describe("current destination violations", () => {
+  it("keeps violations separate from proposals and copies current evidence without inventing replacements", () => {
+    const violation: Candidate = { ...plane, id: "destination-example", kind: "destination_violation", category: "destination_violation",
+      suggested: null, suggestedRaw: "", whatChanges: "Blocked destination with no exact transport origin.",
+      sourceRepository: "Skretzo/shortest-path", sourceCommit: "a".repeat(40), upstreamCommit: "a".repeat(40),
+      reconciliation: { status: "violation", rows: [] } };
+    const units = groupCandidates([violation, plane]);
+    expect(filterUnits(units, "destination_violation", "violation", "")).toEqual([{ id: violation.id, candidates: [violation] }]);
+    const overlay = candidateOverlay({ id: violation.id, candidates: [violation] });
+    expect(overlay.features).toHaveLength(1); // Teleport: destination only, no invented origin or proposal.
+    expect(overlay.features[0]).toMatchObject({ tone: "suspect", role: "destination", point: plane.original!.destination });
+    const note = reviewNote(violation);
+    expect(note).toContain("Proposed correction: none yet");
+    expect(note).toContain("https://github.com/Skretzo/shortest-path/blob/" + "a".repeat(40));
+    expect(note).not.toContain("bestpath-candidates");
+  });
+});

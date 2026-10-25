@@ -375,7 +375,7 @@ export function TransportExplorer() {
       <main className="wb-main">
         <section className="wb-map">
           {insetPin ? <Suspense fallback={<div className="route-map" role="status">Loading inset map…</div>}>
-            <InsetMap overlay={overlay} style={style} insets keepFocus onPick={point => lookAt(point)}
+            <InsetMap inspectCoordinates overlay={overlay} style={style} insets keepFocus onPick={point => lookAt(point)}
               onRoutingCrossing={routing.selectCrossing} onFallback={() => {}}
               onSelectFeatures={onSelectFeatures} onView={recordView} fitSelection={false} fitAnchors={fitNext.current}
               initialCentre={state.at ?? LUMBRIDGE} focusBox={focusBox} focusTile={focusTile}

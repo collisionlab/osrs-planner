@@ -40,3 +40,11 @@ test("selects a leg by clicking it, not by pointing at it", async ({ page }) => 
   await leg.click();
   await expect(leg).toHaveAttribute("aria-pressed", "true");
 });
+
+test("main planner does not enable developer coordinate inspection", async ({ page }) => {
+  await page.goto("/route?insets=1&account=mid&from=lumbridge&to=varrock");
+  await expect(page.locator(".inset-map")).toBeVisible();
+  await page.waitForFunction(() => Boolean((window as unknown as { insetMap?: unknown }).insetMap));
+  await page.locator(".inset-map").hover();
+  await expect(page.locator(".map-coordinates, .map-coordinate-menu")).toHaveCount(0);
+});

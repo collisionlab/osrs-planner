@@ -201,7 +201,7 @@ test("proposed new transports pair only their proposed directions and preserve u
   const c = candidateTypes.candidates.find(c => c.category === "sourced_transport")!;
   await openCandidate(page, c.id, "?category=sourced_transport");
   await expect(page.locator(".wb-candidate-detail")).toHaveCount(2);
-  await expect(page.getByRole("navigation", { name: "Candidates" })).toContainText("2 source rows · 1 review units shown");
+  await expect(page.getByRole("navigation", { name: "Candidates" })).toContainText("2 rows · 1 review units shown");
   const detail = page.locator(".wb-candidate-detail.selected");
   await expect(detail).toContainText("No original upstream row was supplied");
   await expect(detail).toContainText("Contributor ticks (unchecked): 10 (estimate)");
@@ -255,7 +255,7 @@ test("non-floor reverse-paired staircase is one review unit and map features sel
   await mockCandidates(page);
   await openCandidate(page, STAIRS_UP.id, "?category=non_floor");
   const navigation = page.getByRole("navigation", { name: "Candidates" });
-  await expect(navigation).toContainText("2 source rows · 1 review units shown");
+  await expect(navigation).toContainText("2 rows · 1 review units shown");
   await expect(navigation.locator("ol > li")).toHaveCount(1);
   await expect(page.locator(".wb-candidate-detail")).toHaveCount(2);
   await expect.poll(() => candidateMap(page, map => map.shows({ x: 1523, y: 3562, plane: 2 }))).toBe(true);
@@ -285,7 +285,7 @@ test("coordinate candidates retain unresolved reconciliation and checked-in deci
   await expect(page).toHaveURL(/\/candidates/);
   await page.getByLabel("Category", { exact: true }).selectOption("coordinate_offset");
   await expect(page.locator(".wb-candidate-detail")).toHaveCount(2);
-  await expect(page.locator(".wb-summary")).toContainText("6 source rows · 4 review units");
+  await expect(page.locator(".wb-summary")).toContainText("6 suggestion rows · 0 destination violations · 4 review units");
   await page.getByLabel("Reconciliation status").selectOption("diverged");
   await expect(page.locator(".wb-candidate-detail", { hasText: DIVERGED.id })).toContainText("diverged");
   await page.getByLabel("Search candidates").fill("27200");
@@ -297,4 +297,48 @@ test("coordinate candidates retain unresolved reconciliation and checked-in deci
   await expect(page.locator(`[data-candidate-id="${OFFSET.id}"]`)).toBeVisible();
   await openCandidate(page, MEDALLION.id);
   await expect(page.locator(".wb-candidate-detail.selected")).toContainText("needs_evidence — Fixture: needs in-game verification");
+});
+
+test("developer coordinate hover copies surface and inset tiles and freezes the context-menu tile", async ({ page }) => {
+  await mockCandidates(page);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: async (value: string) => { (window as unknown as { copied: string }).copied = value; } } });
+  });
+  await openCandidate(page, CAPE.id, "?category=plane");
+  const map = page.locator(".inset-map"), readout = page.locator(".map-coordinates");
+  const hoverTile = async (point: { x: number; y: number; plane: number }) => {
+    await page.waitForTimeout(400); // Wait for any fit animation before resolving screen pixels.
+    const pixel = await page.evaluate(p => (window as unknown as { insetMap: CandidateMap }).insetMap.pixel(p), point);
+    const box = (await map.boundingBox())!;
+    await page.mouse.move(box.x + pixel[0], box.y + pixel[1]);
+    await expect(readout).toContainText(`${point.x} ${point.y} ${point.plane}`);
+    return { x: box.x + pixel[0], y: box.y + pixel[1] };
+  };
+  await hoverTile({ x: 2862, y: 2997, plane: 0 });
+  await page.keyboard.press("c");
+  await expect.poll(() => page.evaluate(() => (window as unknown as { copied: string }).copied)).toBe("2862 2997 0");
+  const inset = await hoverTile({ x: 2862, y: 2996, plane: 1 });
+  await page.mouse.click(inset.x, inset.y, { button: "right" });
+  await expect(page.locator(".map-coordinate-menu")).toContainText("2862 2996 1");
+  await page.getByRole("button", { name: "Copy coordinates", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { copied: string }).copied)).toBe("2862 2996 1");
+  await expect(readout).toContainText("Copied");
+  await page.getByLabel("Search candidates").fill("c");
+  await expect(page.getByLabel("Search candidates")).toHaveValue("c");
+});
+
+test("destination violations show current evidence without suggesting a correction", async ({ page }) => {
+  const violation = { ...CAPE, id: "destination-example", kind: "destination_violation", category: "destination_violation",
+    suggested: null, suggestedRaw: "", whatChanges: "Blocked destination with no transport starting on that exact tile.",
+    sourceRepository: "Skretzo/shortest-path", sourceCommit: "a".repeat(40), upstreamCommit: "a".repeat(40),
+    reconciliation: { status: "violation", rows: [] } };
+  await mockCandidates(page, { ...candidateFixture, candidates: [...candidateFixture.candidates, violation] });
+  await openCandidate(page, violation.id, "?category=destination_violation");
+  const detail = page.locator(".wb-candidate-detail.selected");
+  await expect(detail).toContainText("No proposed correction yet");
+  await expect(detail).toContainText("Current world coordinates");
+  await expect(detail).not.toContainText("Contributor");
+  await expect(detail).not.toContainText("Suggested");
+  await expect(detail.getByRole("link").first()).toHaveAttribute("href", /Skretzo\/shortest-path\/blob\/a{40}/);
+  await expect(page.locator(".wb-summary")).toContainText("1 destination violations");
 });
