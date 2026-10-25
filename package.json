@@ -9,11 +9,14 @@
     "prebuild": "npm run contracts",
     "build": "tsc -b && vite build",
     "contracts": "node scripts/sync-contracts.mjs",
-    "pretest": "npm run contracts",
+    "pretest": "npm run contracts && npm run candidates:check && npm run test:candidates-import",
     "test": "vitest run",
     "preview": "vite preview",
     "pree2e": "npm run contracts",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "candidates:import": "node scripts/import-candidates.mjs",
+    "candidates:check": "node scripts/import-candidates.mjs --check",
+    "test:candidates-import": "node --test scripts/import-candidates.checks.mjs"
   },
   "dependencies": {
     "@dava96/osrs-icons": "^1.0.30",

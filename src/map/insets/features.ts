@@ -34,7 +34,7 @@ export type MapFeature =
    */
   | { kind: "hub"; key: string; point: WorldPoint; tone: FeatureTone; label: string; title?: string; station?: boolean }
   /** A tile: an origin is outlined, a destination filled. */
-  | { kind: "point"; key: string; point: WorldPoint; tone: FeatureTone; role: "origin" | "destination"; title?: string }
+  | { kind: "point"; key: string; point: WorldPoint; tone: FeatureTone; role: "origin" | "destination"; dashed?: boolean; title?: string }
   /** A rectangle of tiles (inclusive), labelled; `key` selects it like any feature. */
   | { kind: "region"; key: string; plane: number; bounds: [number, number, number, number]; tone: FeatureTone; label?: string; dashed?: boolean }
   /**

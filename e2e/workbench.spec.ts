@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import tiles from "../tiles.json" with { type: "json" };
+import candidateFixture from "./fixtures/candidates.json" with { type: "json" };
 
 // The workbench's transport review, on its own host, against a mocked review service: a pull
 // request that adds the Fractured Archive entrance (an area the pinned insets haven't named) and
@@ -117,4 +118,99 @@ test("explains a URL that isn't a pull request", async ({ page }) => {
   await page.getByLabel("GitHub URL").fill("https://example.com/nope");
   await page.getByRole("button", { name: "Review" }).click();
   await expect(page.getByRole("alert")).toHaveText("Paste a github.com pull request or compare URL.");
+});
+
+// Candidate review uses the same service mocking and the same real inset map as PR reviews.
+const [CAPE, MEDALLION, STAIRS_UP, STAIRS_DOWN, OFFSET, DIVERGED] = candidateFixture.candidates;
+type CandidateMap = {
+  shows(point: { x: number; y: number; plane: number }): boolean;
+  pixel(point: { x: number; y: number; plane: number }): number[];
+  featureSummary(): { key: string; kind: string; tone: string; dashed: boolean }[];
+};
+const candidateMap = <T,>(page: Page, call: (handle: CandidateMap) => T) =>
+  page.evaluate(`(${call.toString()})(window.insetMap)`) as Promise<T>;
+
+async function mockCandidates(page: Page) {
+  await mockService(page);
+  await page.route("**/api/workbench/v1/candidates", route => route.fulfill({ json: candidateFixture }));
+  await page.route(`${tiles.base}/collision/${tiles.version}/manifest.json`, route => route.fulfill({ json: {
+    cacheId: 2746, dumperSource: { repository: "osrs-pathfinding/shortest-path-tooling", rev: "3".repeat(40) },
+  } }));
+  await page.addInitScript(() => localStorage.setItem("osrs-planner.map-style", "tactical"));
+}
+
+async function openCandidate(page: Page, id: string, search = "") {
+  await page.goto(`/candidates${search}#candidate=${id}`);
+  await expect(page.locator(".inset-map")).toBeVisible();
+  await page.waitForFunction(() => Boolean((window as unknown as { insetMap?: unknown }).insetMap));
+  await expect(page.locator(".wb-candidate-detail.selected")).toHaveAttribute("data-candidate-id", id);
+}
+
+test("candidate plane change shows original and proposed floors, collision provenance and stable selection", async ({ page }) => {
+  await mockCandidates(page);
+  const oldCollision = page.waitForRequest(url => url.url().includes("/collision/") && url.url().endsWith("/8/29/27.bin"));
+  const newCollision = page.waitForRequest(url => url.url().includes("/collision/") && url.url().endsWith("/p1/8/29/27.bin"));
+  await openCandidate(page, CAPE.id, "?category=plane");
+  await expect(page).toHaveTitle("Transport candidates · Workbench");
+  await expect.poll(() => candidateMap(page, map => map.shows({ x: 2862, y: 2997, plane: 0 }))).toBe(true);
+  await expect.poll(() => candidateMap(page, map => map.shows({ x: 2862, y: 2996, plane: 1 }))).toBe(true);
+  await expect.poll(() => candidateMap(page, map => map.featureSummary().filter(f => f.kind === "point").map(f => [f.tone, f.dashed]).sort()))
+    .toEqual([["added", false], ["removed", true]]);
+  await oldCollision; await newCollision;
+  const detail = page.locator(".wb-candidate-detail.selected");
+  await expect(detail).toContainText("plane 0 → 1");
+  await expect(detail).toContainText("Other reported differences");
+  await expect(page.getByRole("region", { name: "Candidate details" })).toContainText("cache 2735");
+  await expect(page.getByRole("region", { name: "Candidate details" })).toContainText("cache 2746");
+  await expect(page.locator(".wb-footer")).toContainText("1111111");
+  await page.reload();
+  await expect(page.locator(".wb-candidate-detail.selected")).toHaveAttribute("data-candidate-id", CAPE.id);
+  await page.getByRole("button", { name: "Previous", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp("#candidate=" + MEDALLION.id + "$"));
+  await page.keyboard.press("j");
+  await expect(page).toHaveURL(new RegExp("#candidate=" + CAPE.id + "$"));
+});
+
+test("non-floor reverse-paired staircase is one review unit and map features select its source row", async ({ page }) => {
+  await mockCandidates(page);
+  await openCandidate(page, STAIRS_UP.id, "?category=non_floor");
+  const navigation = page.getByRole("navigation", { name: "Candidates" });
+  await expect(navigation).toContainText("2 source rows · 1 review units shown");
+  await expect(navigation.locator("ol > li")).toHaveCount(1);
+  await expect(page.locator(".wb-candidate-detail")).toHaveCount(2);
+  await expect.poll(() => candidateMap(page, map => map.shows({ x: 1523, y: 3562, plane: 2 }))).toBe(true);
+  await expect.poll(() => candidateMap(page, map => map.featureSummary().filter(f => f.kind === "edge").map(f => [f.tone, f.dashed]).sort()))
+    .toEqual([["added", false], ["added", false], ["removed", true], ["removed", true]]);
+  await page.getByRole("button", { name: "Climb Stairs 27202", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp("#candidate=" + STAIRS_DOWN.id + "$"));
+  await expect(page.locator(".wb-candidate-detail.selected")).toContainText("the start 1523,3563,1 is no floor");
+  await expect(page.getByLabel("Geometry legend")).toContainText("Original: dashed");
+  // Click the actual map using the established map handle's projection. The uppermost marker
+  // belongs to the opposite direction, and must identify that source candidate.
+  const [x, y] = await candidateMap(page, map => map.pixel({ x: 1523, y: 3562, plane: 2 }));
+  const bounds = await page.locator(".inset-map").boundingBox();
+  await page.mouse.click(bounds!.x + x, bounds!.y + y);
+  await expect(page.locator(".wb-candidate-detail.selected")).toHaveCount(1);
+  await expect(page).toHaveURL(new RegExp("#candidate=" + STAIRS_UP.id + "$"));
+});
+
+test("coordinate candidates retain unresolved reconciliation and checked-in decisions through filtering", async ({ page }) => {
+  await mockCandidates(page);
+  await page.goto("/");
+  await page.getByRole("link", { name: "Transport candidates", exact: true }).click();
+  await expect(page).toHaveURL(/\/candidates/);
+  await page.getByLabel("Category", { exact: true }).selectOption("coordinate_offset");
+  await expect(page.locator(".wb-candidate-detail")).toHaveCount(2);
+  await expect(page.locator(".wb-summary")).toContainText("6 source rows · 4 review units");
+  await page.getByLabel("Reconciliation status").selectOption("diverged");
+  await expect(page.locator(".wb-candidate-detail", { hasText: DIVERGED.id })).toContainText("diverged");
+  await page.getByLabel("Search candidates").fill("27200");
+  await expect(page.locator(".wb-candidate-detail")).toHaveCount(2);
+  await page.locator(`[data-candidate-id="${DIVERGED.id}"]`).getByRole("button", { name: "Climb Stairs 27200", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp("#candidate=" + DIVERGED.id + "$"));
+  await expect(page.locator(".wb-candidate-detail.selected")).toContainText("The starting row is unresolved or has changed");
+  await expect(page.locator(".wb-candidate-detail.selected")).toContainText("tiles (Δx");
+  await expect(page.locator(`[data-candidate-id="${OFFSET.id}"]`)).toBeVisible();
+  await openCandidate(page, MEDALLION.id);
+  await expect(page.locator(".wb-candidate-detail.selected")).toContainText("needs_evidence — Fixture: needs in-game verification");
 });

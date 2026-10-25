@@ -18,6 +18,11 @@ npm install && npm run dev                # frontend on :5173, proxies /api to t
 
 Tests: `gradle :service:test` and `npm test`.
 
+The workbench's [Transport candidates queue](docs/transport-candidates.md) at
+`/candidates` reviews 246 pinned BestPath geometry suggestions against bundled
+transport data and the existing inset map. The guide covers offline regeneration
+and the checked-in review ledger.
+
 ## Layout
 
 | Path | Contents |

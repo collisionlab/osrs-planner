@@ -1,0 +1,568 @@
+{
+  "candidates": [
+    {
+      "id": "b80424b8f6d8922a2f44c04a",
+      "category": "plane",
+      "file": "teleportation_items.tsv",
+      "originalLine": 327,
+      "originalRaw": "2862 2997 0\t\t\t13069=1||19476=1\t\t4\tAchievement diary cape: 7. Kaleb Paramaya\tF\t20\t4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1",
+      "suggestedRaw": "2862 2996 1\t\t\t13069=1||19476=1\t\t4\tAchievement diary cape: 7. Kaleb Paramaya\tF\t20\t4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1",
+      "whatChanges": "plane end: now 0, suggested 1",
+      "alsoDiffers": "requirements differ (not changed here): ours has nothing more; theirs has varbit 4461 = 1; varbit 4465 = 1; varbit 4469 = 1; varbit 4474 = 1; varbit 4478 = 1; varbit 4482 = 1; varbit 4486 = 1; varbit 4490 = 1; varbit 4494 = 1; varbit 4498 = 1; varbit 4566 = 1",
+      "source": "Wiki: Achievement diary cape (rev 15342685)",
+      "sourceFile": "1g plane differs.tsv",
+      "sourceLine": 2,
+      "sourceRepository": "rel-osrs/shortest-path",
+      "sourceCommit": "ca9ed24832c1c9948379d0684a99227b6724a42c",
+      "upstreamCommit": "0fb23cda",
+      "original": {
+        "file": "src/main/resources/transports/teleportation_items.tsv",
+        "line": 327,
+        "section": "",
+        "fields": {
+          "Destination": "2862 2997 0",
+          "menuOption menuTarget objectID": "",
+          "Skills": "",
+          "Items": "13069=1||19476=1",
+          "Quests": "",
+          "Duration": "4",
+          "Display info": "Achievement diary cape: 7. Kaleb Paramaya",
+          "Consumable": "F",
+          "Wilderness level": "20",
+          "Varbits": "4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1"
+        },
+        "origin": null,
+        "destination": {
+          "x": 2862,
+          "y": 2997,
+          "plane": 0
+        },
+        "label": ""
+      },
+      "suggested": {
+        "file": "src/main/resources/transports/teleportation_items.tsv",
+        "line": 327,
+        "section": "",
+        "fields": {
+          "Destination": "2862 2996 1",
+          "menuOption menuTarget objectID": "",
+          "Skills": "",
+          "Items": "13069=1||19476=1",
+          "Quests": "",
+          "Duration": "4",
+          "Display info": "Achievement diary cape: 7. Kaleb Paramaya",
+          "Consumable": "F",
+          "Wilderness level": "20",
+          "Varbits": "4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1"
+        },
+        "origin": null,
+        "destination": {
+          "x": 2862,
+          "y": 2996,
+          "plane": 1
+        },
+        "label": ""
+      },
+      "reconciliation": {
+        "status": "matches_current",
+        "rows": [
+          {
+            "raw": "2862 2997 0\t\t\t13069=1||19476=1\t\t4\tAchievement diary cape: 7. Kaleb Paramaya\tF\t20\t4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1",
+            "row": {
+              "file": "src/main/resources/transports/teleportation_items.tsv",
+              "line": 327,
+              "section": "",
+              "fields": {
+                "Destination": "2862 2997 0",
+                "menuOption menuTarget objectID": "",
+                "Skills": "",
+                "Items": "13069=1||19476=1",
+                "Quests": "",
+                "Duration": "4",
+                "Display info": "Achievement diary cape: 7. Kaleb Paramaya",
+                "Consumable": "F",
+                "Wilderness level": "20",
+                "Varbits": "4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1"
+              },
+              "origin": null,
+              "destination": {
+                "x": 2862,
+                "y": 2997,
+                "plane": 0
+              },
+              "label": ""
+            }
+          }
+        ]
+      },
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    {
+      "id": "89ce86c0a9214c539a41770a",
+      "category": "plane",
+      "file": "teleportation_items.tsv",
+      "originalLine": 379,
+      "originalRaw": "3808 9700 0\t\t\t22400=1\t\t4\tDrakan's medallion: Slepe\tF\t20",
+      "suggestedRaw": "3808 9700 1\t\t\t22400=1\t\t4\tDrakan's medallion: Slepe\tF\t20",
+      "whatChanges": "plane end: now 0, suggested 1",
+      "alsoDiffers": "requirements differ (not changed here): ours has varbit 12416 > 0; theirs has nothing more",
+      "source": "Wiki: Drakan's medallion (rev 15304192)",
+      "sourceFile": "1g plane differs.tsv",
+      "sourceLine": 3,
+      "sourceRepository": "rel-osrs/shortest-path",
+      "sourceCommit": "ca9ed24832c1c9948379d0684a99227b6724a42c",
+      "upstreamCommit": "0fb23cda",
+      "original": {
+        "file": "src/main/resources/transports/teleportation_items.tsv",
+        "line": 379,
+        "section": "",
+        "fields": {
+          "Destination": "3808 9700 0",
+          "menuOption menuTarget objectID": "",
+          "Skills": "",
+          "Items": "22400=1",
+          "Quests": "",
+          "Duration": "4",
+          "Display info": "Drakan's medallion: Slepe",
+          "Consumable": "F",
+          "Wilderness level": "20"
+        },
+        "origin": null,
+        "destination": {
+          "x": 3808,
+          "y": 9700,
+          "plane": 0
+        },
+        "label": ""
+      },
+      "suggested": {
+        "file": "src/main/resources/transports/teleportation_items.tsv",
+        "line": 379,
+        "section": "",
+        "fields": {
+          "Destination": "3808 9700 1",
+          "menuOption menuTarget objectID": "",
+          "Skills": "",
+          "Items": "22400=1",
+          "Quests": "",
+          "Duration": "4",
+          "Display info": "Drakan's medallion: Slepe",
+          "Consumable": "F",
+          "Wilderness level": "20"
+        },
+        "origin": null,
+        "destination": {
+          "x": 3808,
+          "y": 9700,
+          "plane": 1
+        },
+        "label": ""
+      },
+      "reconciliation": {
+        "status": "matches_current",
+        "rows": [
+          {
+            "raw": "3808 9700 0\t\t\t22400=1\t\t4\tDrakan's medallion: Slepe\tF\t20",
+            "row": {
+              "file": "src/main/resources/transports/teleportation_items.tsv",
+              "line": 379,
+              "section": "",
+              "fields": {
+                "Destination": "3808 9700 0",
+                "menuOption menuTarget objectID": "",
+                "Skills": "",
+                "Items": "22400=1",
+                "Quests": "",
+                "Duration": "4",
+                "Display info": "Drakan's medallion: Slepe",
+                "Consumable": "F",
+                "Wilderness level": "20"
+              },
+              "origin": null,
+              "destination": {
+                "x": 3808,
+                "y": 9700,
+                "plane": 0
+              },
+              "label": ""
+            }
+          }
+        ]
+      },
+      "review": {
+        "status": "needs_evidence",
+        "explanation": "Fixture: needs in-game verification"
+      }
+    },
+    {
+      "id": "906e6584c7eb7732654db0b5",
+      "category": "non_floor",
+      "file": "transports.tsv",
+      "originalLine": 2096,
+      "originalRaw": "1527 3563 0\t1523 3563 1\tClimb Stairs 27201",
+      "suggestedRaw": "1527 3562 1\t1523 3562 2\tClimb Stairs 27201",
+      "whatChanges": "the end 1523,3563,1 is no floor on the map; suggested 1523,3562,2 is floor",
+      "alsoDiffers": "",
+      "source": "game cache: object placement (stacked ladder/stairs pair)",
+      "sourceFile": "1i start or landing not on a floor tile.tsv",
+      "sourceLine": 2,
+      "sourceRepository": "rel-osrs/shortest-path",
+      "sourceCommit": "ca9ed24832c1c9948379d0684a99227b6724a42c",
+      "upstreamCommit": "0fb23cda",
+      "original": {
+        "file": "src/main/resources/transports/transports.tsv",
+        "line": 2096,
+        "section": "",
+        "fields": {
+          "Origin": "1527 3563 0",
+          "Destination": "1523 3563 1",
+          "menuOption menuTarget objectID": "Climb Stairs 27201"
+        },
+        "origin": {
+          "x": 1527,
+          "y": 3563,
+          "plane": 0
+        },
+        "destination": {
+          "x": 1523,
+          "y": 3563,
+          "plane": 1
+        },
+        "label": "Climb Stairs 27201"
+      },
+      "suggested": {
+        "file": "src/main/resources/transports/transports.tsv",
+        "line": 2096,
+        "section": "",
+        "fields": {
+          "Origin": "1527 3562 1",
+          "Destination": "1523 3562 2",
+          "menuOption menuTarget objectID": "Climb Stairs 27201"
+        },
+        "origin": {
+          "x": 1527,
+          "y": 3562,
+          "plane": 1
+        },
+        "destination": {
+          "x": 1523,
+          "y": 3562,
+          "plane": 2
+        },
+        "label": "Climb Stairs 27201"
+      },
+      "reconciliation": {
+        "status": "matches_current",
+        "rows": [
+          {
+            "raw": "1527 3563 0\t1523 3563 1\tClimb Stairs 27201",
+            "row": {
+              "file": "src/main/resources/transports/transports.tsv",
+              "line": 2096,
+              "section": "",
+              "fields": {
+                "Origin": "1527 3563 0",
+                "Destination": "1523 3563 1",
+                "menuOption menuTarget objectID": "Climb Stairs 27201"
+              },
+              "origin": {
+                "x": 1527,
+                "y": 3563,
+                "plane": 0
+              },
+              "destination": {
+                "x": 1523,
+                "y": 3563,
+                "plane": 1
+              },
+              "label": "Climb Stairs 27201"
+            }
+          }
+        ]
+      },
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    {
+      "id": "1a1b927407de861833c5d5ad",
+      "category": "non_floor",
+      "file": "transports.tsv",
+      "originalLine": 2097,
+      "originalRaw": "1523 3563 1\t1527 3563 0\tClimb Stairs 27202",
+      "suggestedRaw": "1523 3562 2\t1527 3562 1\tClimb Stairs 27202",
+      "whatChanges": "the start 1523,3563,1 is no floor on the map; suggested 1523,3562,2 is floor",
+      "alsoDiffers": "",
+      "source": "game cache: object placement (stacked ladder/stairs pair)",
+      "sourceFile": "1i start or landing not on a floor tile.tsv",
+      "sourceLine": 3,
+      "sourceRepository": "rel-osrs/shortest-path",
+      "sourceCommit": "ca9ed24832c1c9948379d0684a99227b6724a42c",
+      "upstreamCommit": "0fb23cda",
+      "original": {
+        "file": "src/main/resources/transports/transports.tsv",
+        "line": 2097,
+        "section": "",
+        "fields": {
+          "Origin": "1523 3563 1",
+          "Destination": "1527 3563 0",
+          "menuOption menuTarget objectID": "Climb Stairs 27202"
+        },
+        "origin": {
+          "x": 1523,
+          "y": 3563,
+          "plane": 1
+        },
+        "destination": {
+          "x": 1527,
+          "y": 3563,
+          "plane": 0
+        },
+        "label": "Climb Stairs 27202"
+      },
+      "suggested": {
+        "file": "src/main/resources/transports/transports.tsv",
+        "line": 2097,
+        "section": "",
+        "fields": {
+          "Origin": "1523 3562 2",
+          "Destination": "1527 3562 1",
+          "menuOption menuTarget objectID": "Climb Stairs 27202"
+        },
+        "origin": {
+          "x": 1523,
+          "y": 3562,
+          "plane": 2
+        },
+        "destination": {
+          "x": 1527,
+          "y": 3562,
+          "plane": 1
+        },
+        "label": "Climb Stairs 27202"
+      },
+      "reconciliation": {
+        "status": "matches_current",
+        "rows": [
+          {
+            "raw": "1523 3563 1\t1527 3563 0\tClimb Stairs 27202",
+            "row": {
+              "file": "src/main/resources/transports/transports.tsv",
+              "line": 2097,
+              "section": "",
+              "fields": {
+                "Origin": "1523 3563 1",
+                "Destination": "1527 3563 0",
+                "menuOption menuTarget objectID": "Climb Stairs 27202"
+              },
+              "origin": {
+                "x": 1523,
+                "y": 3563,
+                "plane": 1
+              },
+              "destination": {
+                "x": 1527,
+                "y": 3563,
+                "plane": 0
+              },
+              "label": "Climb Stairs 27202"
+            }
+          }
+        ]
+      },
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    {
+      "id": "a05656d2817b973e9cf06b26",
+      "category": "coordinate_offset",
+      "file": "transports.tsv",
+      "originalLine": 2098,
+      "originalRaw": "1524 3543 0\t1528 3543 1\tClimb Stairs 27199",
+      "suggestedRaw": "1528 3543 0\t1528 3543 1\tClimb Stairs 27199",
+      "whatChanges": "start moves 4, end moves 0 tiles",
+      "alsoDiffers": "",
+      "source": "game cache: object placement (stacked ladder/stairs pair)",
+      "sourceFile": "1f start or end 3 or more tiles off.tsv",
+      "sourceLine": 2,
+      "sourceRepository": "rel-osrs/shortest-path",
+      "sourceCommit": "ca9ed24832c1c9948379d0684a99227b6724a42c",
+      "upstreamCommit": "0fb23cda",
+      "original": {
+        "file": "src/main/resources/transports/transports.tsv",
+        "line": 2098,
+        "section": "",
+        "fields": {
+          "Origin": "1524 3543 0",
+          "Destination": "1528 3543 1",
+          "menuOption menuTarget objectID": "Climb Stairs 27199"
+        },
+        "origin": {
+          "x": 1524,
+          "y": 3543,
+          "plane": 0
+        },
+        "destination": {
+          "x": 1528,
+          "y": 3543,
+          "plane": 1
+        },
+        "label": "Climb Stairs 27199"
+      },
+      "suggested": {
+        "file": "src/main/resources/transports/transports.tsv",
+        "line": 2098,
+        "section": "",
+        "fields": {
+          "Origin": "1528 3543 0",
+          "Destination": "1528 3543 1",
+          "menuOption menuTarget objectID": "Climb Stairs 27199"
+        },
+        "origin": {
+          "x": 1528,
+          "y": 3543,
+          "plane": 0
+        },
+        "destination": {
+          "x": 1528,
+          "y": 3543,
+          "plane": 1
+        },
+        "label": "Climb Stairs 27199"
+      },
+      "reconciliation": {
+        "status": "matches_current",
+        "rows": [
+          {
+            "raw": "1524 3543 0\t1528 3543 1\tClimb Stairs 27199",
+            "row": {
+              "file": "src/main/resources/transports/transports.tsv",
+              "line": 2098,
+              "section": "",
+              "fields": {
+                "Origin": "1524 3543 0",
+                "Destination": "1528 3543 1",
+                "menuOption menuTarget objectID": "Climb Stairs 27199"
+              },
+              "origin": {
+                "x": 1524,
+                "y": 3543,
+                "plane": 0
+              },
+              "destination": {
+                "x": 1528,
+                "y": 3543,
+                "plane": 1
+              },
+              "label": "Climb Stairs 27199"
+            }
+          }
+        ]
+      },
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    {
+      "id": "63dc0389495d1bd72fc4f51a",
+      "category": "coordinate_offset",
+      "file": "transports.tsv",
+      "originalLine": 2099,
+      "originalRaw": "1528 3543 1\t1524 3543 0\tClimb Stairs 27200",
+      "suggestedRaw": "1528 3543 1\t1528 3543 0\tClimb Stairs 27200",
+      "whatChanges": "start moves 0, end moves 4 tiles",
+      "alsoDiffers": "",
+      "source": "game cache: object placement (stacked ladder/stairs pair)",
+      "sourceFile": "1f start or end 3 or more tiles off.tsv",
+      "sourceLine": 3,
+      "sourceRepository": "rel-osrs/shortest-path",
+      "sourceCommit": "ca9ed24832c1c9948379d0684a99227b6724a42c",
+      "upstreamCommit": "0fb23cda",
+      "original": {
+        "file": "src/main/resources/transports/transports.tsv",
+        "line": 2099,
+        "section": "",
+        "fields": {
+          "Origin": "1528 3543 1",
+          "Destination": "1524 3543 0",
+          "menuOption menuTarget objectID": "Climb Stairs 27200"
+        },
+        "origin": {
+          "x": 1528,
+          "y": 3543,
+          "plane": 1
+        },
+        "destination": {
+          "x": 1524,
+          "y": 3543,
+          "plane": 0
+        },
+        "label": "Climb Stairs 27200"
+      },
+      "suggested": {
+        "file": "src/main/resources/transports/transports.tsv",
+        "line": 2099,
+        "section": "",
+        "fields": {
+          "Origin": "1528 3543 1",
+          "Destination": "1528 3543 0",
+          "menuOption menuTarget objectID": "Climb Stairs 27200"
+        },
+        "origin": {
+          "x": 1528,
+          "y": 3543,
+          "plane": 1
+        },
+        "destination": {
+          "x": 1528,
+          "y": 3543,
+          "plane": 0
+        },
+        "label": "Climb Stairs 27200"
+      },
+      "reconciliation": {
+        "status": "diverged",
+        "rows": [
+          {
+            "raw": "1528 3543 1\t1524 3543 0\tClimb Stairs 27200\tmetadata changed",
+            "row": {
+              "file": "src/main/resources/transports/transports.tsv",
+              "line": 2099,
+              "section": "",
+              "fields": {
+                "Origin": "1528 3543 1",
+                "Destination": "1524 3543 0",
+                "menuOption menuTarget objectID": "Climb Stairs 27200"
+              },
+              "origin": {
+                "x": 1528,
+                "y": 3543,
+                "plane": 1
+              },
+              "destination": {
+                "x": 1524,
+                "y": 3543,
+                "plane": 0
+              },
+              "label": "Climb Stairs 27200"
+            }
+          }
+        ]
+      },
+      "review": {
+        "status": "unreviewed"
+      }
+    }
+  ],
+  "plugin": {
+    "repository": "Skretzo/shortest-path",
+    "rev": "1111111111111111111111111111111111111111"
+  },
+  "tooling": {
+    "repository": "osrs-pathfinding/shortest-path-tooling",
+    "rev": "2222222222222222222222222222222222222222"
+  }
+}

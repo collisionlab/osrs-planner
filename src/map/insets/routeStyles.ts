@@ -134,17 +134,18 @@ const markStyles = new Map<string, Style[]>();
 export function markStyle(feature: FeatureLike, resolution: number, selected = false, hovered = false): Style[] {
   const tone = feature.get("tone") as FeatureTone, role = feature.get("role") as string;
   const width = Math.round(scaled(resolution, 0.13, 1.5, 4.5) * 2) / 2, state = selected ? "selected" : hovered ? "hovered" : "plain";
-  const key = `${tone}/${role}/${width}/${state}`;
+  const dashed = !!feature.get("dashed"), lineDash = dashed ? [3, 3] : undefined;
+  const key = `${tone}/${role}/${width}/${state}/${dashed}`;
   let styles = markStyles.get(key);
   if (!styles) {
     const color = TONES[tone], casing = width + 3;
     const centre = (mark: FeatureLike) => (mark.getGeometry() as Polygon).getInteriorPoint();
     styles = [
-      ...(selected ? [new Style({ stroke: new Stroke({ color: "#ffffff", width: casing + 4 }), zIndex: 1 })] : []),
-      new Style({ stroke: new Stroke({ color: hovered && !selected ? "#f7f1dc" : ink, width: casing }), zIndex: 1 }),
+      ...(selected ? [new Style({ stroke: new Stroke({ color: "#ffffff", width: casing + 4, lineDash }), zIndex: 1 })] : []),
+      new Style({ stroke: new Stroke({ color: hovered && !selected ? "#f7f1dc" : ink, width: casing, lineDash }), zIndex: 1 }),
       role === "origin"
-        ? new Style({ stroke: new Stroke({ color, width }), fill: new Fill({ color: `${color}4d` }), zIndex: 1 })
-        : new Style({ fill: new Fill({ color }), stroke: new Stroke({ color, width: Math.max(1, width - 1) }), zIndex: 1 }),
+        ? new Style({ stroke: new Stroke({ color, width, lineDash }), fill: new Fill({ color: `${color}4d` }), zIndex: 1 })
+        : new Style({ fill: new Fill({ color }), stroke: new Stroke({ color, width: Math.max(1, width - 1), lineDash }), zIndex: 1 }),
       ...(role === "origin" ? [] : [new Style({ geometry: centre, zIndex: 1,
         image: new RegularShape({ points: 4, radius: scaled(resolution, 0.17, 1.5, 5.5), angle: Math.PI / 4, fill: new Fill({ color: ink }) }) })]),
     ];

@@ -1,0 +1,9 @@
+{
+  "agility_shortcuts.tsv": "# Origin\tDestination\tmenuOption menuTarget objectID\tSkills\tItems\tVarbits\tVarPlayers\tDuration\tQuests",
+  "fairy_rings.tsv": "# Origin\tDestination\tmenuOption menuTarget objectID\tSkills\tQuests\tVarbits\tDuration\tDisplay info",
+  "gnome_gliders.tsv": "# Origin\tDestination\tmenuOption menuTarget objectID\tQuests\tDuration\tDisplay info",
+  "teleportation_items.tsv": "# Destination\tmenuOption menuTarget objectID\tSkills\tItems\tQuests\tDuration\tDisplay info\tConsumable\tWilderness level\tVarbits\tVarPlayers",
+  "teleportation_minigames.tsv": "# Destination\tSkills\tQuests\tDisplay info\tDuration\tWilderness level\tVarbits\tVarPlayers",
+  "teleportation_spells.tsv": "# Destination\tItems\tSkills\tQuests\tDuration\tDisplay info\tWilderness level\tVarbits\tVarPlayers",
+  "transports.tsv": "# Origin\tDestination\tmenuOption menuTarget objectID\tSkills\tItems\tQuests\tVarbits\tVarPlayers\tDuration\tDisplay info"
+}
