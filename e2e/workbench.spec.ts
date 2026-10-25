@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
@@ -6,8 +7,9 @@ import candidateFixture from "./fixtures/candidates.json" with { type: "json" };
 import candidateTypes from "./fixtures/candidate-types.json" with { type: "json" };
 
 // The workbench's transport review, on its own host, against a mocked review service: a pull
-// request that adds the Fractured Archive entrance (an area the pinned insets haven't named) and
-// edits a row. The collision layer has only the map square around the way in.
+// request that adds the Fractured Archive entrance and edits a row. The pinned insets' labels lose
+// The Fractured Archive's name, as before the entrance was merged, so the pull request names it.
+// The collision layer has only the map square around the way in.
 test.use({ baseURL: "http://workbench.localhost:5179" });
 
 const FILE = "src/main/resources/transports/transports.tsv";
@@ -53,8 +55,27 @@ async function mockService(page: Page, { newer = false } = {}) {
     ? route.fulfill({ body: COLLISION, contentType: "application/octet-stream" }) : route.fulfill({ status: 404 }));
 }
 
+/** The pinned inset release with `name`'s regions unnamed, the way a release from before they were reachable has them. */
+async function unname(page: Page, name: string) {
+  const bundle = `${tiles.base}/insets/${tiles.insets.version}`;
+  let labels = "";
+  await page.route(`${bundle}/manifest.json`, async route => {
+    const manifest = await (await route.fetch()).json();
+    const release = await (await page.request.get(`${bundle}/labels.json`)).json() as
+      { regions: Record<string, { name: string; status: string; areas: unknown[] }> };
+    for (const region of Object.values(release.regions)) {
+      if (region.name === name) Object.assign(region, { name: "Unidentified terrain", status: "unresolved", areas: [] });
+    }
+    labels = JSON.stringify(release);
+    manifest.files["labels.json"] = createHash("sha256").update(labels).digest("hex");
+    await route.fulfill({ json: manifest });
+  });
+  await page.route(`${bundle}/labels.json`, route => route.fulfill({ body: labels, contentType: "application/json" }));
+}
+
 test("reviews a pull request's transport rows on the inset map", async ({ page }) => {
   await mockService(page);
+  await unname(page, "The Fractured Archive");
   const collision = page.waitForRequest(`${tiles.base}/collision/${tiles.version}/p2/8/35/129.bin`);
   await page.goto("/github/Skretzo/shortest-path/pull/839");
   // The link names the push it shows, so it shows the same rows for good.
