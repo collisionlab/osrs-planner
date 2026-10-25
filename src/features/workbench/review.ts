@@ -1,7 +1,32 @@
 import type { WorldPoint } from "../../domain/contracts";
 import type { CollisionMap } from "../../map/insets/collision";
-import { featurePoints, type FeatureOverlay, type MapFeature } from "../../map/insets/features";
-import type { ReviewUnit, RowChange } from "./api";
+import { featurePoints, type FeatureOverlay, type FeatureTone, type MapFeature } from "../../map/insets/features";
+import type { ReviewUnit, RowChange, TransportRow } from "./api";
+
+/** One transport's edge and endpoint tiles, shared by PR review and candidate inspection. */
+function rowGeometry(key: string, row: TransportRow, tone: FeatureTone, omitUnchanged?: TransportRow, dashedPoints?: boolean): MapFeature[] {
+  const features: MapFeature[] = [];
+  if (row.origin && row.destination) features.push({ kind: "edge", key, from: row.origin, to: row.destination,
+    tone, dashed: tone === "removed" });
+  for (const role of ["origin", "destination"] as const) {
+    const point = row[role];
+    if (point && !(omitUnchanged && samePoint(point, omitUnchanged[role]))) {
+      features.push({ kind: "point", key, point, tone, role, ...(dashedPoints === undefined ? {} : { dashed: dashedPoints }) });
+    }
+  }
+  return features;
+}
+
+/** Shared old/proposed transport drawing, independent of GitHub's review domain. */
+export function geometryOverlay(rows: { key: string; original: TransportRow; suggested: TransportRow }[],
+  collision?: CollisionMap, selected?: string): FeatureOverlay {
+  const features: MapFeature[] = [];
+  for (const { key, original, suggested } of rows) {
+    features.push(...rowGeometry(key, original, "removed", suggested, true));
+    features.push(...rowGeometry(key, suggested, "added", undefined, false));
+  }
+  return { features, anchors: features, collision, selected };
+}
 
 const samePoint = (a?: WorldPoint | null, b?: WorldPoint | null) => a?.x === b?.x && a?.y === b?.y && a?.plane === b?.plane;
 
@@ -18,11 +43,7 @@ export const changeOfKey = (unit: ReviewUnit, key?: string) => unit.changes.find
 export function unitOverlay(unit: ReviewUnit, collision?: CollisionMap, selected?: RowChange): FeatureOverlay {
   const features: MapFeature[] = [];
   const draw = (change: RowChange, version: "base" | "head", tone: "added" | "removed" | "changed") => {
-    const { origin, destination } = change[version]!;
-    const key = changeKey(unit, change);
-    if (origin && destination) features.push({ kind: "edge", key, from: origin, to: destination, tone, dashed: tone === "removed" });
-    if (origin) features.push({ kind: "point", key, point: origin, tone, role: "origin" });
-    if (destination) features.push({ kind: "point", key, point: destination, tone, role: "destination" });
+    features.push(...rowGeometry(changeKey(unit, change), change[version]!, tone));
   };
   for (const change of unit.changes) {
     if (change.kind === "changed" && (!samePoint(change.base!.origin, change.head!.origin)

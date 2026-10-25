@@ -253,7 +253,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
         feature.setProperties({ dashed: item.dashed });
       } else if (item.kind === "point") {
         feature = new Feature(new Polygon([tileRing(item.point, item.role === "origin" ? 2 : 0)]));
-        feature.set("role", item.role);
+        feature.setProperties({ role: item.role, dashed: item.dashed });
       } else {
         const [x1, y1, x2, y2] = item.bounds;
         const [a, b] = [projected({ x: x1, y: y1, plane: item.plane }), projected({ x: x2, y: y2, plane: item.plane })];
@@ -584,6 +584,13 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
       featureSource.forEachFeature(feature => { counts[feature.get("kind")]++; });
       counts.mask = maskSource.getFeatures().filter(feature => feature.get("part") === "fill").length;
       return counts;
+    },
+    /** The drawn overlay's identity and appearance, for workbench map inspection tests. */
+    featureSummary() {
+      return featureSource.getFeatures().map(feature => ({
+        key: feature.get("key") as string, kind: feature.get("kind") as string,
+        tone: feature.get("tone") as string, dashed: !!feature.get("dashed"), role: feature.get("role") as string | undefined,
+      }));
     },
     /** Where a world tile is drawn, in pixels from the map's top left (for end-to-end tests). */
     pixel(point: WorldPoint) { return map.getPixelFromCoordinate(projected(point)); },

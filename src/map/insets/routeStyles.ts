@@ -93,12 +93,14 @@ const markStyles = new Map<string, Style>();
  */
 export function markStyle(feature: FeatureLike, resolution: number, selected = false): Style {
   const tone = feature.get("tone") as FeatureTone, role = feature.get("role") as string;
-  const small = TILE_UNITS / resolution < MARK_MIN_PX, key = `${tone}/${role}/${small}/${selected}`;
+  const dashed = !!feature.get("dashed");
+  const small = TILE_UNITS / resolution < MARK_MIN_PX, key = `${tone}/${role}/${small}/${selected}/${dashed}`;
   let style = markStyles.get(key);
   if (!style) {
     const color = TONES[tone];
-    const stroke = selected ? new Stroke({ color: "#ffffff", width: 3 })
-      : role === "origin" ? new Stroke({ color, width: 3 }) : new Stroke({ color: ink, width: 1.5 });
+    const lineDash = dashed ? [3, 3] : undefined;
+    const stroke = selected ? new Stroke({ color: "#ffffff", width: 3, lineDash })
+      : role === "origin" ? new Stroke({ color, width: 3, lineDash }) : new Stroke({ color: ink, width: 1.5, lineDash });
     const fill = new Fill({ color: role === "origin" ? "rgba(0,0,0,0)" : `${color}b3` });
     style = small
       ? new Style({ geometry: mark => (mark.getGeometry() as Polygon).getInteriorPoint(),

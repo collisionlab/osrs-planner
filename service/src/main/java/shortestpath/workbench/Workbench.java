@@ -44,6 +44,9 @@ public final class Workbench {
 
     /** The transport explorer's routes: the bundled plugin's effective transports, a view at a time. */
     public static void transportRoutes(Javalin app, Supplier<TransportCatalog> catalog, Provenance provenance) {
+        // Read-only, local resources only. Reconciliation is against the plugin on this classpath.
+        app.get("/workbench/v1/candidates", ctx -> ctx.header("Cache-Control", "no-cache")
+            .json(TransportCandidates.bundled(provenance)));
         String transports = "/workbench/v1/transports";
         String cache = "public, max-age=300";
         app.get(transports + "/meta", ctx -> {
