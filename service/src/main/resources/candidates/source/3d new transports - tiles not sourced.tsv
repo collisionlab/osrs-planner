@@ -1,0 +1,358 @@
+Origin	Destination	menuOption menuTarget objectID	Skills	Items	Quests	Varbits	VarPlayers	Duration	Display info	Needs (not in their format)	Ticks (ours, not checked)	Source
+1149 3445 0	1146 3434 0					15125>39			Entry		10 (estimate)	Wiki: Desert Treasure II - The Fallen Empire/Quick guide (rev 15370842); Quest Helper VardorvisSteps.java
+1146 3434 0	1149 3445 0					15125>39			Entry		10 (estimate)	Wiki: Desert Treasure II - The Fallen Empire/Quick guide (rev 15370842); Quest Helper VardorvisSteps.java
+1169 9973 0	1215 3557 0					6358>8			Rope		10 (estimate)	Wiki: Tale of the Righteous/Quick guide (rev 15317423); Quest Helper TaleOfTheRighteous.java; game cache
+1215 3557 0	1169 9973 0					6358>8			Rope		10 (estimate)	Wiki: Tale of the Righteous/Quick guide (rev 15317423); Quest Helper TaleOfTheRighteous.java; game cache
+1200 3111 0	1200 3111 2								Ladder		5 (estimate)	none recorded
+1200 3111 2	1200 3111 0								Ladder		5 (estimate)	none recorded
+1241 3096 0	1241 3096 2								Ladder		5 (estimate)	none recorded
+1241 3096 2	1241 3096 0								Ladder		5 (estimate)	none recorded
+1443 2977 0	1446 2977 1	Cross Gangplank 55336							Gangplank		5 (estimate)	none recorded
+1446 2977 1	1443 2977 0	Cross Gangplank 55336							Gangplank		5 (estimate)	none recorded
+1513 3243 0	1518 3248 0								Gate		5 (estimate)	none recorded
+1518 3248 0	1513 3243 0								Gate		5 (estimate)	none recorded
+1636 5365 1	1764 5365 1								Ancient Cavern copy		7	none recorded
+1764 5365 1	1636 5365 1								Ancient Cavern copy		7	none recorded
+1694 9655 1	1698 9655 1								Ledge		5 (estimate)	none recorded
+1698 9655 1	1694 9655 1								Ledge		5 (estimate)	none recorded
+1694 9659 1	1694 9655 1								Frozen platform		5 (estimate)	none recorded
+1694 9655 1	1694 9659 1								Frozen platform		5 (estimate)	none recorded
+1692 9659 1	1694 9659 1								Frozen platform		5 (estimate)	none recorded
+1694 9659 1	1692 9659 1								Frozen platform		5 (estimate)	none recorded
+1700 9652 0	1700 9654 1								Wall		5 (estimate)	none recorded
+1700 9654 1	1700 9652 0								Wall		5 (estimate)	none recorded
+1671 9687 0	1678 3246 0								Staircase		5 (estimate)	Wiki: Twilight Temple (rev 15356787); Quest Helper TheFinalDawn.java
+1678 3246 0	1671 9687 0			29868=1&29870=1&29872=1&29874=1		16663>3			Staircase	the item must be worn; the item must be worn; the item must be worn; the item must be worn	5 (estimate)	Wiki: Twilight Temple (rev 15356787); Quest Helper TheFinalDawn.java
+1718 9707 0	1721 9707 0								Painting		7	none recorded
+1721 9707 0	1718 9707 0								Painting		7	none recorded
+1765 10148 0	1765 10150 0								Doorway		5 (estimate)	none recorded
+1765 10150 0	1765 10148 0								Doorway		5 (estimate)	none recorded
+2487 3465 2	2484 3463 1	Climb-down Trapdoor 2444							Trapdoor		5 (estimate)	none recorded
+2542 3326 0	2543 3326 1	Climb-up Staircase 16671							Staircase		5 (estimate)	none recorded
+2543 3326 1	2542 3326 0	Climb-down Staircase 16671							Staircase		5 (estimate)	none recorded
+2532 3546 0	2532 3546 1	Climb-up Ladder 16683							Ladder		5 (estimate)	none recorded
+2532 3546 1	2532 3546 0	Climb-down Ladder 16683							Ladder		5 (estimate)	none recorded
+2509 3635 0	2509 3637 0	Walk-through Doorway 4577				34>1			Doorway		5 (estimate)	Wiki: Lighthouse (rev 15364123); Quest Helper HorrorFromTheDeep.java
+2509 3637 0	2509 3635 0	Walk-through Doorway 4577				34>1			Doorway		5 (estimate)	Wiki: Lighthouse (rev 15364123); Quest Helper HorrorFromTheDeep.java
+2955 3497 0	2955 3497 2	Climb-up Ladder 16450							Ladder		5 (estimate)	none recorded
+2955 3497 2	2955 3497 0	Climb-down Ladder 16450							Ladder		5 (estimate)	none recorded
+2970 4256 2	2974 4256 2	Go-through Passage 677							Passage		10 (estimate)	none recorded
+2974 4256 2	2970 4256 2	Go-through Passage 677							Passage		10 (estimate)	none recorded
+3154 3744 0	3154 3743 1	Climb-up Ladder 17028							Ladder		5 (estimate)	none recorded
+3154 3743 1	3154 3744 0	17028							Ladder		5 (estimate)	none recorded
+2823 9258 0	2823 9260 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2823 9260 0	2823 9258 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2835 9224 0	2835 9226 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2835 9226 0	2835 9224 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2835 9272 0	2835 9274 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2835 9274 0	2835 9272 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2839 9228 0	2839 9230 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2839 9230 0	2839 9228 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2839 9252 0	2839 9254 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2839 9254 0	2839 9252 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2839 9260 0	2839 9262 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2839 9262 0	2839 9260 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2843 9220 0	2843 9222 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2843 9222 0	2843 9220 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2851 9226 0	2851 9228 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2851 9228 0	2851 9226 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2855 9260 0	2855 9262 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2855 9262 0	2855 9260 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2863 9244 0	2863 9246 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2863 9246 0	2863 9244 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2867 9220 0	2867 9222 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2867 9222 0	2867 9220 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2871 9231 0	2871 9233 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2871 9233 0	2871 9231 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2875 9260 0	2875 9262 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2875 9262 0	2875 9260 0	Climb-over Trap 32481							Trap		5 (estimate)	none recorded
+2820 9271 0	2822 9271 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2822 9271 0	2820 9271 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2821 9235 0	2823 9235 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2823 9235 0	2821 9235 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2826 9223 0	2828 9223 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2828 9223 0	2826 9223 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2828 9263 0	2830 9263 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2830 9263 0	2828 9263 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2832 9243 0	2834 9243 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2834 9243 0	2832 9243 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2832 9255 0	2834 9255 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2834 9255 0	2832 9255 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2842 9235 0	2844 9235 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2844 9235 0	2842 9235 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2847 9263 0	2849 9263 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2849 9263 0	2847 9263 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2856 9227 0	2858 9227 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2858 9227 0	2856 9227 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2856 9239 0	2858 9239 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2858 9239 0	2856 9239 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2857 9275 0	2859 9275 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2859 9275 0	2857 9275 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2864 9267 0	2866 9267 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2866 9267 0	2864 9267 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2867 9251 0	2869 9251 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2869 9251 0	2867 9251 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2868 9259 0	2870 9259 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2870 9259 0	2868 9259 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2872 9239 0	2874 9239 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+2874 9239 0	2872 9239 0	Climb-over Trap 32482							Trap		5 (estimate)	none recorded
+3043 5894 0	3043 5895 0	Enter Doorway 41872							Doorway		5 (estimate)	none recorded
+3043 5895 0	3043 5894 0	Enter Doorway 41872							Doorway		5 (estimate)	none recorded
+2792 3796 0	2792 3794 0								Slope		5 (estimate)	none recorded
+2793 3721 0	2795 3720 0								Slide		7	none recorded
+1799 4406 3	2545 10143 0								Ladder		5 (estimate)	none recorded
+2545 10143 0	1799 4406 3								Ladder		5 (estimate)	none recorded
+3787 9254 0	3787 9254 1	Descend Stairs 22365							Stairs		5 (estimate)	none recorded
+3787 9254 1	3787 9254 0	Climb Stairs 22365							Stairs		5 (estimate)	none recorded
+3828 9254 0	3828 9254 1	Descend Stairs 22366				3385=1			Stairs		5 (estimate)	Quest Helper thegreatbrainrobbery/TheGreatBrainRobbery.java
+3828 9254 1	3828 9254 0	Climb Stairs 22366				3385=1			Stairs		5 (estimate)	Quest Helper thegreatbrainrobbery/TheGreatBrainRobbery.java
+4112 4702 1	4112 4697 1	Jump-to Bridge 53511							Bridge		5 (estimate)	none recorded
+4112 4697 1	4112 4702 1	Jump-to Bridge 53511							Bridge		5 (estimate)	none recorded
+3819 2844 0	3830 9254 0	Climb-down Ladder 22164							Ladder		5 (estimate)	none recorded
+3830 9254 0	3819 2844 0	Climb Ladder 22164							Ladder		5 (estimate)	none recorded
+1312 10188 0	1311 3807 0								Cave exit		10 (estimate)	none recorded
+1311 3807 0	1312 10188 0								Cave exit		10 (estimate)	none recorded
+1401 2966 0	1401 2967 0		32 Agility			11210>3			House window		5 (estimate)	Wiki: House window (rev 15147435); Quest Helper DeathOnTheIsle.java
+1401 2967 0	1401 2966 0		32 Agility			11210>3			House window		5 (estimate)	Wiki: House window (rev 15147435); Quest Helper DeathOnTheIsle.java
+1349 4236 0	2321 3101 0					15288>39			Sewer exit		10 (estimate)	Wiki: Poison Waste Dungeon (rev 15293288); Quest Helper ThePathOfGlouphrie.java
+2321 3101 0	1349 4236 0					15288>39			Sewer exit		10 (estimate)	Wiki: Poison Waste Dungeon (rev 15293288); Quest Helper ThePathOfGlouphrie.java
+1457 9331 0	1462 9331 0					11210>39			Bookshelf passage		10 (estimate)	Quest Helper DeathOnTheIsle.java; game cache
+1462 9331 0	1457 9331 0					11210>39			Bookshelf passage		10 (estimate)	Quest Helper DeathOnTheIsle.java; game cache
+1473 4237 0	2321 3101 0					15288>39			Sewer exit		10 (estimate)	Wiki: Poison Waste Dungeon (rev 15293288); Quest Helper ThePathOfGlouphrie.java
+2321 3101 0	1473 4237 0					15288>39			Sewer exit		10 (estimate)	Wiki: Poison Waste Dungeon (rev 15293288); Quest Helper ThePathOfGlouphrie.java
+1719 9634 0	1719 9639 1								Ice		5 (estimate)	none recorded
+1719 9639 1	1719 9634 0								Ice		5 (estimate)	none recorded
+1880 5232 0	1860 5242 0								Spikey chain		5 (estimate)	none recorded
+1861 5317 0	3207 3217 0								Door		5 (estimate)	Wiki: Recipe for Disaster (rev 15365447); Quest Helper RFDStart.java
+3207 3217 0	1861 5317 0					1850>1			Door		5 (estimate)	Wiki: Recipe for Disaster (rev 15365447); Quest Helper RFDStart.java
+1966 3097 0	1933 9519 0								Cave entrance		10 (estimate)	none recorded
+1933 9519 0	1966 3097 0								Cave entrance		10 (estimate)	none recorded
+3612 9473 0	2012 6435 0					15128>1			Guardian		7	Wiki: The Scar (rev 15211905); Quest Helper DesertTreasureII.java
+2012 6435 0	3612 9473 0								Guardian		7	Wiki: The Scar (rev 15211905); Quest Helper DesertTreasureII.java
+2041 6424 0	1952 6350 0					15128>35			Passage		10 (estimate)	Wiki: The Scar (rev 15211905); Wiki: Scar essence mine (rev 15330443); Quest Helper PerseriyaSteps.java
+1952 6350 0	2041 6424 0					15128>35			Passage		10 (estimate)	Wiki: The Scar (rev 15211905); Wiki: Scar essence mine (rev 15330443); Quest Helper PerseriyaSteps.java
+2101 3918 0	2631 3679 0					4494=1			Return Orb		7	game cache
+2757 2733 0	2769 2746 0		48 Agility		Monkey Madness I				Tropical tree	needs one of: item 4024/4025/19525 worn | quest Monkey Madness II	5 (estimate)	Wiki: Ape Atoll Agility Course (rev 15361805)
+2412 3060 0	2404 9415 0								Smoky cave		10 (estimate)	Wiki: Smoke Devil Dungeon (rev 15252276)
+2404 9415 0	2412 3060 0								Smoky cave		10 (estimate)	Wiki: Smoke Devil Dungeon (rev 15252276)
+2379 9452 0	2376 9452 0								Crevice		10 (estimate)	none recorded
+2376 9452 0	2379 9452 0								Crevice		10 (estimate)	none recorded
+2335 4827 0	2446 2823 0								Mysterious ruins		10 (estimate)	Wiki: Mysterious ruins (rev 15312910)
+2446 2823 0	2335 4827 0			22118=1|22121=1|26798=1|26801=1					Mysterious ruins	the item must be worn	10 (estimate)	Wiki: Mysterious ruins (rev 15312910)
+2387 9605 0	2419 9605 0								Pipe		5 (estimate)	none recorded
+2419 9605 0	2387 9605 0								Pipe		5 (estimate)	none recorded
+2515 4632 0	2515 4629 0								Iron ladder		5 (estimate)	none recorded
+2515 4629 0	2515 4632 0								Iron ladder		5 (estimate)	none recorded
+2527 7838 0	3162 7711 0								Portal		10 (estimate)	Wiki: Vampyrium (rev 15333623)
+3162 7711 0	2527 7838 0				The Blood Moon Rises				Portal		10 (estimate)	Wiki: Vampyrium (rev 15333623)
+2553 7824 0	2560 7819 0		78 Agility						Rockslide		5 (estimate)	none recorded
+2560 7819 0	2553 7824 0		61 Agility						Rockslide		5 (estimate)	none recorded
+2513 9142 1	2513 9137 1								Wall support		5 (estimate)	none recorded
+2513 9137 1	2513 9142 1								Wall support		5 (estimate)	none recorded
+2515 9135 1	2521 9135 1								Rocky ledge		5 (estimate)	none recorded
+2521 9135 1	2515 9135 1								Rocky ledge		5 (estimate)	none recorded
+2509 9173 1	2714 2787 0								Bamboo Ladder		5 (estimate)	Wiki: Kruk's Dungeon (rev 15366052); Wiki: Light sources (rev 15327831); Quest Helper MonkeyMadnessII.java
+2714 2787 0	2509 9173 1			[light source]=1		5027>34			Bamboo Ladder		5 (estimate)	Wiki: Kruk's Dungeon (rev 15366052); Wiki: Light sources (rev 15327831); Quest Helper MonkeyMadnessII.java
+2515 9210 1	2518 9210 1								Cavern entrance		10 (estimate)	none recorded
+2518 9210 1	2515 9210 1								Cavern entrance		10 (estimate)	none recorded
+2541 9113 1	2543 9113 1								Floor spikes		5 (estimate)	none recorded
+2543 9113 1	2541 9113 1								Floor spikes		5 (estimate)	none recorded
+2524 9096 1	2526 9096 1								Floor spikes		5 (estimate)	none recorded
+2526 9096 1	2524 9096 1								Floor spikes		5 (estimate)	none recorded
+2517 9097 1	2519 9097 1								Floor spikes		5 (estimate)	none recorded
+2519 9097 1	2517 9097 1								Floor spikes		5 (estimate)	none recorded
+2516 9099 1	2516 9101 1								Floor spikes		5 (estimate)	none recorded
+2516 9101 1	2516 9099 1								Floor spikes		5 (estimate)	none recorded
+2617 9135 1	2617 9137 1								Floor spikes		5 (estimate)	none recorded
+2617 9137 1	2617 9135 1								Floor spikes		5 (estimate)	none recorded
+2619 9138 1	2621 9138 1								Floor spikes		5 (estimate)	none recorded
+2621 9138 1	2619 9138 1								Floor spikes		5 (estimate)	none recorded
+2516 9148 1	2518 9148 1								Pressure pad		5 (estimate)	none recorded
+2519 9149 1	2519 9151 1								Pressure pad		5 (estimate)	none recorded
+2519 9151 1	2519 9149 1								Pressure pad		5 (estimate)	none recorded
+2520 9155 1	2523 9155 1								Hole		10 (estimate)	none recorded
+2523 9155 1	2520 9155 1								Hole		10 (estimate)	none recorded
+2526 9157 1	2526 9161 1								Gap		5 (estimate)	none recorded
+2526 9161 1	2526 9157 1								Gap		5 (estimate)	none recorded
+2543 9148 1	2547 9148 1								Pressure pad		5 (estimate)	none recorded
+2547 9148 1	2543 9148 1								Pressure pad		5 (estimate)	none recorded
+2552 9258 1	2545 9258 1								Rocky ledge		5 (estimate)	none recorded
+2545 9258 1	2552 9258 1								Rocky ledge		5 (estimate)	none recorded
+2541 9253 1	2532 9253 1								Log balance		5 (estimate)	none recorded
+2532 9253 1	2541 9253 1								Log balance		5 (estimate)	none recorded
+2529 9248 1	2529 9240 1								Wall support		5 (estimate)	none recorded
+2529 9240 1	2529 9248 1								Wall support		5 (estimate)	none recorded
+2550 9244 1	2550 9239 1								Vine		5 (estimate)	none recorded
+2550 9239 1	2550 9244 1								Vine		5 (estimate)	none recorded
+2574 9261 1	2579 9261 1								Rocky ledge		5 (estimate)	none recorded
+2579 9261 1	2574 9261 1								Rocky ledge		5 (estimate)	none recorded
+2595 9265 1	2595 9268 1								Hole		10 (estimate)	none recorded
+2595 9268 1	2595 9265 1								Hole		10 (estimate)	none recorded
+2593 9234 1	2595 9234 1								Gap		5 (estimate)	none recorded
+2595 9234 1	2593 9234 1								Gap		5 (estimate)	none recorded
+2606 9241 1	2606 9243 1								Gap		5 (estimate)	none recorded
+2606 9243 1	2606 9241 1								Gap		5 (estimate)	none recorded
+2611 9245 1	2611 9250 1								Vine		5 (estimate)	none recorded
+2611 9250 1	2611 9245 1								Vine		5 (estimate)	none recorded
+2588 9226 1	2588 9231 1								Vine		5 (estimate)	none recorded
+2588 9231 1	2588 9226 1								Vine		5 (estimate)	none recorded
+2586 9224 1	2581 9224 1								Vine		5 (estimate)	none recorded
+2581 9224 1	2586 9224 1								Vine		5 (estimate)	none recorded
+2597 9221 1	2589 9221 1								Wall support		5 (estimate)	none recorded
+2589 9221 1	2597 9221 1								Wall support		5 (estimate)	none recorded
+2574 9207 1	2579 9207 1								Vine		5 (estimate)	none recorded
+2579 9207 1	2574 9207 1								Vine		5 (estimate)	none recorded
+2579 9194 1	2579 9192 1								Wall support		5 (estimate)	none recorded
+2579 9192 1	2579 9194 1								Wall support		5 (estimate)	none recorded
+2578 9203 1	2578 9196 1								Rocky ledge		5 (estimate)	none recorded
+2578 9196 1	2578 9203 1								Rocky ledge		5 (estimate)	none recorded
+2585 9196 1	2592 9196 1								Wall support		5 (estimate)	none recorded
+2592 9196 1	2585 9196 1								Wall support		5 (estimate)	none recorded
+2584 9192 1	2584 9196 1								Log balance		5 (estimate)	none recorded
+2584 9196 1	2584 9192 1								Log balance		5 (estimate)	none recorded
+2607 9195 1	2601 9195 1								Vine		5 (estimate)	none recorded
+2601 9195 1	2607 9195 1								Vine		5 (estimate)	none recorded
+2600 9196 1	2600 9201 1								Log balance		5 (estimate)	none recorded
+2600 9201 1	2600 9196 1								Log balance		5 (estimate)	none recorded
+2599 9195 1	2595 9195 1								Vine		5 (estimate)	none recorded
+2595 9195 1	2599 9195 1								Vine		5 (estimate)	none recorded
+2616 9173 1	2621 9173 1								Vine		5 (estimate)	none recorded
+2621 9173 1	2616 9173 1								Vine		5 (estimate)	none recorded
+2617 9160 1	2622 9160 1								Vine		5 (estimate)	none recorded
+2622 9160 1	2617 9160 1								Vine		5 (estimate)	none recorded
+2625 9172 1	2628 9172 1								Hole		10 (estimate)	none recorded
+2628 9172 1	2625 9172 1								Hole		10 (estimate)	none recorded
+2590 9162 1	2592 9162 1								Gap		5 (estimate)	none recorded
+2592 9162 1	2590 9162 1								Gap		5 (estimate)	none recorded
+2596 9162 1	2601 9162 1								Wall support		5 (estimate)	none recorded
+2601 9162 1	2596 9162 1								Wall support		5 (estimate)	none recorded
+2602 9162 1	2602 9168 1								Vine		5 (estimate)	none recorded
+2602 9168 1	2602 9162 1								Vine		5 (estimate)	none recorded
+2602 9162 1	2608 9162 1								Ledge		7	none recorded
+2608 9162 1	2602 9162 1								Ledge		7	none recorded
+2611 9162 1	2611 9159 1								Hole		10 (estimate)	none recorded
+2611 9159 1	2611 9162 1								Hole		10 (estimate)	none recorded
+2603 9169 1	2606 9171 1								Hole		10 (estimate)	none recorded
+2606 9171 1	2603 9169 1								Hole		10 (estimate)	none recorded
+2608 9165 1	2608 9170 1								Hole		10 (estimate)	none recorded
+2608 9170 1	2608 9165 1								Hole		10 (estimate)	none recorded
+2588 9177 1	2593 9177 1								Rocky ledge		5 (estimate)	none recorded
+2593 9177 1	2588 9177 1								Rocky ledge		5 (estimate)	none recorded
+2596 9176 1	2603 9176 1								Wall support		5 (estimate)	none recorded
+2603 9176 1	2596 9176 1								Wall support		5 (estimate)	none recorded
+2604 9179 1	2611 9179 1								Vine		5 (estimate)	none recorded
+2611 9179 1	2604 9179 1								Vine		5 (estimate)	none recorded
+2647 9163 1	2650 9163 1								Hole		10 (estimate)	none recorded
+2650 9163 1	2647 9163 1								Hole		10 (estimate)	none recorded
+2588 6435 0	2922 5826 0								Rope		10 (estimate)	Wiki: Lassar Undercity (rev 15365827)
+2922 5826 0	2588 6435 0				Desert Treasure II - The Fallen Empire				Rope		10 (estimate)	Wiki: Lassar Undercity (rev 15365827)
+2549 9154 1	2549 9161 1								Vine		5 (estimate)	none recorded
+2549 9161 1	2549 9154 1								Vine		5 (estimate)	none recorded
+2528 9169 1	2528 9171 1								Pressure pad		5 (estimate)	none recorded
+2528 9171 1	2528 9169 1								Pressure pad		5 (estimate)	none recorded
+2531 9173 1	2533 9173 1								Pressure pad		5 (estimate)	none recorded
+2533 9173 1	2531 9173 1								Pressure pad		5 (estimate)	none recorded
+2534 9166 1	2539 9166 1								Vine		5 (estimate)	none recorded
+2539 9166 1	2534 9166 1								Vine		5 (estimate)	none recorded
+2552 9184 1	2558 9184 1								Pillar		5 (estimate)	none recorded
+2558 9184 1	2552 9184 1								Pillar		5 (estimate)	none recorded
+2630 2997 0	2647 9378 0								Cave entrance		10 (estimate)	none recorded
+2647 9378 0	2630 2997 0								Cave entrance		10 (estimate)	none recorded
+2756 2742 0	2754 2741 2		48 Agility		Monkey Madness I				Stepping stone	needs one of: item 4024/4025/19525 worn | quest Monkey Madness II	5 (estimate)	Wiki: Ape Atoll Agility Course (rev 15361805)
+2754 2741 2	2756 2742 0		48 Agility		Monkey Madness I				Stepping stone	needs one of: item 4024/4025/19525 worn | quest Monkey Madness II	5 (estimate)	Wiki: Ape Atoll Agility Course (rev 15361805)
+2752 2741 2	2743 2741 0								Monkey Bars		7	none recorded
+2743 2741 0	2752 2741 2								Monkey Bars		7	none recorded
+2690 10125 0	2748 3732 0								Cave		10 (estimate)	Wiki: Brine Rat Cavern (rev 15275367); Quest Helper OlafsQuest.java
+2748 3732 0	2690 10125 0			952=1		3534>59			Cave		10 (estimate)	Wiki: Brine Rat Cavern (rev 15275367); Quest Helper OlafsQuest.java
+2807 3535 0	2789 3537 0		99 Crafting;99 Construction						Log raft		7	Wiki: Mac's island (rev 15276777)
+2789 3537 0	2807 3535 0		99 Crafting;99 Construction						Log raft		7	Wiki: Mac's island (rev 15276777)
+2830 9521 0	2824 3120 0								Hand holds		5 (estimate)	none recorded
+2824 3120 0	2830 9521 0								Hand holds		5 (estimate)	none recorded
+2974 5061 1	2974 5059 1								Contortion Bars		5 (estimate)	none recorded
+2974 5059 1	2974 5061 1								Contortion Bars		5 (estimate)	none recorded
+2955 5094 1	2955 5098 1								Passageway		10 (estimate)	none recorded
+2955 5098 1	2955 5094 1								Passageway		10 (estimate)	none recorded
+2957 5068 1	2957 5072 1								Passageway		10 (estimate)	none recorded
+2957 5072 1	2957 5068 1								Passageway		10 (estimate)	none recorded
+2972 5098 1	2972 5094 1								Passageway		10 (estimate)	none recorded
+2972 5094 1	2972 5098 1								Passageway		10 (estimate)	none recorded
+3017 3740 0	3066 10156 3								Cave		10 (estimate)	none recorded
+3066 10156 3	3017 3740 0								Cave		10 (estimate)	none recorded
+3066 10149 3	3066 10147 3		60 Agility						Jutting wall		5 (estimate)	none recorded
+3066 10147 3	3066 10149 3		60 Agility						Jutting wall		5 (estimate)	none recorded
+3066 10143 3	3061 10122 0								Crevice		10 (estimate)	none recorded
+3061 10122 0	3066 10143 3								Crevice		10 (estimate)	none recorded
+3018 4996 1	3016 4996 1								Contortion Bars		5 (estimate)	none recorded
+3016 4996 1	3018 4996 1								Contortion Bars		5 (estimate)	none recorded
+3050 4997 1	3048 4997 1								Contortion Bars		5 (estimate)	none recorded
+3048 4997 1	3050 4997 1								Contortion Bars		5 (estimate)	none recorded
+3012 5021 1	3016 5021 1								Passageway		10 (estimate)	none recorded
+3016 5021 1	3012 5021 1								Passageway		10 (estimate)	none recorded
+3137 2841 0	3134 2841 0								Rope ladder		5 (estimate)	none recorded
+3134 2841 0	3137 2841 0								Rope ladder		5 (estimate)	none recorded
+2571 8606 0	2559 2203 0								Cave		10	none recorded
+2559 2203 0	2571 8606 0								Cave		10	none recorded
+3186 4612 0	3185 4601 0								Passageway		10 (estimate)	none recorded
+3185 4601 0	3186 4612 0								Passageway		10 (estimate)	none recorded
+3179 5191 0	3284 3467 0					3524=1			Stairs		5 (estimate)	game cache
+3284 3467 0	3179 5191 0					3524=1			Stairs		5 (estimate)	game cache
+2984 3290 0	2842 4828 0	Enter Mysterious ruins 34813		1438=1|5527=1|5516=1|26804=1					Mysterious ruins	the item must be worn	10 (estimate)	Wiki: Air Altar (rev 14997710)
+3052 3443 0	2521 4834 0	Enter Mysterious ruins 34818		1446=1|5533=1|26798=1|26801=1					Mysterious ruins	the item must be worn	10 (estimate)	Wiki: Body Altar (rev 15123587)
+3366 11483 0	3361 3149 0								Exit		10 (estimate)	none recorded
+3361 3149 0	3366 11483 0								Exit		10 (estimate)	none recorded
+3428 9563 0	3407 3159 0								Cave		10 (estimate)	none recorded
+3407 3159 0	3428 9563 0								Cave		10 (estimate)	none recorded
+3312 3253 0	2575 4849 0	Enter Mysterious ruins 34817		1442=1|5516=1|5537=1|26804=1					Mysterious ruins	the item must be worn	10 (estimate)	Wiki: Fire Altar (rev 14925023); game cache
+3304 3475 0	2655 4830 0	Enter Mysterious ruins 34816		1440=1|5516=1|5535=1|26804=1					Mysterious ruins	the item must be worn	10 (estimate)	Wiki: Earth Altar (rev 14925024); game cache
+3560 9779 0	3229 4834 0	Enter Mysterious ruins 25380		1450=1|26798=1|5549=1|26801=1	Sins of the Father				Mysterious ruins	the item must be worn	10 (estimate)	Wiki: Meiyerditch Laboratories (rev 15351677); Wiki: Blood Altar (rev 15341742)
+3729 10294 1	3729 10296 1								Tunnel		10 (estimate)	none recorded
+3729 10296 1	3729 10294 1								Tunnel		10 (estimate)	none recorded
+3764 10280 1	3764 10282 1								Tunnel		10 (estimate)	none recorded
+3764 10282 1	3764 10280 1								Tunnel		10 (estimate)	none recorded
+4061 4555 0	4061 4554 1								Wall		5 (estimate)	none recorded
+4061 4554 1	4061 4555 0								Wall		5 (estimate)	none recorded
+4060 4553 1	4060 4552 2								Wall		5 (estimate)	none recorded
+4060 4552 2	4060 4553 1								Wall		5 (estimate)	none recorded
+1915 4615 0	1915 4617 0								Light door		5 (estimate)	Wiki: Light door (rev 15201669)
+1915 4617 0	1915 4615 0								Light door		5 (estimate)	Wiki: Light door (rev 15201669)
+1911 4613 0	1913 4613 0								Light door		5 (estimate)	Wiki: Light door (rev 15201669)
+1913 4613 0	1911 4613 0								Light door		5 (estimate)	Wiki: Light door (rev 15201669)
+2772 3678 0	2772 3684 0								Tall tree		5 (estimate)	none recorded
+2772 3684 0	2772 3678 0								Tall tree		5 (estimate)	none recorded
+2773 3686 0	2773 3691 0								Clump of rocks		5 (estimate)	none recorded
+2773 3691 0	2773 3686 0								Clump of rocks		5 (estimate)	none recorded
+2774 3691 0	2778 3691 0								Flat stone		5 (estimate)	none recorded
+2778 3691 0	2774 3691 0								Flat stone		5 (estimate)	none recorded
+2807 9201 0	2806 2785 0								Exit		10 (estimate)	none recorded
+2806 2785 0	2807 9201 0								Exit		10 (estimate)	none recorded
+3555 4002 0	3549 10389 0								Staircase		5 (estimate)	none recorded
+3549 10389 0	3555 4002 0								Staircase		5 (estimate)	none recorded
+3550 10409 0	3550 10414 0								Staircase		5 (estimate)	none recorded
+3550 10414 0	3550 10409 0								Staircase		5 (estimate)	none recorded
+3603 3201 0	3603 9611 0								Steps		7	none recorded
+3603 9611 0	3603 3201 0								Steps		7	none recorded
+2855 3810 1	2851 3810 2								Ice gate		7	none recorded
+2851 3810 2	2855 3810 1								Ice gate		7	none recorded
+2958 5030 1	2958 5035 1	Climb Ledge 7239							Ledge		6 (estimate)	none recorded
+2994 5004 1	2988 5004 1	Climb Ledge 7240							Ledge		7 (estimate)	none recorded
+2994 5005 1	2988 5005 1	Climb Ledge 7240							Ledge		7 (estimate)	none recorded
+2982 5087 1	2991 5087 1	Climb Ledge 7240							Ledge		10 (estimate)	none recorded
+2982 5090 1	2991 5090 1	Climb Ledge 7240							Ledge		10 (estimate)	none recorded
+3370 2843 3	3370 2840 3	Jump Gap 10859	30 Agility						Gap		5 (estimate)	none recorded
+1239 3684 0	1239 3684 1	Climb-up Staircase 34502							Staircase		5 (estimate)	none recorded
+1239 3684 1	1239 3684 0	Climb-down Staircase 34502							Staircase		5 (estimate)	none recorded
+3490 9631 1	3491 3232 0	Climb-up Ladder 12779							Ladder		5 (estimate)	none recorded
+1192 3411 0	1187 9763 0					15125>17			Entry		10 (estimate)	Quest Helper VardorvisSteps.java
+1187 9763 0	1192 3411 0					15125>17			Entry		10 (estimate)	Quest Helper VardorvisSteps.java
+3735 10299 1	3737 10299 1								Plant door		5 (estimate)	none recorded
+3737 10299 1	3735 10299 1								Plant door		5 (estimate)	none recorded
+3311 3331 0	3312 3331 0	Open Gate 11766							Gate		5 (estimate)	Wiki: Digsite (rev 15364110)
+3312 3331 0	3311 3331 0	Open Gate 11766							Gate		5 (estimate)	Wiki: Digsite (rev 15364110)
+2861 5219 0	2863 5219 0								Door		5 (estimate)	none recorded
+2863 5219 0	2861 5219 0								Door		5 (estimate)	none recorded
+2855 5227 0	2883 5280 2								Frozen Door		5 (estimate)	Wiki: God Wars Dungeon (rev 15368079); Wiki: The Frozen Door (rev 15166745)
+2883 5280 2	2855 5227 0				The Frozen Door				Frozen Door		5 (estimate)	Wiki: God Wars Dungeon (rev 15368079); Wiki: The Frozen Door (rev 15166745)
+1642 3222 0	1631 9632 0				The Heart of Darkness				Lift Platform		10 (estimate)	none recorded
+1631 9632 0	1642 3222 0				The Heart of Darkness				Lift Platform		10 (estimate)	none recorded
+2209 3420 0	2209 3424 0								Bridge		7	none recorded
+2209 3424 0	2209 3420 0								Bridge		7	none recorded

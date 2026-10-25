@@ -20,12 +20,14 @@ function rowGeometry(key: string, row: TransportRow, tone: FeatureTone, omitUnch
 }
 
 /** Shared old/proposed transport drawing, independent of GitHub's review domain. */
-export function geometryOverlay(rows: { key: string; original: TransportRow; suggested: TransportRow }[],
+export function geometryOverlay(rows: { key: string; original: TransportRow | null; suggested: TransportRow | null }[],
   collision?: CollisionMap, selected?: string): FeatureOverlay {
   const features: MapFeature[] = [];
   for (const { key, original, suggested } of rows) {
-    features.push(...rowGeometry(key, original, "removed", suggested, true));
-    features.push(...rowGeometry(key, suggested, "added", undefined, false));
+    if (original && suggested && (!samePoint(original.origin, suggested.origin) || !samePoint(original.destination, suggested.destination))) {
+      features.push(...rowGeometry(key, original, "removed", suggested, true));
+      features.push(...rowGeometry(key, suggested, "added", undefined, false));
+    } else if (suggested || original) features.push(...rowGeometry(key, (suggested ?? original)!, original ? "changed" : "added"));
   }
   return { features, anchors: features, collision, selected };
 }
