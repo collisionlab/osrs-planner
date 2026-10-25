@@ -41,7 +41,7 @@ flowchart LR
 - **Tooling bumps can move the insets.** The inset version hashes the transports in this repository's
   pinned plugin (`tooling/shortest-path/.../transports`). A tooling bump that changes transport data
   therefore produces a new `pin/map-assets` PR at the next 07:30 run, even when the tiles are unchanged.
-  If it makes a new area reachable, that PR waits as a draft until the area has a name (below).
+  If it makes a new area reachable, the PR lists the area as a follow-up to name (below) and still merges.
 - **The plugin lags by up to two hops.** Skretzo's master moves first. Upstream tooling's bot pins it,
   and our 05:17 job picks that up. Being a commit or two behind Skretzo's master is normal and clean.
 - **osrs-coord-preview pins only the tiles.** It reads every plane from the tiles, so its
@@ -82,8 +82,10 @@ the tooling bump at 05:17 is followed by a new bundle at 07:30 and a refreshed `
 plugin change that adds a way into a new area therefore shows up the next morning as an unnamed
 reachable region, and one reached only by teleport also as an unanchored one.
 
-**A bundle with unnamed or unanchored reachable regions opens its pin PR as a draft**, so it waits for
-you. You can see them in these places:
+**Unnamed or unanchored reachable regions don't hold a pin back.** The pin PR lists them under
+"Follow-ups" and merges once CI passes. Until they are fixed, the planner shows the coordinate label,
+or shows the area above the map. Names already given survive transport edits upstream (osrs-tiles
+`docs/tiles.md`). You can see the gaps in these places:
 
 - `scripts/pin-status` lists them for the pinned bundle and for an open `pin/map-assets` PR. It also
   says when a bundle was built from transports other than the pinned plugin's, which means a rebuild
@@ -97,22 +99,18 @@ To name a region:
 1. Add an area to `annotations.json` with its `componentId`, an interior `seed` (a landing tile works),
    `evidence` (the `c-…` ids of the rows landing there, plus any `s-…` source places inside it) and a
    `reason`. `scripts/label_inset_regions.py --worklist <file>` suggests evidence for each region.
-2. Push it to osrs-tiles `main`. Changes under `data/inset-labels/` rerun `insets.yml`, which refreshes
-   the pin PR. With nothing left unnamed or unanchored (and nothing else to check), the PR leaves draft
-   and merges by itself.
+2. Push it to osrs-tiles `main`. Changes under `data/inset-labels/` rerun `insets.yml`, which opens or
+   refreshes the pin PR.
 
 To anchor a region, give its annotation an `anchor`: a point on the main map, or inside an area that
 has an anchor, and a `reason` (osrs-tiles `docs/tiles.md`). Push it the same way.
-
-Alternatively, mark the draft ready to publish with the fallback label, or with the area shown above
-the map.
 
 ## When automation stops and waits for you
 
 | Symptom | Why | What to do |
 |---|---|---|
 | `pin/tooling` open with red CI | the new tooling or plugin broke a guard (for example `RequirementCoverageTest`, `CatalogTest`, `RouteSchemaTest`) or a build | push the planner fixes to `pin/tooling`; the daily job won't overwrite a branch that has commits from anyone other than collisionlab-bot. CI passing then merges it |
-| `pin/map-assets` open as a **draft** | something needs a person: the first insets, more than 10% of a style's tiles changed (`tile-review`), more than 10% of inset areas changed (`compare-insets`), or unnamed or unanchored reachable regions | follow the PR's **Action needed** list. Check and mark it ready (CI then merges it), or for names and anchors, add them in osrs-tiles: the rebuild refreshes the PR and marks it ready when nothing else is left |
+| `pin/map-assets` open as a **draft** | something needs a person: the first insets, more than 10% of a style's tiles changed (`tile-review`), or more than 10% of inset areas changed (`compare-insets`) | follow the PR's **Action needed** list: check and mark it ready, and CI then merges it |
 | `pin/map-assets` open with red CI | `scripts/check-map-assets` found the tiles and insets incompatible, or a style's tiles missing a square an inset covers | fix in osrs-tiles; the next build refreshes the PR |
 | infra `pin/osrs-planner-…` open | infra's plan or checks failed | fix in infra; nothing reaches production until it merges |
 | live `/version` differs from the infra pin | deploy in progress, or the smoke checks refused the new release (blue/green keeps the old one) | check infra's `tofu` run on `main` |
