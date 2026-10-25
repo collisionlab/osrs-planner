@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import shortestpath.transport.TransportType;
 
 /** Current TSV rows whose destination is neither walkable nor an exact transport origin. */
 final class DestinationViolations {
@@ -20,6 +22,9 @@ final class DestinationViolations {
 
     static List<Map<String, Object>> collect(List<TransportCandidates.CurrentRow> rows,
         Predicate<TransportDiff.Point> walkable, Provenance provenance) {
+        // Seasonal rows neither produce review failures nor exempt permanent landing tiles.
+        String seasonalFile = "src/main/resources" + TransportType.SEASONAL_TRANSPORTS.getResourcePath();
+        rows = rows.stream().filter(current -> !current.row.file.equals(seasonalFile)).collect(Collectors.toList());
         Set<TransportDiff.Point> origins = new HashSet<>();
         for (var current : rows) if (current.row.origin != null) origins.add(current.row.origin);
         List<Map<String, Object>> result = new ArrayList<>();
@@ -42,7 +47,7 @@ final class DestinationViolations {
             value.put("suggested", null);
             value.put("whatChanges", "Blocked destination with no transport starting on that exact tile. " + RULE);
             value.put("alsoDiffers", "");
-            value.put("source", "Checked against the bundled plugin collision and transport resources; no nearby-tile exemptions.");
+            value.put("source", "Checked against the bundled plugin collision and non-seasonal transport resources; no nearby-tile exemptions.");
             value.put("sourceFile", row.file);
             value.put("sourceLine", row.line);
             value.put("sourceRepository", provenance.plugin.repository);

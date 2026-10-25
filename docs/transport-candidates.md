@@ -207,7 +207,9 @@ The category **destination violation** adds current plugin rows to the same revi
 queue. These are validation failures, not contributor proposals: the destination
 must be walkable according to the plugin's `CollisionMap.isBlocked`, or must be the
 exact origin of a transport on the same plane. Nearby open tiles, nearby origins,
-and the older walk-away check do not exempt a row. Network landing rows and
+and the older walk-away check do not exempt a row. Seasonal transports are excluded
+from this validation: their destinations are not listed and their origins cannot
+exempt a permanent transport's destination. Network landing rows and
 teleports are checked too; rows without a destination are not landing failures.
 
 The service checks the transport resources and collision bundled with its plugin

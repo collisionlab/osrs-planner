@@ -133,7 +133,7 @@ export function CandidatesPage() {
         <section className="wb-side-panel" aria-label="Candidate details">
           <div className="wb-panel-body">
             {unit?.candidates[0].kind === "destination_violation" ? <>
-              <p className="wb-callout">Current destination violations. Each landing tile is blocked and is not the exact origin of a transport. No correction has been proposed.</p>
+              <p className="wb-callout">Current destination violations. Each landing tile is blocked and is not the exact origin of a transport. Seasonal transports are excluded. No correction has been proposed.</p>
               <p className="wb-note">Checks use the service's bundled plugin collision and transport data. Displayed map collision: tiles {tiles.version}, cache {manifest?.cacheId ?? "unknown"}; its revision may differ.</p>
             </> : <><p className="wb-callout">Unverified suggestions. Reconciliation checks the starting row; map inspection helps assess plausibility.
               Neither proves a correction was verified in-game. An accepted ledger decision does not change transport data.</p>
