@@ -99,6 +99,7 @@ a.wb-brand { text-decoration: none; }
 .wb-candidates-body { grid-template-columns: minmax(220px, 270px) minmax(0, 1fr) minmax(340px, 450px); }
 .wb-candidate-detail.selected { border-left: 3px solid var(--orange); padding-left: 8px; }
 .wb-candidate-detail h2 { margin: 6px 0; font-size: 14px; }
+.wb-candidate-fields { overflow-wrap: anywhere; }
 .wb-candidate-detail mark { background: #ffc44d; color: #141914; }
 .wb-candidate-legend { position: absolute; left: 10px; bottom: 12px; z-index: 600; display: grid; gap: 3px; padding: 6px 10px; background: rgba(20,25,20,.92); font-size: 11px; pointer-events: none; }
 .wb-insets-body { grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(320px, 420px); }

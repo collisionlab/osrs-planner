@@ -49,10 +49,10 @@ class TransportCandidatesTest {
 
     @Test void parsesThePinnedCatalogueWithTheSharedParser() {
         JsonNode imported = TransportCandidates.json("/candidates/catalogue.json");
-        assertEquals(246, imported.size());
+        assertEquals(4635, imported.size());
         Map<String, Object> loaded = TransportCandidates.bundled(Provenance.bundled());
         JsonNode served = JSON.valueToTree(loaded).path("candidates");
-        assertEquals(246, served.size());
+        assertEquals(4635, served.size());
         assertEquals(2, served.findValuesAsText("category").stream().filter("plane"::equals).count());
         assertEquals(32, served.findValuesAsText("category").stream().filter("non_floor"::equals).count());
         assertEquals(212, served.findValuesAsText("category").stream().filter("coordinate_offset"::equals).count());
@@ -64,7 +64,7 @@ class TransportCandidatesTest {
         assertEquals(1, first.path("suggested").path("destination").path("plane").asInt());
         for (JsonNode candidate : served) {
             assertEquals("unreviewed", candidate.path("review").path("status").asText());
-            assertTrue(Set.of("matches_current", "already_present", "diverged", "missing", "ambiguous")
+            assertTrue(Set.of("matches_current", "already_present", "diverged", "missing", "ambiguous", "proposed_new", "possible_existing")
                 .contains(candidate.path("reconciliation").path("status").asText()));
             JsonNode source = imported.get(servedIndex(served, candidate));
             assertEquals(source.path("originalRaw").asText(), candidate.path("originalRaw").asText());
@@ -87,6 +87,55 @@ class TransportCandidatesTest {
         }
     }
 
+    @Test void newProposalsOnlyReportPossibleExistingGeometryAndNeverEquivalentRequirements() {
+        TransportDiff.Row proposal = TransportCandidates.parse(FILE, 1, ORIGINAL, HEADER);
+        assertEquals("proposed_new", TransportCandidates.reconcileAddition(proposal, List.of(), false).status);
+        List<TransportCandidates.CurrentRow> changedNeeds = TransportCandidates.rows(FILE, HEADER + "\n" + ORIGINAL + "changed requirements");
+        assertEquals("possible_existing", TransportCandidates.reconcileAddition(proposal, changedNeeds, false).status);
+        assertEquals("ambiguous", TransportCandidates.reconcileAddition(proposal,
+            TransportCandidates.rows(FILE, HEADER + "\n" + ORIGINAL + "\n" + ORIGINAL), false).status);
+        assertEquals("proposed_new", TransportCandidates.reconcileAddition(proposal,
+            TransportCandidates.rows(FILE, HEADER + "\n" + ORIGINAL.replace("100 200", "101 201")), false).status);
+        // Network-stop checks may identify just a boarding or landing row, without creating edges.
+        assertEquals("possible_existing", TransportCandidates.reconcileAddition(proposal,
+            TransportCandidates.rows(FILE, HEADER + "\n" + ORIGINAL.replace("300 400", "310 410")), true).status);
+    }
+
+    @Test void servesNewProposalsNotesAndUncheckedEvidenceWithoutInventingOriginalRows() {
+        JsonNode catalogue = JSON.valueToTree(TransportCandidates.bundled(Provenance.bundled()));
+        JsonNode rows = catalogue.path("candidates");
+        assertEquals(9, catalogue.path("itemGroups").size());
+        int notes = 0, additions = 0, stops = 0;
+        for (JsonNode row : rows) {
+            switch (row.path("kind").asText()) {
+                case "requirement_note":
+                    notes++;
+                    assertTrue(row.path("suggested").isNull());
+                    assertEquals("", row.path("suggestedRaw").asText());
+                    assertFalse(row.path("original").isNull());
+                    break;
+                case "addition":
+                    additions++;
+                    assertTrue(row.path("original").isNull());
+                    assertTrue(row.path("file").isNull());
+                    assertTrue(row.has("uncheckedTicks"));
+                    assertTrue(row.has("needs"));
+                    assertEquals("bestpath-candidates/" + row.path("sourceFile").asText(), row.path("suggested").path("file").asText());
+                    break;
+                case "network_stop":
+                    stops++;
+                    assertTrue(row.path("original").isNull());
+                    assertFalse(row.path("network").asText().isBlank());
+                    assertFalse(row.path("suggested").path("origin").isNull());
+                    assertFalse(row.path("suggested").path("destination").isNull());
+                    break;
+            }
+        }
+        assertEquals(39, notes);
+        assertEquals(3872, additions);
+        assertEquals(21, stops);
+    }
+
     @Test void servesReadOnlyCatalogueWithRunningPluginProvenance() {
         Javalin app = Javalin.create();
         Workbench.transportRoutes(app, () -> null, Provenance.bundled());
@@ -94,7 +143,8 @@ class TransportCandidatesTest {
                 try (var response = client.get("/workbench/v1/candidates")) {
                     JsonNode body = JSON.readTree(response.body().string());
                     assertEquals(200, response.code());
-                    assertEquals(246, body.path("candidates").size());
+                    assertEquals(4635, body.path("candidates").size());
+                    assertEquals(9, body.path("itemGroups").size());
                     assertEquals(Provenance.bundled().plugin.rev, body.path("plugin").path("rev").asText());
                 }
             });

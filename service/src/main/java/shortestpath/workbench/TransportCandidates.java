@@ -14,6 +14,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import shortestpath.transport.ResourceLoader;
+import shortestpath.transport.TransportType;
 
 /** Offline suggestions, reconciled with the plugin resources in this service. Never changes transports. */
 public final class TransportCandidates {
@@ -107,6 +108,21 @@ public final class TransportCandidates {
         return new TransportDiff.Row(file, line, "", row.fields);
     }
 
+    static String geometryKey(TransportDiff.Point origin, TransportDiff.Point destination) {
+        return String.valueOf(origin) + ">" + String.valueOf(destination);
+    }
+
+    /** Only exact endpoint correspondences for new proposals, never an assertion of equivalent requirements. */
+    static Reconciliation reconcileAddition(TransportDiff.Row proposal, List<CurrentRow> current, boolean stop) {
+        List<CurrentRow> possible = current.stream().filter(value -> {
+            TransportDiff.Row row = value.row;
+            return stop ? sameEnd(proposal.origin, row.origin) || sameEnd(proposal.origin, row.destination)
+                || sameEnd(proposal.destination, row.origin) || sameEnd(proposal.destination, row.destination)
+                : Objects.equals(proposal.origin, row.origin) && Objects.equals(proposal.destination, row.destination);
+        }).collect(Collectors.toList());
+        return new Reconciliation(possible.isEmpty() ? "proposed_new" : possible.size() == 1 ? "possible_existing" : "ambiguous", possible);
+    }
+
     static void validateLedger(JsonNode ledger, Set<String> ids) {
         if (!ledger.isObject()) throw new IllegalArgumentException("candidates/reviews.json must be an object keyed by candidate ID");
         ledger.fields().forEachRemaining(entry -> {
@@ -134,18 +150,52 @@ public final class TransportCandidates {
         });
         validateLedger(ledger, ids);
         Map<String, List<CurrentRow>> current = new HashMap<>();
+        Map<String, List<CurrentRow>> byGeometry = new HashMap<>();
+        Map<TransportDiff.Point, List<CurrentRow>> byEndpoint = new HashMap<>();
+        for (TransportType type : TransportType.values()) {
+            if (!type.hasResourcePath()) continue;
+            String resource = type.getResourcePath();
+            String file = resource.substring(resource.lastIndexOf('/') + 1);
+            List<CurrentRow> rows = current.computeIfAbsent(file, key -> rows("src/main/resources" + resource, resource(resource)));
+            for (CurrentRow row : rows) {
+                byGeometry.computeIfAbsent(geometryKey(row.row.origin, row.row.destination), key -> new ArrayList<>()).add(row);
+                if (row.row.origin != null) byEndpoint.computeIfAbsent(row.row.origin, key -> new ArrayList<>()).add(row);
+                if (row.row.destination != null && !row.row.destination.equals(row.row.origin)) {
+                    byEndpoint.computeIfAbsent(row.row.destination, key -> new ArrayList<>()).add(row);
+                }
+            }
+        }
         List<Map<String, Object>> candidates = new ArrayList<>();
         for (JsonNode candidate : imported) {
-            String file = candidate.path("file").asText();
-            String path = "src/main/resources/transports/" + file;
-            String header = headers.path(file).asText();
-            String raw = candidate.path("originalRaw").asText(), suggested = candidate.path("suggestedRaw").asText();
-            TransportDiff.Row original = parse(path, candidate.path("originalLine").asInt(), raw, header);
             Map<String, Object> value = JSON.convertValue(candidate, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() { });
-            value.put("original", original);
-            value.put("suggested", parse(path, original.line, suggested, header));
-            value.put("reconciliation", reconcile(raw, suggested, original,
-                current.computeIfAbsent(file, key -> currentRows(key, path))));
+            if (candidate.hasNonNull("originalRaw")) {
+                String file = candidate.path("file").asText(), path = "src/main/resources/transports/" + file;
+                String header = headers.path(file).asText();
+                String raw = candidate.path("originalRaw").asText(), suggested = candidate.path("suggestedRaw").asText();
+                TransportDiff.Row original = parse(path, candidate.path("originalLine").asInt(), raw, header);
+                value.put("kind", suggested.isEmpty() ? "requirement_note" : "correction");
+                value.put("original", original);
+                value.put("suggested", suggested.isEmpty() ? null : parse(path, original.line, suggested, header));
+                value.put("reconciliation", reconcile(raw, suggested, original,
+                    current.computeIfAbsent(file, key -> currentRows(key, path))));
+            } else {
+                String header = candidate.path("proposalHeader").asText();
+                boolean stop = candidate.path("kind").asText().equals("network_stop");
+                // Renaming header keys for structured geometry does not change the raw proposal.
+                String parsedHeader = stop ? header.replace("Board at", "Origin").replace("Land at", "Destination") : header;
+                TransportDiff.Row proposal = parse("bestpath-candidates/" + candidate.path("sourceFile").asText(),
+                    candidate.path("sourceLine").asInt(), candidate.path("suggestedRaw").asText(), parsedHeader);
+                value.put("original", null);
+                value.put("suggested", proposal);
+                List<CurrentRow> possible;
+                if (stop) {
+                    Set<CurrentRow> stops = new java.util.LinkedHashSet<>();
+                    stops.addAll(byEndpoint.getOrDefault(proposal.origin, List.of()));
+                    stops.addAll(byEndpoint.getOrDefault(proposal.destination, List.of()));
+                    possible = new ArrayList<>(stops);
+                } else possible = byGeometry.getOrDefault(geometryKey(proposal.origin, proposal.destination), List.of());
+                value.put("reconciliation", reconcileAddition(proposal, possible, stop));
+            }
             JsonNode decision = ledger.get(candidate.path("id").asText());
             value.put("review", decision == null ? Map.of("status", "unreviewed") : decision);
             candidates.add(value);
@@ -154,6 +204,7 @@ public final class TransportCandidates {
         result.put("candidates", candidates);
         result.put("plugin", provenance.plugin);
         result.put("tooling", provenance.tooling);
+        result.put("itemGroups", json("/candidates/item-groups.json"));
         return result;
     }
 }

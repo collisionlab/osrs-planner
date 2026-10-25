@@ -1,0 +1,22 @@
+Network	Board at	Land at	menuOption menuTarget objectID	Skills	Items	Quests	Varbits	VarPlayers	Duration	Display info	Needs (not in their format)	Ticks (ours, not checked)	Source
+Fairy ring	2926 10455 0	2926 10455 0	Configure Fairy ring	87 Sailing		Fairytale I - Growing Pains	2326>39			Fairy ring: DLP (Grimstone)	needs one of: item 772/9084 worn | varbit 4498 = 1	10 (estimate)	Wiki: Fairy ring (rev 15366244); game cache
+Gnome glider	2550 2970 0	2550 2970 0	Glider Gnormadium Avlafrim			One Small Favour;The Grand Tree				Gnome glider: Lemantolly Undri (Feldip Hills)		10	Wiki: Gnome glider (rev 15364314); Wiki: Gnormadium Avlafrim (rev 15238362)
+Lake Molch boat	1342 3645 0	1342 3645 0								Lake Molch boat: Molch		10 (estimate)	Wiki: Boaty (rev 15301509)
+Lake Molch boat	1369 3639 0	1369 3639 0								Lake Molch boat: Molch Island		10 (estimate)	Wiki: Boaty (rev 15301509)
+Lake Molch boat	1384 3665 0	1384 3665 0								Lake Molch boat: Battlefront		10 (estimate)	Wiki: Boaty (rev 15301509)
+Lake Molch boat	1408 3612 0	1408 3612 0								Lake Molch boat: Shayzien		10 (estimate)	Wiki: Boaty (rev 15301509)
+Burgh de Rott boat	3525 3170 0	3525 3170 0					2573>29			Burgh de Rott boat: Burgh de Rott		13 (estimate)	Wiki: Icyene Graveyard (rev 15283380)
+Burgh de Rott boat	3601 3163 1	3601 3163 1					2573>29			Burgh de Rott boat: Meiyerditch		13 (estimate)	Wiki: Icyene Graveyard (rev 15283380)
+Burgh de Rott boat	3684 3176 0	3684 3176 0					7255>41;2573>29			Burgh de Rott boat: Icyene Graveyard		13 (estimate)	Wiki: Icyene Graveyard (rev 15283380)
+Burgh de Rott boat	3663 3277 0	3663 3277 0					7255>87;2573>29			Burgh de Rott boat: Slepe		13 (estimate)	Wiki: Icyene Graveyard (rev 15283380); Wiki: Slepe (rev 15367095)
+Great Conch rowboat	3191 2370 0	3191 2370 0								Great Conch rowboat: The Summer Shore		10 (estimate)	game cache
+Great Conch rowboat	3197 2531 0	3197 2531 0								Great Conch rowboat: north coast		10 (estimate)	game cache
+Great Conch rowboat	3264 2463 0	3264 2463 0								Great Conch rowboat: east coast		10 (estimate)	game cache
+Mountain Guide	1275 3559 0	1275 3559 0					5421=1			Mountain Guide: Mount Quidamortem		10 (estimate)	Wiki: Mountain Guide (rev 15316634)
+Mountain Guide	1401 3536 0	1401 3536 0					5421=1			Mountain Guide: The Shayzien Outpost		10 (estimate)	Wiki: Mountain Guide (rev 15316634)
+Mountain Guide	1272 3475 0	1272 3475 0					5421=1			Mountain Guide: South of Quidamortem		10 (estimate)	Wiki: Mountain Guide (rev 15316634)
+Dorgeshuun guide	3232 9610 0	3232 9610 0			[light source]=1	The Lost Tribe				Dorgeshuun guide: Lumbridge Castle cellar (Kazgar)		10 (estimate)	Wiki: Kazgar (rev 15196282)
+Dorgeshuun guide	3313 9613 0	3313 9613 0			[light source]=1	The Lost Tribe				Dorgeshuun guide: Dorgeshuun Mines (Mistag)		10 (estimate)	Wiki: Mistag (rev 15322948); Wiki: Dorgesh-Kaan mine (rev 15057594)
+Dorgeshuun guide	3245 9648 0	3245 9648 0			[light source]=1	Death to the Dorgeshuun;The Lost Tribe				Dorgeshuun guide: water mill cellar tunnel (Dartog)		10 (estimate)	Wiki: Dartog (rev 14994305)
+Spirit tree	1857 7065 0	1857 7065 0	Travel Spirit tree			Tree Gnome Village				Spirit tree: your house (superior garden)	needs one of: house has spirit tree | house has spirit tree & fairy ring	10	none recorded
+Fairy ring	1857 7065 0	1857 7065 0	Configure Fairy ring			Fairytale I - Growing Pains	2326>39			Fairy ring: DIQ (your house, superior garden)	needs one of: house has fairy ring | house has spirit tree & fairy ring; needs one of: item 772/9084 worn | varbit 4498 = 1	10 (estimate)	none recorded

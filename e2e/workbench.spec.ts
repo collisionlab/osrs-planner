@@ -3,6 +3,7 @@ import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import tiles from "../tiles.json" with { type: "json" };
 import candidateFixture from "./fixtures/candidates.json" with { type: "json" };
+import candidateTypes from "./fixtures/candidate-types.json" with { type: "json" };
 
 // The workbench's transport review, on its own host, against a mocked review service: a pull
 // request that adds the Fractured Archive entrance (an area the pinned insets haven't named) and
@@ -130,9 +131,9 @@ type CandidateMap = {
 const candidateMap = <T,>(page: Page, call: (handle: CandidateMap) => T) =>
   page.evaluate(`(${call.toString()})(window.insetMap)`) as Promise<T>;
 
-async function mockCandidates(page: Page) {
+async function mockCandidates(page: Page, data: unknown = candidateFixture) {
   await mockService(page);
-  await page.route("**/api/workbench/v1/candidates", route => route.fulfill({ json: candidateFixture }));
+  await page.route("**/api/workbench/v1/candidates", route => route.fulfill({ json: data }));
   await page.route(`${tiles.base}/collision/${tiles.version}/manifest.json`, route => route.fulfill({ json: {
     cacheId: 2746, dumperSource: { repository: "osrs-pathfinding/shortest-path-tooling", rev: "3".repeat(40) },
   } }));
@@ -171,6 +172,85 @@ test("candidate plane change shows original and proposed floors, collision prove
   await expect(page).toHaveURL(new RegExp("#candidate=" + CAPE.id + "$"));
 });
 
+test("requirement corrections show verbatim fields and contributor item-group evidence", async ({ page }) => {
+  await mockCandidates(page, candidateTypes);
+  const c = candidateTypes.candidates.find(c => c.category === "missing_requirements")!;
+  await openCandidate(page, c.id, "?category=missing_requirements");
+  const detail = page.locator(".wb-candidate-detail.selected");
+  await expect(detail.getByRole("table").filter({ hasText: "Items" })).toContainText("[light source]=1");
+  await detail.getByText("Contributor item groups (1)", { exact: true }).click();
+  await expect(detail).toContainText("Lit candle 33");
+  await expect.poll(() => candidateMap(page, map => map.featureSummary().filter(f => f.kind === "edge").map(f => f.tone))).toEqual(["changed"]);
+  await expect(detail).toContainText("not evaluated capabilities");
+});
+
+test("unrepresentable requirements retain an original row without fabricating a replacement", async ({ page }) => {
+  await mockCandidates(page, candidateTypes);
+  const c = candidateTypes.candidates.find(c => c.category === "unrepresentable_requirements")!;
+  await openCandidate(page, c.id);
+  const detail = page.locator(".wb-candidate-detail.selected");
+  await expect(detail).toContainText("no representable replacement row");
+  await expect(detail).toContainText("quest Regicide started");
+  await expect.poll(() => candidateMap(page, map => map.featureSummary().every(f => f.tone === "changed"))).toBe(true);
+  await detail.getByText("Exact TSV rows and bundled correspondences", { exact: true }).click();
+  await expect(detail).toContainText("No representable replacement supplied");
+});
+
+test("proposed new transports pair only their proposed directions and preserve unchecked evidence", async ({ page }) => {
+  await mockCandidates(page, candidateTypes);
+  const c = candidateTypes.candidates.find(c => c.category === "sourced_transport")!;
+  await openCandidate(page, c.id, "?category=sourced_transport");
+  await expect(page.locator(".wb-candidate-detail")).toHaveCount(2);
+  await expect(page.getByRole("navigation", { name: "Candidates" })).toContainText("2 source rows · 1 review units shown");
+  const detail = page.locator(".wb-candidate-detail.selected");
+  await expect(detail).toContainText("No original upstream row was supplied");
+  await expect(detail).toContainText("Contributor ticks (unchecked): 10 (estimate)");
+  await expect.poll(() => candidateMap(page, map => map.featureSummary().filter(f => f.kind === "edge").map(f => f.tone))).toEqual(["added", "added"]);
+  await detail.getByText("Exact TSV rows and bundled correspondences", { exact: true }).click();
+  await expect(detail).toContainText("No upstream row supplied");
+  await expect(detail).toContainText("Complete contributor record");
+});
+
+test("a network stop displays its boarding and landing tiles without inventing network edges", async ({ page }) => {
+  await mockCandidates(page, candidateTypes);
+  const c = candidateTypes.candidates.find(c => c.category === "network_stop")!;
+  await openCandidate(page, c.id, "?category=network_stop");
+  const detail = page.locator(".wb-candidate-detail.selected");
+  await expect(detail.getByRole("cell", { name: "Board at", exact: true })).toBeVisible();
+  await expect(detail.getByRole("cell", { name: "Land at", exact: true })).toBeVisible();
+  await expect(detail).toContainText("Fairy ring");
+  await expect(detail).toContainText("needs one of: item 772/9084 worn");
+  await expect.poll(() => candidateMap(page, map => map.featureSummary().filter(f => f.kind === "edge").length)).toBe(0);
+  await expect.poll(() => candidateMap(page, map => map.featureSummary().filter(f => f.kind === "point").length)).toBe(1);
+  await expect(page.getByLabel("Geometry legend")).toContainText("no network routes implied");
+});
+
+test("new teleports and copied-area suggestions keep missing tile evidence explicit", async ({ page }) => {
+  await mockCandidates(page, candidateTypes);
+  const c = candidateTypes.candidates.find(c => c.category === "copied_area_teleport")!;
+  await openCandidate(page, c.id);
+  const detail = page.locator(".wb-candidate-detail.selected");
+  await expect(detail).toContainText("Missing evidence — none recorded");
+  await expect(detail).toContainText("quest or cutscene instance");
+  await expect.poll(() => candidateMap(page, map => map.featureSummary().filter(f => f.kind === "point").length)).toBe(1);
+  await expect.poll(() => candidateMap(page, map => map.featureSummary().filter(f => f.kind === "edge").length)).toBe(0);
+});
+
+test("large catalogues page navigation while keeping selection links stable", async ({ page }) => {
+  const rows = Array.from({ length: 165 }, (_, i) => ({ ...candidateFixture.candidates[0], id: i.toString().padStart(24, "0") }));
+  await mockCandidates(page, { ...candidateFixture, candidates: rows });
+  await openCandidate(page, rows[0].id);
+  const list = page.getByRole("navigation", { name: "Candidates" });
+  await expect(list.locator("ol > li")).toHaveCount(80);
+  await list.getByRole("button", { name: "Next page", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp("#candidate=" + rows[80].id + "$"));
+  await expect(list).toContainText("Units 81–160 of 165");
+  await page.reload();
+  await expect(page.locator(".wb-candidate-detail.selected")).toHaveAttribute("data-candidate-id", rows[80].id);
+  await page.getByRole("button", { name: "Next page", exact: true }).click();
+  await expect(list.locator("ol > li")).toHaveCount(5);
+});
+
 test("non-floor reverse-paired staircase is one review unit and map features select its source row", async ({ page }) => {
   await mockCandidates(page);
   await openCandidate(page, STAIRS_UP.id, "?category=non_floor");
@@ -187,11 +267,15 @@ test("non-floor reverse-paired staircase is one review unit and map features sel
   await expect(page.getByLabel("Geometry legend")).toContainText("Original: dashed");
   // Click the actual map using the established map handle's projection. The uppermost marker
   // belongs to the opposite direction, and must identify that source candidate.
-  const [x, y] = await candidateMap(page, map => map.pixel({ x: 1523, y: 3562, plane: 2 }));
-  const bounds = await page.locator(".inset-map").boundingBox();
-  await page.mouse.click(bounds!.x + x, bounds!.y + y);
+  // Selection fits the map with an animation. Re-project for each attempt rather than retaining
+  // a pixel from before that animation or an inset rebuild finished.
+  await expect(async () => {
+    const [x, y] = await candidateMap(page, map => map.pixel({ x: 1523, y: 3562, plane: 2 }));
+    const bounds = await page.locator(".inset-map").boundingBox();
+    await page.mouse.click(bounds!.x + x, bounds!.y + y);
+    await expect(page).toHaveURL(new RegExp("#candidate=" + STAIRS_UP.id + "$"), { timeout: 500 });
+  }).toPass({ timeout: 10000 });
   await expect(page.locator(".wb-candidate-detail.selected")).toHaveCount(1);
-  await expect(page).toHaveURL(new RegExp("#candidate=" + STAIRS_UP.id + "$"));
 });
 
 test("coordinate candidates retain unresolved reconciliation and checked-in decisions through filtering", async ({ page }) => {

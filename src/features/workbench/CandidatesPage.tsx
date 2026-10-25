@@ -7,8 +7,8 @@ import { CollisionMap, releaseTiles } from "../../map/insets/collision";
 import { COLLISION_RADIUS } from "../../map/insets/composition";
 import { featurePoints } from "../../map/insets/features";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "./provenance";
-import { baselineUrl, candidateLabel, candidateOverlay, categories, contributorUrl, displacement, filterUnits,
-  groupCandidates, loadCandidates, pointText, reconciliationStatuses, reviewNote, type Candidate, type Catalogue } from "./candidates";
+import { baselineUrl, candidateKind, candidateLabel, candidateOverlay, categories, contributorUrl, displacement, fieldComparison, filterUnits,
+  groupCandidates, loadCandidates, pointText, reconciliationStatuses, referencedGroups, reviewNote, type Candidate, type Catalogue, type ItemGroup } from "./candidates";
 
 const InsetMap = lazy(() => import("../../map/insets/InsetMap").then(module => ({ default: module.InsetMap })));
 const label = (value: string) => value.replaceAll("_", " ");
@@ -35,6 +35,8 @@ export function CandidatesPage() {
   const units = useMemo(() => filterUnits(allUnits, category, status, query), [allUnits, category, status, query]);
   const index = Math.max(0, units.findIndex(unit => unit.candidates.some(c => c.id === wanted)));
   const unit = units[index];
+  const pageStart = Math.floor(index / 80) * 80;
+  const listed = units.slice(pageStart, pageStart + 80);
   const selected = unit?.candidates.find(c => c.id === wanted);
   const select = (next: number) => {
     const candidate = units[Math.max(0, Math.min(units.length - 1, next))]?.candidates[0];
@@ -97,7 +99,12 @@ export function CandidatesPage() {
               <button type="button" disabled={!unit || index === units.length - 1} onClick={() => select(index + 1)}>Next</button>
             </div>
           </div>
-          <ol>{units.map((u, i) => <li key={u.id}><button type="button" aria-current={index === i} onClick={() => select(i)}>
+          {units.length > 80 && <div className="wb-pad wb-inline">
+            <span>Units {pageStart + 1}–{Math.min(pageStart + 80, units.length)} of {units.length}</span>
+            <button type="button" disabled={pageStart === 0} onClick={() => select(pageStart - 80)}>Previous page</button>
+            <button type="button" disabled={pageStart + 80 >= units.length} onClick={() => select(pageStart + 80)}>Next page</button>
+          </div>}
+          <ol>{listed.map((u, i) => <li key={u.id}><button type="button" aria-current={index === pageStart + i} onClick={() => select(pageStart + i)}>
             <span className="wb-unit-title">{candidateLabel(u.candidates[0])}</span>
             <span className="wb-unit-meta">{label(u.candidates[0].category)} · {u.candidates.length === 2 ? "reverse pair" : "1 row"}</span>
             <span className="wb-unit-meta">{u.candidates.map(c => label(c.reconciliation.status)).join(" / ")}</span>
@@ -118,7 +125,9 @@ export function CandidatesPage() {
           <div className="wb-candidate-legend" aria-label="Geometry legend">
             <span className="removed">┄ Original: dashed edge, dashed tiles</span>
             <span className="added">━ Suggested: solid edge, solid tiles</span>
+            <span className="changed">━ Shared geometry / original-only note</span>
             <span>□ Origin · ■ Destination · shared tiles drawn once</span>
+            {unit?.candidates[0].kind === "network_stop" && <span>Stop tiles only; no network routes implied</span>}
           </div>
         </section>
         <section className="wb-side-panel" aria-label="Candidate details">
@@ -128,6 +137,7 @@ export function CandidatesPage() {
             <p className="wb-note">Contributor tile evidence: cache 2735 and their comparison with upstream collision at 0fb23cda.
               Displayed collision: tiles {tiles.version}, cache {manifest?.cacheId ?? "unknown"}. Blocked flags do not establish whether a special transition tile is legitimate.</p>
             {unit?.candidates.map(c => <CandidateDetail key={c.id} candidate={c} selected={selected?.id === c.id}
+              itemGroups={catalogue.itemGroups ?? []}
               collision={ready === unit.id ? collision : undefined} show={show}
               select={() => navigate({ search: location.search, hash: "candidate=" + c.id })}
               copy={async () => {
@@ -145,41 +155,67 @@ export function CandidatesPage() {
   </div>;
 }
 
-function CandidateDetail({ candidate: c, selected, collision, show, select, copy }: {
-  candidate: Candidate; selected: boolean; collision?: CollisionMap; show(p: WorldPoint): void; select(): void; copy(): void;
+function CandidateDetail({ candidate: c, selected, collision, show, select, copy, itemGroups }: {
+  candidate: Candidate; selected: boolean; collision?: CollisionMap; show(p: WorldPoint): void; select(): void; copy(): void; itemGroups: ItemGroup[];
 }) {
+  const kind = candidateKind(c), groups = referencedGroups(c, itemGroups), fields = fieldComparison(c);
   const collisionText = (p: WorldPoint | null) => {
     const tile = p && collision?.tile(p);
     return !tile ? "unavailable" : tile.blocked ? "all edges closed" : "one or more open edges";
   };
   return <article className={`wb-section wb-candidate-detail ${selected ? "selected" : ""}`} data-candidate-id={c.id}>
     <h2><button type="button" className="wb-link" onClick={select}>{candidateLabel(c)}</button></h2>
-    <p>{label(c.category)} · <a href={baselineUrl(c)}>{c.file}:{c.originalLine}</a> (original line only)</p>
+    <p>{label(c.category)} · {c.file ? <><a href={baselineUrl(c)}>{c.file}:{c.originalLine}</a> (original line only)</>
+      : <>new proposal · {c.sourceFile}:{c.sourceLine}</>}</p>
     <p className="wb-mono">{c.id}</p>
     <p><b>Current data:</b> <span className={c.reconciliation.status === "matches_current" ? "" : "changed"}>{c.reconciliation.status}</span></p>
-    {c.reconciliation.status !== "matches_current" && <p className="wb-warning">The starting row is unresolved or has changed. The original geometry below is from the contributor baseline.</p>}
+    {c.original && c.reconciliation.status !== "matches_current" && <p className="wb-warning">The starting row is unresolved or has changed. The original geometry below is from the contributor baseline.</p>}
+    {!c.original && <p className="wb-warning">No original upstream row was supplied. Reconciliation finds exact endpoint correspondences only;
+      it does not establish equivalent requirements or prove that a proposal is absent from current data.</p>}
+    {kind === "requirement_note" && <p className="wb-warning">The contributor supplied no representable replacement row. Original geometry is shown for investigation; the requirement model is unchanged.</p>}
+    {c.category.startsWith("copied_area") && <p className="wb-warning">Copy of another area: this may be a quest or cutscene instance and may not belong in ordinary routing.</p>}
+    {c.category === "unsourced_transport" && <p className="wb-warning">Tile evidence is not recorded. A source citation may describe requirements without supporting these coordinates.</p>}
+    {c.network && <p><b>Network:</b> {c.network}. Boarding and landing tiles describe one stop; no connections to other stops are inferred.</p>}
     <table className="wb-rows"><thead><tr><th>Endpoint</th><th>Original (0fb23cda)</th><th>Suggested</th></tr></thead>
       <tbody>{(["origin", "destination"] as const).map(end => <tr key={end}>
-        <td>{end}</td>{(["original", "suggested"] as const).map(version => {
-          const p = c[version][end], old = c.original[end];
+        <td>{kind === "network_stop" ? end === "origin" ? "Board at" : "Land at" : end}</td>{(["original", "suggested"] as const).map(version => {
+          const p = c[version]?.[end], old = c.original?.[end];
           return <td key={version}><button type="button" className="wb-tile" disabled={!p} onClick={() => { select(); if (p) show(p); }}>
             {version === "suggested" && p && old ? <>{(["x", "y", "plane"] as const).map((axis, i) => <span key={axis}>{i ? " " : ""}{p[axis] !== old[axis] ? <mark>{p[axis]}</mark> : p[axis]}</span>)}</> : pointText(p)}
           </button></td>;
         })}
       </tr>)}</tbody>
     </table>
-    <p>Origin: {displacement(c.original.origin, c.suggested.origin)}<br />Destination: {displacement(c.original.destination, c.suggested.destination)}</p>
+    {c.original && c.suggested && <p>Origin: {displacement(c.original.origin, c.suggested.origin)}<br />Destination: {displacement(c.original.destination, c.suggested.destination)}</p>}
     <p className="wb-note">Displayed collision flags (original → suggested):<br />
-      Origin: {collisionText(c.original.origin)} → {collisionText(c.suggested.origin)}<br />
-      Destination: {collisionText(c.original.destination)} → {collisionText(c.suggested.destination)}</p>
+      Origin: {collisionText(c.original?.origin ?? null)} → {collisionText(c.suggested?.origin ?? null)}<br />
+      Destination: {collisionText(c.original?.destination ?? null)} → {collisionText(c.suggested?.destination ?? null)}</p>
+    {fields.length > 0 && <details open={c.category === "missing_requirements" || kind === "requirement_note"}>
+      <summary>Transport fields and requirement text</summary>
+      <p className="wb-note">Contributor values are shown verbatim. Item groups, quest names, and conditions are evidence to review, not evaluated capabilities.</p>
+      <table className="wb-rows wb-candidate-fields"><thead><tr><th>Field</th><th>Original</th><th>Suggested</th></tr></thead>
+        <tbody>{fields.map(f => <tr key={f.name}><td>{f.name}</td>
+          <td>{f.before !== f.after ? <del>{f.before || "—"}</del> : f.before || "—"}</td>
+          <td>{!c.suggested ? "No replacement supplied" : f.before !== f.after ? <ins>{f.after || "—"}</ins> : f.after || "—"}</td>
+        </tr>)}</tbody></table>
+    </details>}
     <p><b>Contributor explanation:</b> {c.whatChanges}</p>
     <p><b>Source citation:</b> {c.source === "none recorded" ? <strong className="changed">Missing evidence — none recorded</strong> : c.source}</p>
-    <p><b>Other reported differences (outside this review):</b> {c.alsoDiffers || "None reported"}</p>
-    <p><a href={contributorUrl(c)}>Pinned contributor record</a> · <a href={baselineUrl(c)}>Upstream baseline row</a></p>
+    <p><b>Other reported differences:</b> {c.alsoDiffers || "None reported"}</p>
+    {c.needs !== undefined && <p><b>Needs outside the format:</b> {c.needs || "None recorded"}</p>}
+    {c.uncheckedTicks !== undefined && <p><b>Contributor ticks (unchecked):</b> {c.uncheckedTicks || "None recorded"}. These are not verified timings.</p>}
+    {groups.length > 0 && <details><summary>Contributor item groups ({groups.length})</summary>
+      {groups.map(g => <div key={g.name}><h3>[{g.name}]</h3><p>{g.itemNames}</p><p className="wb-candidate-fields">Item IDs: {g.itemIds}</p>
+        <a href={`https://github.com/${g.sourceRepository}/blob/${g.sourceCommit}/bestpath-candidates/item-groups.tsv#L${g.sourceLine}`}>Pinned group definition</a>
+      </div>)}
+    </details>}
+    <p><a href={contributorUrl(c)}>Pinned contributor record</a>{c.file && <> · <a href={baselineUrl(c)}>Upstream baseline row</a></>}</p>
     <details><summary>Exact TSV rows and bundled correspondences</summary>
-      <p>Original</p><pre className="wb-draft-text">{c.originalRaw}</pre>
-      <p>Suggested</p><pre className="wb-draft-text">{c.suggestedRaw}</pre>
-      <p>Current bundled rows: {c.reconciliation.rows.length} {c.reconciliation.status === "diverged" || c.reconciliation.status === "ambiguous" ? "possible correspondences, not confirmed identities" : ""}</p>
+      <p>Original</p><pre className="wb-draft-text">{c.originalRaw ?? "No upstream row supplied"}</pre>
+      <p>Suggested</p>{c.proposalHeader && <pre className="wb-draft-text">{c.proposalHeader}</pre>}
+      <pre className="wb-draft-text">{c.suggestedRaw || "No representable replacement supplied"}</pre>
+      {c.sourceRaw && <><p>Complete contributor record (including evidence)</p><pre className="wb-draft-text">{c.sourceHeader + "\n" + c.sourceRaw}</pre></>}
+      <p>Current bundled rows: {c.reconciliation.rows.length} {["diverged", "ambiguous", "possible_existing"].includes(c.reconciliation.status) ? "possible correspondences, not confirmed identities" : ""}</p>
       {c.reconciliation.rows.map((value, index) => <div key={index}><p>{value.row.file}:{value.row.line} · {pointText(value.row.origin)} → {pointText(value.row.destination)}</p><pre className="wb-draft-text">{value.raw}</pre></div>)}
     </details>
     <p><b>Review ledger:</b> {c.review.status}{c.review.explanation ? " — " + c.review.explanation : ""}</p>

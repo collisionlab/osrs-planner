@@ -4,34 +4,57 @@ import { geometryOverlay } from "./review";
 import type { CollisionMap } from "../../map/insets/collision";
 import type { WorldPoint } from "../../domain/contracts";
 
-export const categories = ["plane", "non_floor", "coordinate_offset"] as const;
-export const reconciliationStatuses = ["matches_current", "already_present", "diverged", "missing", "ambiguous"] as const;
+export const categories = ["plane", "non_floor", "coordinate_offset", "missing_requirements", "unrepresentable_requirements",
+  "sourced_transport", "sourced_teleport", "network_stop", "cache_transport", "unsourced_transport", "copied_area", "copied_area_teleport"] as const;
+export const reconciliationStatuses = ["matches_current", "already_present", "diverged", "missing", "ambiguous", "proposed_new", "possible_existing"] as const;
 export type Category = typeof categories[number];
 export type ReconciliationStatus = typeof reconciliationStatuses[number];
 export interface Candidate {
-  id: string; category: Category; file: string; originalLine: number;
-  originalRaw: string; suggestedRaw: string;
-  original: TransportRow; suggested: TransportRow;
+  id: string; category: Category; file: string | null; originalLine: number | null;
+  kind?: "correction" | "requirement_note" | "addition" | "network_stop";
+  originalRaw: string | null; suggestedRaw: string;
+  original: TransportRow | null; suggested: TransportRow | null;
+  proposalHeader?: string; sourceHeader?: string; sourceRaw?: string;
+  needs?: string; uncheckedTicks?: string; network?: string | null;
   whatChanges: string; alsoDiffers: string; source: string;
   sourceFile: string; sourceLine: number; sourceRepository: string; sourceCommit: string; upstreamCommit: string;
   reconciliation: { status: ReconciliationStatus; rows: { raw: string; row: TransportRow }[] };
   review: { status: "unreviewed" | "accepted" | "rejected" | "needs_evidence" | "deferred"; explanation?: string; reference?: string };
 }
-export interface Catalogue { candidates: Candidate[]; plugin: Revision; tooling: Revision }
+export interface ItemGroup { name: string; itemIds: string; itemNames: string; raw: string; sourceRepository: string; sourceCommit: string; sourceFile: string; sourceLine: number }
+export interface Catalogue { candidates: Candidate[]; plugin: Revision; tooling: Revision; itemGroups?: ItemGroup[] }
 export interface CandidateUnit { id: string; candidates: Candidate[] }
 export const pointText = (p?: WorldPoint | null) => p ? `${p.x} ${p.y} ${p.plane}` : "—";
-export const candidateLabel = (c: Candidate) => c.original.label || c.original.fields["Display info"] || c.file;
-const same = (a: WorldPoint | null, b: WorldPoint | null) => !!a && !!b && pointText(a) === pointText(b);
+export const candidateKind = (c: Candidate) => c.kind ?? (c.originalRaw === null ? "addition" : c.suggestedRaw === "" ? "requirement_note" : "correction");
+export const candidateLabel = (c: Candidate) => {
+  const row = c.original ?? c.suggested;
+  return row?.label || row?.fields["Display info"] || c.file || c.sourceFile;
+};
+
+function pairKey(c: Candidate, reverse = false) {
+  const kind = candidateKind(c);
+  if (kind === "network_stop" || kind === "requirement_note") return undefined;
+  const ends = (row: TransportRow | null) => {
+    if (!row?.origin || !row.destination) return undefined;
+    const points = [pointText(row.origin), pointText(row.destination)]; return reverse ? points.reverse() : points;
+  };
+  const suggested = ends(c.suggested), original = c.original ? ends(c.original) : null;
+  if (!suggested || c.original && !original) return undefined;
+  return JSON.stringify([kind, c.category, c.sourceFile, c.file, c.source, original, suggested]);
+}
 
 /** Only mutually unique reverse pairs, in the same source category, file and evidence citation.
+ * New proposals pair on their proposed endpoints alone; notes and network stops stay separate.
  * Object IDs/actions can differ between the two directions of a staircase. Proximity never groups rows. */
 export function groupCandidates(candidates: Candidate[]): CandidateUnit[] {
   const ordered = [...candidates].sort((a, b) => categories.indexOf(a.category) - categories.indexOf(b.category)
-    || a.file.localeCompare(b.file, "en") || a.id.localeCompare(b.id, "en"));
-  const pairs = new Map(ordered.map(a => [a.id, ordered.filter(b => a.id !== b.id
-    && a.category === b.category && a.sourceFile === b.sourceFile && a.file === b.file && a.source === b.source
-    && same(a.original.origin, b.original.destination) && same(a.original.destination, b.original.origin)
-    && same(a.suggested.origin, b.suggested.destination) && same(a.suggested.destination, b.suggested.origin))]));
+    || (a.file ?? a.sourceFile).localeCompare(b.file ?? b.sourceFile, "en") || a.id.localeCompare(b.id, "en"));
+  const byKey = new Map<string, Candidate[]>();
+  for (const c of ordered) {
+    const key = pairKey(c);
+    if (key) byKey.set(key, [...byKey.get(key) ?? [], c]);
+  }
+  const pairs = new Map(ordered.map(c => [c.id, (byKey.get(pairKey(c, true) ?? "") ?? []).filter(b => b.id !== c.id)]));
   const seen = new Set<string>();
   return ordered.flatMap(a => {
     if (seen.has(a.id)) return [];
@@ -46,13 +69,21 @@ export function filterUnits(units: CandidateUnit[], category: string, status: st
   const words = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
   return units.filter(unit => unit.candidates.some(c => (!category || c.category === category)
     && (!status || c.reconciliation.status === status)
-    && words.every(word => [c.file, candidateLabel(c), c.originalRaw, c.suggestedRaw, c.source, c.whatChanges, c.alsoDiffers]
+    && words.every(word => [c.file, c.sourceFile, candidateLabel(c), c.originalRaw, c.suggestedRaw, c.source, c.whatChanges, c.alsoDiffers, c.needs, c.network]
       .join(" ").toLowerCase().includes(word))));
 }
 
 export function candidateOverlay(unit: CandidateUnit, collision?: CollisionMap, selected?: string) {
-  return geometryOverlay(unit.candidates.map(c => ({ key: c.id, original: c.original, suggested: c.suggested })),
-    collision, selected);
+  const overlay = geometryOverlay(unit.candidates.filter(c => candidateKind(c) !== "network_stop")
+    .map(c => ({ key: c.id, original: c.original, suggested: c.suggested })), collision, selected);
+  for (const c of unit.candidates.filter(c => candidateKind(c) === "network_stop")) {
+    const row = c.suggested;
+    if (row?.origin) overlay.features.push({ kind: "point", key: c.id, point: row.origin, role: "origin", tone: "added", title: "Board at " + pointText(row.origin) });
+    if (row?.destination && pointText(row.destination) !== pointText(row.origin)) overlay.features.push({
+      kind: "point", key: c.id, point: row.destination, role: "destination", tone: "added", title: "Land at " + pointText(row.destination),
+    });
+  }
+  return overlay;
 }
 
 export function displacement(a: WorldPoint | null, b: WorldPoint | null) {
@@ -62,15 +93,24 @@ export function displacement(a: WorldPoint | null, b: WorldPoint | null) {
 }
 
 export const contributorUrl = (c: Candidate) => `https://github.com/${c.sourceRepository}/blob/${c.sourceCommit}/bestpath-candidates/${encodeURIComponent(c.sourceFile)}#L${c.sourceLine}`;
-export const baselineUrl = (c: Candidate) => `https://github.com/${c.sourceRepository}/blob/${c.upstreamCommit}/src/main/resources/transports/${c.file}#L${c.originalLine}`;
+export const baselineUrl = (c: Candidate) => c.file ? `https://github.com/${c.sourceRepository}/blob/${c.upstreamCommit}/src/main/resources/transports/${c.file}#L${c.originalLine}` : undefined;
+export function fieldComparison(c: Candidate) {
+  const before = c.original?.fields ?? {}, after = c.suggested?.fields ?? {};
+  return [...new Set([...Object.keys(before), ...Object.keys(after)])].filter(name => !["Origin", "Destination"].includes(name))
+    .map(name => ({ name, before: before[name] ?? "", after: after[name] ?? "" })).filter(f => f.before || f.after);
+}
+export const referencedGroups = (c: Candidate, groups: ItemGroup[]) =>
+  groups.filter(group => [c.originalRaw, c.suggestedRaw, c.needs, c.whatChanges].join(" ").includes("[" + group.name + "]"));
 export function reviewNote(c: Candidate) {
   return `### Transport candidate ${c.id}
 
 - Source: ${contributorUrl(c)}
-- Row: ${c.file}:${c.originalLine} at ${c.upstreamCommit}
-- Origin: ${pointText(c.original.origin)} → ${pointText(c.suggested.origin)}
-- Destination: ${pointText(c.original.destination)} → ${pointText(c.suggested.destination)}
+- Row: ${c.file ? c.file + ":" + c.originalLine + " at " + c.upstreamCommit : "New proposal; no upstream row"}
+- Origin: ${pointText(c.original?.origin)} → ${pointText(c.suggested?.origin)}
+- Destination: ${pointText(c.original?.destination)} → ${pointText(c.suggested?.destination)}
 - Proposal: ${c.whatChanges}
+- Suggested TSV: ${c.suggestedRaw || "No representable replacement supplied"}
+- Needs outside the format: ${c.needs || "None recorded"}
 - Reconciliation: ${c.reconciliation.status}
 - Decision: needs_evidence
 - Explanation / verification evidence:

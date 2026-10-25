@@ -1,0 +1,3 @@
+Destination	menuOption menuTarget objectID	Skills	Items	Quests	Duration	Display info	Wilderness level	Varbits	VarPlayers	Needs (not in their format)	Ticks (ours, not checked)	Source
+2930 4713 2	Cast Watchtower Teleport	58 Magic	EARTH_RUNE=2&LAW_RUNE=2	Watchtower	4	Watchtower Teleport	20	4070=0	212=14			Wiki: Watchtower Teleport (rev 15356641)
+2933 4712 2	Watchtower Watchtower teleport		8012=1	Watchtower		Watchtower teleport (tablet): Watchtower	20				4 (estimate)	none recorded

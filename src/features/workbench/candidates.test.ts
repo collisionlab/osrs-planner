@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import fixture from "../../../e2e/fixtures/candidates.json";
+import typesFixture from "../../../e2e/fixtures/candidate-types.json";
 import imported from "../../../service/src/main/resources/candidates/catalogue.json";
 import headers from "../../../service/src/main/resources/candidates/headers.json";
-import { candidateOverlay, displacement, filterUnits, groupCandidates, reviewNote, type Candidate } from "./candidates";
+import { candidateOverlay, displacement, fieldComparison, filterUnits, groupCandidates, referencedGroups, reviewNote, type Candidate, type ItemGroup } from "./candidates";
 import { markStyle } from "../../map/insets/routeStyles";
 import Feature from "ol/Feature";
 
@@ -27,8 +28,10 @@ describe("candidate review units", () => {
     expect(units.flatMap(u => u.candidates)).toHaveLength(candidates.length);
     // Decode endpoints only for this offline fixture; production uses the service's shared parser.
     const all = imported.map(c => {
-      const ends = (raw: string) => {
-        const names = headers[c.file as keyof typeof headers].replace(/^# /, "").split("\t"), values = raw.split("\t");
+      const ends = (raw: string | null) => {
+        if (!raw) return null;
+        const header = c.file ? headers[c.file as keyof typeof headers] : c.proposalHeader!;
+        const names = header.replace(/^# /, "").replace("Board at", "Origin").replace("Land at", "Destination").split("\t"), values = raw.split("\t");
         const point = (name: string) => {
           const value = values[names.indexOf(name)];
           if (!value) return null;
@@ -39,9 +42,10 @@ describe("candidate review units", () => {
       return { ...plane, ...c, original: ends(c.originalRaw), suggested: ends(c.suggestedRaw) } as Candidate;
     });
     const allUnits = groupCandidates(all);
-    expect(allUnits).toHaveLength(167);
-    expect(allUnits.filter(u => u.candidates.length === 2)).toHaveLength(79);
-    expect(new Set(allUnits.flatMap(u => u.candidates.map(c => c.id))).size).toBe(246);
+    expect(allUnits).toHaveLength(2872);
+    expect(allUnits.filter(u => u.candidates.length === 2)).toHaveLength(1763);
+    expect(new Set(allUnits.flatMap(u => u.candidates.map(c => c.id))).size).toBe(4635);
+    expect(groupCandidates(all.slice(0, 246))).toHaveLength(167);
   });
 
   it("filters on member status and source, retaining both directions as a unit", () => {
@@ -64,7 +68,8 @@ describe("candidate geometry", () => {
   });
 
   it("keeps dashed original edges, solid proposals, selection keys and unchanged points once", () => {
-    const moved = { ...offset, suggested: { ...offset.suggested, origin: offset.original.origin } };
+    const moved = { ...offset, suggested: { ...offset.suggested, origin: offset.original!.origin,
+      destination: { ...offset.suggested!.destination!, x: offset.original!.destination!.x + 1 } } } as Candidate;
     const overlay = candidateOverlay({ id: moved.id, candidates: [moved] }, undefined, moved.id);
     const edges = overlay.features.filter(f => f.kind === "edge");
     expect(edges.map(e => e.dashed)).toEqual([true, false]);
@@ -86,5 +91,41 @@ describe("candidate geometry", () => {
     expect(reviewNote(plane)).toContain(plane.id);
     expect(reviewNote(plane)).toContain(plane.sourceCommit);
     expect(reviewNote(plane)).toContain("2862 2997 0 → 2862 2996 1");
+  });
+});
+
+describe("other BestPath suggestions", () => {
+  const rows = typesFixture.candidates as Candidate[];
+  const find = (category: string) => rows.find(c => c.category === category)!;
+  it("keeps missing requirements as field evidence with shared geometry drawn once", () => {
+    const c = find("missing_requirements"), overlay = candidateOverlay({ id: c.id, candidates: [c] });
+    expect(overlay.features.filter(f => f.kind === "edge")).toHaveLength(1);
+    expect(overlay.features.every(f => f.tone === "changed")).toBe(true);
+    expect(fieldComparison(c).find(f => f.name === "Items")?.after).toBe("[light source]=1");
+    expect(referencedGroups(c, typesFixture.itemGroups as ItemGroup[]).map(g => g.name)).toEqual(["light source"]);
+  });
+  it("shows the original of an unrepresentable note without inventing a proposal", () => {
+    const c = find("unrepresentable_requirements");
+    expect(c.suggested).toBeNull();
+    expect(candidateOverlay({ id: c.id, candidates: [c] }).features.every(f => f.tone === "changed")).toBe(true);
+    expect(reviewNote(c)).toContain("No representable replacement supplied");
+  });
+  it("groups proposed reverse directions but leaves stops and notes independent", () => {
+    expect(groupCandidates(rows)).toHaveLength(9);
+    const pair = groupCandidates(rows).find(u => u.candidates[0].category === "sourced_transport")!;
+    expect(pair.candidates).toHaveLength(2);
+    expect(pair.candidates.every(c => c.original === null)).toBe(true);
+  });
+  it("does not invent teleport origins or network routes", () => {
+    for (const category of ["network_stop", "sourced_teleport"]) {
+      const c = find(category), overlay = candidateOverlay({ id: c.id, candidates: [c] });
+      expect(overlay.features.filter(f => f.kind === "edge")).toHaveLength(0);
+      expect(overlay.features.filter(f => f.kind === "point")).toHaveLength(1);
+    }
+  });
+  it("searches proposal citations, network names and needs outside the format", () => {
+    const units = groupCandidates(rows);
+    expect(filterUnits(units, "network_stop", "", "Grimstone")).toHaveLength(1);
+    expect(filterUnits(units, "", "proposed_new", "VardorvisSteps.java")).toHaveLength(1);
   });
 });
