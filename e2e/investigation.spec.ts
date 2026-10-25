@@ -24,14 +24,27 @@ const TAVERLEY = "p0-2815-9671-fa8e6b76d2", TAVERLEY_UP = "p1-2770-9792-d5ff5182
 type Box = [plane: number, x1: number, y1: number, x2: number, y2: number];
 const inBox = (p: Point | null, [plane, x1, y1, x2, y2]: Box) => !!p && p.plane === plane && p.x >= x1 && p.x <= x2 && p.y >= y1 && p.y <= y2;
 
-/** Mocks: the release's manifest gains investigations.json (unless `investigationsFile` is null); the service answers topology and transports. */
-async function mock(page: Page, { investigationsFile = investigations as string | null, report = topology as unknown, reportStatus = 200 } = {}) {
+/** The fixture made for `manifest`'s release: its hashes name that release's regions, labels and anchors,
+ * so the fixture follows each new inset pin. */
+function forRelease(file: string, manifest: { files: Record<string, string> }) {
+  const json = JSON.parse(file) as Record<string, unknown>;
+  return JSON.stringify({ ...json, catalogueSha256: manifest.files["regions.json"], labelsSha256: manifest.files["labels.json"],
+    anchorsSha256: manifest.files["anchors.json"] });
+}
+
+/** Mocks: the release's manifest gains investigations.json (unless `investigationsFile` is null), made for that
+ * release unless `asIs`; the service answers topology and transports. */
+async function mock(page: Page, { investigationsFile = investigations as string | null, asIs = false, report = topology as unknown, reportStatus = 200 } = {}) {
+  let served = investigationsFile;
   await page.route(`${bundle}/manifest.json`, async route => {
     const manifest = await (await route.fetch()).json();
-    if (investigationsFile !== null) manifest.files["investigations.json"] = sha256(investigationsFile);
+    if (investigationsFile !== null) {
+      served = asIs ? investigationsFile : forRelease(investigationsFile, manifest);
+      manifest.files["investigations.json"] = sha256(served);
+    }
     await route.fulfill({ json: manifest });
   });
-  if (investigationsFile !== null) await page.route(`${bundle}/investigations.json`, route => route.fulfill({ body: investigationsFile, contentType: "application/json" }));
+  if (investigationsFile !== null) await page.route(`${bundle}/investigations.json`, route => route.fulfill({ body: served!, contentType: "application/json" }));
   await page.route(url => url.pathname.startsWith("/api/"), route => {
     const url = new URL(route.request().url());
     if (url.pathname === "/api/workbench/v1/topology") return reportStatus === 200 ? route.fulfill({ json: report })
@@ -224,7 +237,7 @@ test("restores a shared link: area, region, mode, item, plane and view", async (
 
 test("refuses investigation data made from another release, and keeps working from the labels", async ({ page }) => {
   const other = JSON.stringify({ ...JSON.parse(investigations), catalogueSha256: "0".repeat(64) });
-  await mock(page, { investigationsFile: other });
+  await mock(page, { investigationsFile: other, asIs: true });
   await open(page, "");
   await expect(page.getByRole("alert").filter({ hasText: "investigations.json was not used: investigations.json was made from another regions.json" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Areas" }).locator(".wb-list-heading")).toContainText(/[1-9],\d{3} areas/);
