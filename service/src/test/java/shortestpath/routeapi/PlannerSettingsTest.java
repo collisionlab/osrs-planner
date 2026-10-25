@@ -25,6 +25,7 @@ public class PlannerSettingsTest {
         assertFalse(keys.contains("drawMap"));
         assertFalse(keys.contains("usePohFairyRing"));
         assertFalse(keys.contains("pohJewelleryBoxTier"));
+        assertFalse(keys.contains("usePohMountedItems"));
         assertFalse(keys.contains("useSeasonalTransports"));
     }
 

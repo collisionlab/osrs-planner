@@ -1,21 +1,18 @@
 package shortestpath.routeapi;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import net.runelite.client.config.ConfigItem;
-import net.runelite.client.config.ConfigSection;
-import shortestpath.ShortestPathConfig;
+import shortestpath.settings.ConfigItems;
+import shortestpath.settings.ConfigKey;
+import shortestpath.settings.Effect;
 import shortestpath.settings.TeleportationItem;
 import shortestpath.accounts.Unlock;
 import shortestpath.pathfinder.PathfinderBackend;
@@ -23,8 +20,8 @@ import shortestpath.profiles.PluginSettings;
 
 /**
  * The plugin settings the web planner can change, as JSON: each is one of the plugin's own config
- * items ({@link ShortestPathConfig}), keyed by its method name, with the plugin's name, description
- * and section. A route request carries only the settings that differ from {@link #defaults()}.
+ * keys ({@link ConfigKey}) that changes a route, keyed by its {@link PluginSettings} accessor, with the
+ * plugin's name and description ({@link ConfigItems}), in the plugin's key order. A route request carries only the settings that differ from {@link #defaults()}.
  *
  * <p>Left out: display, colour and hotkey items, which never affect a route; the house items, which
  * come from the account's {@code Poh}; the unlocks the game doesn't report, which are account facts
@@ -36,10 +33,12 @@ import shortestpath.profiles.PluginSettings;
  * reaches the planner only once someone has decided where it belongs.
  */
 public final class PlannerSettings {
-    private static final Set<String> NOT_ROUTING_SECTIONS = Set.of(
-        ShortestPathConfig.sectionDisplay, ShortestPathConfig.sectionColours, ShortestPathConfig.sectionHotkeys);
     private static final Set<String> HOUSE = Set.of("usePoh", "usePohFairyRing", "usePohSpiritTree",
-        "useTeleportationPortalsPoh", "pohNexusPortals", "pohJewelleryBoxTier", "pohMountedItems", "usePohObelisk");
+        "useTeleportationPortalsPoh", "pohNexusPortals", "pohJewelleryBoxTier", "pohMountedItems", "usePohMountedItems",
+        "usePohObelisk");
+    /** Config keys whose {@link PluginSettings} accessor, and so planner key, has another name. */
+    private static final Map<String, String> ACCESSORS = Map.of("pathfinderAlgorithm", "pathfinderBackend",
+        "unreachableTargetDistanceThreshold", "unreachableTargetDistance");
     private static final Set<String> SEASONAL = Set.of("useSeasonalTransports", "costSeasonalTransports");
 
     /** Where the planner shows a setting. */
@@ -190,62 +189,36 @@ public final class PlannerSettings {
     }
 
     private static Map<String, Setting> discover() {
-        Map<String, Integer> sectionPositions = new LinkedHashMap<>();
-        Map<String, String> sectionNames = new LinkedHashMap<>();
-        for (Field field : ShortestPathConfig.class.getFields()) {
-            ConfigSection section = field.getAnnotation(ConfigSection.class);
-            if (section != null) {
-                String id = (String) get(field);
-                sectionPositions.put(id, section.position());
-                sectionNames.put(id, section.name());
-            }
-        }
         PluginSettings defaults = defaults();
-        List<Method> items = new ArrayList<>();
-        for (Method method : ShortestPathConfig.class.getMethods()) {
-            ConfigItem item = method.getAnnotation(ConfigItem.class);
-            Class<?> type = method.getReturnType();
-            if (item == null || method.getParameterCount() != 0 || NOT_ROUTING_SECTIONS.contains(item.section())
-                || SEASONAL.contains(method.getName()) || ACCOUNT.contains(method.getName())
-                || HOUSE.contains(method.getName())
-                || !(type == boolean.class || type == int.class || type.isEnum())) {
+        Map<String, Setting> result = new LinkedHashMap<>();
+        for (ConfigKey row : ConfigKey.values()) {
+            Class<?> type = row.getType();
+            String key = ACCESSORS.getOrDefault(row.getKey(), row.getKey());
+            if (!row.getEffects().contains(Effect.ROUTE_INVALIDATING) || SEASONAL.contains(key)
+                || ACCOUNT.contains(key) || HOUSE.contains(key)
+                || type == null || !(type == boolean.class || type == int.class || type.isEnum())) {
                 continue;
             }
-            items.add(method);
-        }
-        items.sort(Comparator.comparing((Method method) ->
-                sectionPositions.getOrDefault(method.getAnnotation(ConfigItem.class).section(), -1))
-            .thenComparing(method -> method.getAnnotation(ConfigItem.class).position()));
-        Map<String, Setting> result = new LinkedHashMap<>();
-        for (Method method : items) {
-            ConfigItem item = method.getAnnotation(ConfigItem.class);
-            String key = method.getName();
+            Method getter;
             Method setter;
             try {
+                getter = PluginSettings.class.getMethod(key);
                 setter = PluginSettings.class.getMethod("set" + key.substring(0, 1).toUpperCase(Locale.ROOT)
-                    + key.substring(1), method.getReturnType());
+                    + key.substring(1), type);
             } catch (NoSuchMethodException e) {
-                // ConfigParityTest requires a setter for every functional item; others are display only.
+                // ConfigParityTest requires a setter for every functional key; others are derived.
                 continue;
             }
+            ConfigItems.Meta item = ConfigItems.of(row.getKey());
             result.put(key, new Setting(key, item.name(), item.description().replace("<br>", " "),
-                sectionNames.getOrDefault(item.section(), key.startsWith("cost") ? "Transport Thresholds" : "Settings"),
-                method.getReturnType(), setter,
-                json(invoke(method, defaults))));
+                key.startsWith("cost") ? "Transport Thresholds" : "Settings", type, setter,
+                json(invoke(getter, defaults))));
         }
         return result;
     }
 
     private static Object json(Object value) {
         return value instanceof Enum ? ((Enum<?>) value).name() : value;
-    }
-
-    private static Object get(Field field) {
-        try {
-            return field.get(null);
-        } catch (IllegalAccessException e) {
-            throw new IllegalStateException(e);
-        }
     }
 
     private static Object invoke(Method method, Object target, Object... args) {
