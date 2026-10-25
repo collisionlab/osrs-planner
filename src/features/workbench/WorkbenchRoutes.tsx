@@ -52,7 +52,7 @@ function WorkbenchHome({ missing }: { missing?: boolean }) {
     <main className="wb-home">
       {error && <p role="alert">{error}</p>}
       <nav className="wb-tools" aria-label="Tools">
-        <Link to="/candidates"><b>Transport candidates</b><span>Review proposed transport corrections against bundled data, map tiles and collision.</span></Link>
+        <Link to="/candidates" aria-label="Transport candidates"><b>Transport candidates</b><span>Review proposed transport corrections against bundled data, map tiles and collision.</span></Link>
         <Link to="/transports"><b>Transport explorer</b><span>Every transport on the map: where it goes, what it needs, and its row.</span></Link>
         <Link to="/insets"><b>Inset investigation</b><span>Areas off the main map: their entrances, connections and names.</span></Link>
         <a href="#review"><b>Pull request review</b><span>A pull request's transport changes on the map.</span></a>
