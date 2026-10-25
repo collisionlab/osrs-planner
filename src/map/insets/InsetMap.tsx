@@ -23,6 +23,8 @@ const routeMatches = ({ route, start, destination }: OsrsMapProps) =>
 export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): void;
   /** Features over the map besides the route; changing them keeps the layout unless their anchors change. */
   overlay?: FeatureOverlay;
+  /** Developer views only: inspect and copy the tile under the pointer. */
+  inspectCoordinates?: boolean;
   /** A routing separator was clicked (with routing layers in the overlay). */
   onRoutingCrossing?(crossing: RoutingCrossing): void;
   /** Items under a click, by key (with an overlay), and the tile clicked. */
@@ -142,7 +144,7 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
       const instance = createComposition(target.current, assets, props, () => callbacks.current, layer,
         terrain, setStatus, previous,
         { shown, doors, onDoor: door => toggleDoor.current(door), planes, onPlane: (regionId, plane) => choosePlane.current(regionId, plane),
-          overlay: overlay.current,
+          overlay: overlay.current, inspectCoordinates: props.inspectCoordinates,
           onRoutingCrossing: crossing => callbacks.current.onRoutingCrossing?.(crossing),
           onSelectFeatures: props.onSelectFeatures && ((keys, point) => callbacks.current.onSelectFeatures?.(keys, point)),
           onView: props.onView && ((boxes, resolution) => callbacks.current.onView?.(boxes, resolution)) });
@@ -158,7 +160,7 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
       instance.select(callbacks.current.selectedSegment);
       return () => { lastView.current = instance.view(); composition.current = undefined; instance.dispose(); };
     } catch (error) { setError(String(error)); }
-  }, [assets, props.route, props.start, props.destination, props.style, shown, doors, planes, layoutKey]);
+  }, [assets, props.route, props.start, props.destination, props.style, shown, doors, planes, layoutKey, props.inspectCoordinates]);
   useEffect(() => {
     const instance = composition.current;
     if (!instance) return;

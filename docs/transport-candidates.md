@@ -200,3 +200,31 @@ Authoritative/in-game verification and applying corrections remain manual.
 Requirement-model changes, automatic application, routing comparisons and benchmark
 integration remain later work. Sensible next steps are gathering verification evidence
 and recording explained decisions through repository review.
+
+## Current destination violations
+
+The category **destination violation** adds current plugin rows to the same review
+queue. These are validation failures, not contributor proposals: the destination
+must be walkable according to the plugin's `CollisionMap.isBlocked`, or must be the
+exact origin of a transport on the same plane. Nearby open tiles, nearby origins,
+and the older walk-away check do not exempt a row. Network landing rows and
+teleports are checked too; rows without a destination are not landing failures.
+
+The service checks the transport resources and collision bundled with its plugin
+revision, including failures previously allowed by the walk-away check. It shows
+the current row and source link, failure reason, highlighted destination and review
+note, with no suggested replacement. The pinned contributor catalogue stays intact.
+The map's published collision release can differ from the checked plugin data;
+both provenances remain visible. IDs hash the source file and exact row, with
+suffixes for duplicates, so unrelated line insertions do not change them. Ledger
+entries use the same `reviews.json` format; remove obsolete entries when a fixed
+or changed row disappears from the current violation list.
+
+## Developer coordinate inspection
+
+The candidate, PR review, transport explorer and inset investigation maps show
+`x y plane` while hovering. Press **C** to copy the hovered tile, or right-click and
+choose **Copy coordinates**. The menu holds the tile you right-clicked while you
+move to its button; Escape or clicking outside closes it. Typing in a form keeps
+working normally. Insets use their real world coordinates and plane after moving.
+The main route planner does not enable coordinate inspection or its shortcut.

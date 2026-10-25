@@ -66,3 +66,8 @@
 /* What is under the pointer on the map: beside it, never in its way. */
 .inset-map .map-tooltip { position: absolute; z-index: 5; max-width: 320px; padding: 4px 7px; pointer-events: none; white-space: pre-line;
   color: #f7f1dc; background: rgba(20, 25, 20, .92); border: 1px solid rgba(247, 241, 220, .35); font: 12px/1.35 ui-monospace, monospace; }
+
+.map-coordinates { position: absolute; bottom: 30px; left: 12px; z-index: 12; padding: 6px 9px; background: #101c24ed; color: #e4edf2; border: 1px solid #70828a; border-radius: 4px; font: 12px monospace; pointer-events: none; }
+.map-coordinate-menu { position: absolute; z-index: 30; padding: 10px; background: #101c24; color: #e4edf2; border: 1px solid #70828a; border-radius: 4px; }
+.map-coordinate-menu span { display: block; margin-bottom: 8px; font-family: monospace; user-select: text; }
+.map-coordinate-menu button { cursor: pointer; }

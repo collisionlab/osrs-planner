@@ -5,13 +5,13 @@ import type { CollisionMap } from "../../map/insets/collision";
 import type { WorldPoint } from "../../domain/contracts";
 
 export const categories = ["plane", "non_floor", "coordinate_offset", "missing_requirements", "unrepresentable_requirements",
-  "sourced_transport", "sourced_teleport", "network_stop", "cache_transport", "unsourced_transport", "copied_area", "copied_area_teleport"] as const;
-export const reconciliationStatuses = ["matches_current", "already_present", "diverged", "missing", "ambiguous", "proposed_new", "possible_existing"] as const;
+  "sourced_transport", "sourced_teleport", "network_stop", "cache_transport", "unsourced_transport", "copied_area", "copied_area_teleport", "destination_violation"] as const;
+export const reconciliationStatuses = ["matches_current", "already_present", "diverged", "missing", "ambiguous", "proposed_new", "possible_existing", "violation"] as const;
 export type Category = typeof categories[number];
 export type ReconciliationStatus = typeof reconciliationStatuses[number];
 export interface Candidate {
   id: string; category: Category; file: string | null; originalLine: number | null;
-  kind?: "correction" | "requirement_note" | "addition" | "network_stop";
+  kind?: "correction" | "requirement_note" | "addition" | "network_stop" | "destination_violation";
   originalRaw: string | null; suggestedRaw: string;
   original: TransportRow | null; suggested: TransportRow | null;
   proposalHeader?: string; sourceHeader?: string; sourceRaw?: string;
@@ -76,6 +76,14 @@ export function filterUnits(units: CandidateUnit[], category: string, status: st
 export function candidateOverlay(unit: CandidateUnit, collision?: CollisionMap, selected?: string) {
   const overlay = geometryOverlay(unit.candidates.filter(c => candidateKind(c) !== "network_stop")
     .map(c => ({ key: c.id, original: c.original, suggested: c.suggested })), collision, selected);
+  const violations = new Set(unit.candidates.filter(c => candidateKind(c) === "destination_violation").map(c => c.id));
+  for (const feature of overlay.features) if (violations.has(feature.key)) {
+    if (feature.kind === "point" || feature.kind === "edge") feature.title = "Current transport · destination violation";
+    if (feature.kind === "point" && feature.role === "destination") {
+      feature.tone = "suspect";
+      feature.title = "Blocked destination with no exact transport origin · " + pointText(feature.point);
+    }
+  }
   for (const c of unit.candidates.filter(c => candidateKind(c) === "network_stop")) {
     const row = c.suggested;
     if (row?.origin) overlay.features.push({ kind: "point", key: c.id, point: row.origin, role: "origin", tone: "added", title: "Board at " + pointText(row.origin) });
@@ -92,7 +100,7 @@ export function displacement(a: WorldPoint | null, b: WorldPoint | null) {
   return `${distance} tiles (Δx ${b.x - a.x}, Δy ${b.y - a.y})${a.plane !== b.plane ? `; plane ${a.plane} → ${b.plane}` : "; same plane"}`;
 }
 
-export const contributorUrl = (c: Candidate) => `https://github.com/${c.sourceRepository}/blob/${c.sourceCommit}/bestpath-candidates/${encodeURIComponent(c.sourceFile)}#L${c.sourceLine}`;
+export const contributorUrl = (c: Candidate) => candidateKind(c) === "destination_violation" ? baselineUrl(c)! : `https://github.com/${c.sourceRepository}/blob/${c.sourceCommit}/bestpath-candidates/${encodeURIComponent(c.sourceFile)}#L${c.sourceLine}`;
 export const baselineUrl = (c: Candidate) => c.file ? `https://github.com/${c.sourceRepository}/blob/${c.upstreamCommit}/src/main/resources/transports/${c.file}#L${c.originalLine}` : undefined;
 export function fieldComparison(c: Candidate) {
   const before = c.original?.fields ?? {}, after = c.suggested?.fields ?? {};
@@ -102,6 +110,18 @@ export function fieldComparison(c: Candidate) {
 export const referencedGroups = (c: Candidate, groups: ItemGroup[]) =>
   groups.filter(group => [c.originalRaw, c.suggestedRaw, c.needs, c.whatChanges].join(" ").includes("[" + group.name + "]"));
 export function reviewNote(c: Candidate) {
+  if (candidateKind(c) === "destination_violation") return `### Destination violation ${c.id}
+
+- Current row: ${baselineUrl(c)}
+- Checked plugin: ${c.sourceRepository}@${c.sourceCommit}
+- Origin: ${pointText(c.original?.origin)}
+- Destination: ${pointText(c.original?.destination)}
+- Failure: ${c.whatChanges}
+- Current TSV: ${c.originalRaw}
+- Proposed correction: none yet
+- Decision: needs_evidence
+- Explanation / verification evidence:
+`;
   return `### Transport candidate ${c.id}
 
 - Source: ${contributorUrl(c)}

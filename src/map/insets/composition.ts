@@ -1,3 +1,4 @@
+import { inspectCoordinates } from "./inspectCoordinates";
 import Feature from "ol/Feature";
 import OLMap from "ol/Map";
 import Overlay from "ol/Overlay";
@@ -51,6 +52,7 @@ export function pickWorld(coordinate: Coordinate, assets: InsetAssets, placement
 }
 
 export interface AreaOptions {
+  inspectCoordinates?: boolean;
   /** Named areas to show even though the route doesn't reach them. */
   shown?: InsetArea[];
   /** Surface entrances to mark when zoomed in; clicking one calls `onDoor`. */
@@ -583,6 +585,7 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
       tooltip.style.top = `${event.pixel[1] + 14}px`;
     }
   });
+  if (areas.inspectCoordinates) cleanup.push(inspectCoordinates(map, target, coordinate => pickWorld(coordinate, assets, picked, 0)));
   const leave = () => { tooltip.hidden = true; if (hovered !== undefined) { hovered = undefined; featureLayer.changed(); } };
   target.addEventListener("pointerleave", leave);
   cleanup.push(() => target.removeEventListener("pointerleave", leave));

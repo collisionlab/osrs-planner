@@ -52,7 +52,8 @@ class TransportCandidatesTest {
         assertEquals(4635, imported.size());
         Map<String, Object> loaded = TransportCandidates.bundled(Provenance.bundled());
         JsonNode served = JSON.valueToTree(loaded).path("candidates");
-        assertEquals(4635, served.size());
+        assertEquals(4635, served.findValuesAsText("category").stream().filter(c -> !c.equals("destination_violation")).count());
+        assertTrue(served.size() > 4635, "current destination failures are included");
         assertEquals(2, served.findValuesAsText("category").stream().filter("plane"::equals).count());
         assertEquals(32, served.findValuesAsText("category").stream().filter("non_floor"::equals).count());
         assertEquals(212, served.findValuesAsText("category").stream().filter("coordinate_offset"::equals).count());
@@ -64,6 +65,12 @@ class TransportCandidatesTest {
         assertEquals(1, first.path("suggested").path("destination").path("plane").asInt());
         for (JsonNode candidate : served) {
             assertEquals("unreviewed", candidate.path("review").path("status").asText());
+            if (candidate.path("kind").asText().equals("destination_violation")) {
+                assertEquals("violation", candidate.path("reconciliation").path("status").asText());
+                assertTrue(candidate.path("suggested").isNull());
+                assertEquals("", candidate.path("suggestedRaw").asText());
+                continue;
+            }
             assertTrue(Set.of("matches_current", "already_present", "diverged", "missing", "ambiguous", "proposed_new", "possible_existing")
                 .contains(candidate.path("reconciliation").path("status").asText()));
             JsonNode source = imported.get(servedIndex(served, candidate));
@@ -143,7 +150,7 @@ class TransportCandidatesTest {
                 try (var response = client.get("/workbench/v1/candidates")) {
                     JsonNode body = JSON.readTree(response.body().string());
                     assertEquals(200, response.code());
-                    assertEquals(4635, body.path("candidates").size());
+                    assertTrue(body.path("candidates").size() > 4635);
                     assertEquals(9, body.path("itemGroups").size());
                     assertEquals(Provenance.bundled().plugin.rev, body.path("plugin").path("rev").asText());
                 }

@@ -221,7 +221,7 @@ export function InsetInvestigation() {
         : <nav className="wb-units" aria-label="Areas"><p className="wb-list-heading" role="status">{error ? "Unavailable" : "Loading areas…"}</p></nav>}
       <section className="wb-map wb-insets-map" aria-label="Map">
         {insetPin ? assets && <Suspense fallback={<div className="route-map" role="status">Loading inset map…</div>}>
-          <InsetMap assets={assets} areaPicker={false} overlay={overlay || undefined} style={style} insets keepFocus onPick={onPick} onFallback={() => {}}
+          <InsetMap inspectCoordinates assets={assets} areaPicker={false} overlay={overlay || undefined} style={style} insets keepFocus onPick={onPick} onFallback={() => {}}
             onSelectFeatures={onSelectFeatures} onRoutingCrossing={routing.selectCrossing} keepView fitAnchors={false} fitSelection={false}
             initialCentre={state.at ?? LUMBRIDGE} focusRegions={focusRegions} focusTile={focusTile} focusBox={focusBox}
             onPlane={(_, next) => choosePlane(next)} onView={() => { const at = mapRef.current?.centreTile(); if (at) update({ at }); }}

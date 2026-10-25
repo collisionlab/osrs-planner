@@ -79,7 +79,7 @@ export function CandidatesPage() {
   return <div className="wb-page">
     <header className="wb-header">
       <Link className="wb-brand" to="/">Workbench</Link><span className="wb-tool">Transport candidates</span>
-      {catalogue && <span className="wb-summary">{catalogue.candidates.length} source rows · {allUnits.length} review units</span>}
+      {catalogue && <span className="wb-summary">{catalogue.candidates.filter(c => candidateKind(c) !== "destination_violation").length} suggestion rows · {catalogue.candidates.filter(c => candidateKind(c) === "destination_violation").length} destination violations · {allUnits.length} review units</span>}
       <span className="wb-keys"><kbd>j</kbd>/<kbd>k</kbd> next/previous</span>
     </header>
     {error ? <p className="wb-message" role="alert">{error}</p> : !catalogue ? <p className="wb-message" role="status">Loading candidates…</p>
@@ -93,7 +93,7 @@ export function CandidatesPage() {
               <option value="">All statuses</option>{reconciliationStatuses.map(s => <option key={s} value={s}>{label(s)} ({catalogue.candidates.filter(row => row.reconciliation.status === s).length})</option>)}
             </select></label>
             <label>Search candidates<input value={query} placeholder="File, action, tile or source" onChange={e => filter("q", e.target.value)} /></label>
-            <p className="wb-note" role="status">{units.reduce((n, u) => n + u.candidates.length, 0)} source rows · {units.length} review units shown</p>
+            <p className="wb-note" role="status">{units.reduce((n, u) => n + u.candidates.length, 0)} rows · {units.length} review units shown</p>
             <div className="wb-inline">
               <button type="button" disabled={!unit || index === 0} onClick={() => select(index - 1)}>Previous</button>
               <button type="button" disabled={!unit || index === units.length - 1} onClick={() => select(index + 1)}>Next</button>
@@ -112,7 +112,7 @@ export function CandidatesPage() {
         </nav>
         <section className="wb-map wb-insets-map" aria-label="Candidate map">
           {overlay && insetPin ? <Suspense fallback={<p className="wb-message">Loading inset map…</p>}>
-            <InsetMap overlay={overlay} focusTile={focusTile} style={style} insets onPick={() => {}} onFallback={() => {}}
+            <InsetMap inspectCoordinates overlay={overlay} focusTile={focusTile} style={style} insets onPick={() => {}} onFallback={() => {}}
               onSelectFeatures={keys => {
                 const c = unit?.candidates.find(row => row.id === keys[0]);
                 if (c) navigate({ search: location.search, hash: "candidate=" + c.id });
@@ -123,19 +123,22 @@ export function CandidatesPage() {
               onClick={() => { setStyle(id as MapStyle); saveStyle(id as MapStyle); }}>{layer.label}</button>)}
           </div>
           <div className="wb-candidate-legend" aria-label="Geometry legend">
-            <span className="removed">┄ Original: dashed edge, dashed tiles</span>
+            {unit?.candidates[0].kind === "destination_violation" ? <span>Current transport · highlighted destination violates the rule</span> : <><span className="removed">┄ Original: dashed edge, dashed tiles</span>
             <span className="added">━ Suggested: solid edge, solid tiles</span>
-            <span className="changed">━ Shared geometry / original-only note</span>
+            <span className="changed">━ Shared geometry / original-only note</span></>}
             <span>□ Origin · ■ Destination · shared tiles drawn once</span>
             {unit?.candidates[0].kind === "network_stop" && <span>Stop tiles only; no network routes implied</span>}
           </div>
         </section>
         <section className="wb-side-panel" aria-label="Candidate details">
           <div className="wb-panel-body">
-            <p className="wb-callout">Unverified suggestions. Reconciliation checks the starting row; map inspection helps assess plausibility.
+            {unit?.candidates[0].kind === "destination_violation" ? <>
+              <p className="wb-callout">Current destination violations. Each landing tile is blocked and is not the exact origin of a transport. No correction has been proposed.</p>
+              <p className="wb-note">Checks use the service's bundled plugin collision and transport data. Displayed map collision: tiles {tiles.version}, cache {manifest?.cacheId ?? "unknown"}; its revision may differ.</p>
+            </> : <><p className="wb-callout">Unverified suggestions. Reconciliation checks the starting row; map inspection helps assess plausibility.
               Neither proves a correction was verified in-game. An accepted ledger decision does not change transport data.</p>
             <p className="wb-note">Contributor tile evidence: cache 2735 and their comparison with upstream collision at 0fb23cda.
-              Displayed collision: tiles {tiles.version}, cache {manifest?.cacheId ?? "unknown"}. Blocked flags do not establish whether a special transition tile is legitimate.</p>
+              Displayed collision: tiles {tiles.version}, cache {manifest?.cacheId ?? "unknown"}. Blocked flags do not establish whether a special transition tile is legitimate.</p></>}
             {unit?.candidates.map(c => <CandidateDetail key={c.id} candidate={c} selected={selected?.id === c.id}
               itemGroups={catalogue.itemGroups ?? []}
               collision={ready === unit.id ? collision : undefined} show={show}
@@ -158,6 +161,7 @@ export function CandidatesPage() {
 function CandidateDetail({ candidate: c, selected, collision, show, select, copy, itemGroups }: {
   candidate: Candidate; selected: boolean; collision?: CollisionMap; show(p: WorldPoint): void; select(): void; copy(): void; itemGroups: ItemGroup[];
 }) {
+  if (candidateKind(c) === "destination_violation") return <DestinationViolationDetail candidate={c} selected={selected} show={show} select={select} copy={copy} />;
   const kind = candidateKind(c), groups = referencedGroups(c, itemGroups), fields = fieldComparison(c);
   const collisionText = (p: WorldPoint | null) => {
     const tile = p && collision?.tile(p);
@@ -218,6 +222,34 @@ function CandidateDetail({ candidate: c, selected, collision, show, select, copy
       <p>Current bundled rows: {c.reconciliation.rows.length} {["diverged", "ambiguous", "possible_existing"].includes(c.reconciliation.status) ? "possible correspondences, not confirmed identities" : ""}</p>
       {c.reconciliation.rows.map((value, index) => <div key={index}><p>{value.row.file}:{value.row.line} · {pointText(value.row.origin)} → {pointText(value.row.destination)}</p><pre className="wb-draft-text">{value.raw}</pre></div>)}
     </details>
+    <p><b>Review ledger:</b> {c.review.status}{c.review.explanation ? " — " + c.review.explanation : ""}</p>
+    {c.review.reference && <p>Decision reference: {c.review.reference}</p>}
+    <button type="button" onClick={copy}>Copy review note</button>
+  </article>;
+}
+
+
+function DestinationViolationDetail({ candidate: c, selected, show, select, copy }: {
+  candidate: Candidate; selected: boolean; show(p: WorldPoint): void; select(): void; copy(): void;
+}) {
+  return <article className={`wb-section wb-candidate-detail ${selected ? "selected" : ""}`} data-candidate-id={c.id}>
+    <h2><button type="button" className="wb-link" onClick={select}>{candidateLabel(c)}</button></h2>
+    <p><strong>Destination violation</strong> · <a href={baselineUrl(c)}>{c.file}:{c.originalLine}</a></p>
+    <p className="wb-mono">{c.id}</p>
+    <p className="wb-warning">{c.whatChanges}</p>
+    <p>No proposed correction yet. Investigate the current row and landing tile before suggesting a change.</p>
+    <table className="wb-rows"><thead><tr><th>Endpoint</th><th>Current world coordinates</th></tr></thead>
+      <tbody>{(["origin", "destination"] as const).map(end => {
+        const point = c.original?.[end];
+        return <tr key={end}><td>{end}</td><td><button type="button" className="wb-tile" disabled={!point}
+          onClick={() => { select(); if (point) show(point); }}>{pointText(point)}</button></td></tr>;
+      })}</tbody>
+    </table>
+    <p><b>Checked data:</b> {c.sourceRepository}@{c.sourceCommit}. {c.source}</p>
+    <details><summary>Current transport fields</summary><table className="wb-rows"><tbody>
+      {Object.entries(c.original?.fields ?? {}).map(([name, value]) => <tr key={name}><th>{name}</th><td>{value || "—"}</td></tr>)}
+    </tbody></table></details>
+    <details><summary>Exact current TSV row</summary><pre className="wb-draft-text">{c.originalRaw}</pre></details>
     <p><b>Review ledger:</b> {c.review.status}{c.review.explanation ? " — " + c.review.explanation : ""}</p>
     {c.review.reference && <p>Decision reference: {c.review.reference}</p>}
     <button type="button" onClick={copy}>Copy review note</button>

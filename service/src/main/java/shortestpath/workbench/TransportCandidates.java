@@ -14,6 +14,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import shortestpath.transport.ResourceLoader;
+import shortestpath.pathfinder.CollisionMap;
+import shortestpath.pathfinder.PluginResources;
 import shortestpath.transport.TransportType;
 
 /** Offline suggestions, reconciled with the plugin resources in this service. Never changes transports. */
@@ -148,7 +150,6 @@ public final class TransportCandidates {
         imported.forEach(candidate -> {
             if (!ids.add(candidate.path("id").asText())) throw new IllegalArgumentException("Duplicate candidate ID");
         });
-        validateLedger(ledger, ids);
         Map<String, List<CurrentRow>> current = new HashMap<>();
         Map<String, List<CurrentRow>> byGeometry = new HashMap<>();
         Map<TransportDiff.Point, List<CurrentRow>> byEndpoint = new HashMap<>();
@@ -165,6 +166,13 @@ public final class TransportCandidates {
                 }
             }
         }
+        CollisionMap collision = new CollisionMap(PluginResources.map());
+        List<CurrentRow> allRows = current.entrySet().stream().sorted(Map.Entry.comparingByKey())
+            .flatMap(entry -> entry.getValue().stream()).collect(Collectors.toList());
+        List<Map<String, Object>> violations = DestinationViolations.collect(allRows,
+            point -> !collision.isBlocked(point.x, point.y, point.plane), provenance);
+        violations.forEach(value -> ids.add((String) value.get("id")));
+        validateLedger(ledger, ids);
         List<Map<String, Object>> candidates = new ArrayList<>();
         for (JsonNode candidate : imported) {
             Map<String, Object> value = JSON.convertValue(candidate, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() { });
@@ -199,6 +207,11 @@ public final class TransportCandidates {
             JsonNode decision = ledger.get(candidate.path("id").asText());
             value.put("review", decision == null ? Map.of("status", "unreviewed") : decision);
             candidates.add(value);
+        }
+        for (Map<String, Object> violation : violations) {
+            JsonNode decision = ledger.get((String) violation.get("id"));
+            if (decision != null) violation.put("review", decision);
+            candidates.add(violation);
         }
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("candidates", candidates);
