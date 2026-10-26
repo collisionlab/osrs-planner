@@ -7,7 +7,7 @@ import { CollisionMap, releaseTiles } from "../../map/insets/collision";
 import { COLLISION_RADIUS } from "../../map/insets/composition";
 import { featurePoints } from "../../map/insets/features";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "./provenance";
-import { baselineUrl, candidateKind, candidateLabel, candidateOverlay, categories, contributorUrl, displacement, fieldComparison, filterUnits,
+import { baselineUrl, candidateKind, candidateLabel, candidateOverlay, categories, categoryDescriptions, contributorUrl, displacement, fieldComparison, filterUnits,
   groupCandidates, loadCandidates, pointText, reconciliationStatuses, referencedGroups, reviewNote, type Candidate, type Catalogue, type ItemGroup } from "./candidates";
 
 const InsetMap = lazy(() => import("../../map/insets/InsetMap").then(module => ({ default: module.InsetMap })));
@@ -89,6 +89,10 @@ export function CandidatesPage() {
             <label>Category<select aria-label="Category" value={category} onChange={e => filter("category", e.target.value)}>
               <option value="">All categories</option>{categories.map(c => <option key={c} value={c}>{label(c)} ({catalogue.candidates.filter(row => row.category === c).length})</option>)}
             </select></label>
+            {category && <p className="wb-note">{categoryDescriptions[category as keyof typeof categoryDescriptions]}</p>}
+            <details><summary>What do the categories mean?</summary>
+              {categories.map(c => <p className="wb-note" key={c}><strong>{label(c)}:</strong> {categoryDescriptions[c]}</p>)}
+            </details>
             <label>Reconciliation status<select aria-label="Reconciliation status" value={status} onChange={e => filter("status", e.target.value)}>
               <option value="">All statuses</option>{reconciliationStatuses.map(s => <option key={s} value={s}>{label(s)} ({catalogue.candidates.filter(row => row.reconciliation.status === s).length})</option>)}
             </select></label>

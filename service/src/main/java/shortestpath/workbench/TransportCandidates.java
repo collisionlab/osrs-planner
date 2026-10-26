@@ -22,7 +22,24 @@ import shortestpath.transport.TransportType;
 public final class TransportCandidates {
     private static final ObjectMapper JSON = new ObjectMapper();
 
+    private static final shortestpath.pathfinder.AStarRoutingStaticProvider ROUTING =
+        new shortestpath.pathfinder.AStarRoutingStaticProvider(() -> new CollisionMap(PluginResources.map()));
+
     private TransportCandidates() { }
+
+    static boolean inRoutingComponent(TransportDiff.Point point) {
+        if (point == null) return false;
+        var routing = ROUTING.get();
+        int packed = shortestpath.WorldPointUtil.packWorldPoint(point.x, point.y, point.plane);
+        if (routing.searchIndex(packed) >= 0) return true;
+        int site = routing.siteIndex(packed);
+        return site >= 0 && routing.siteComponents(site).length > 0;
+    }
+
+    static String sourcedCategory(TransportDiff.Row proposal, java.util.function.Predicate<TransportDiff.Point> inComponent) {
+        return inComponent.test(proposal.origin) && inComponent.test(proposal.destination)
+            ? "sourced_transport" : "sourced_transport_outside_routing";
+    }
 
     static String resource(String path) {
         try (var stream = Objects.requireNonNull(ResourceLoader.class.getResourceAsStream(path), path)) {
@@ -195,6 +212,9 @@ public final class TransportCandidates {
                     candidate.path("sourceLine").asInt(), candidate.path("suggestedRaw").asText(), parsedHeader);
                 value.put("original", null);
                 value.put("suggested", proposal);
+                if (candidate.path("category").asText().equals("sourced_transport")) {
+                    value.put("category", sourcedCategory(proposal, TransportCandidates::inRoutingComponent));
+                }
                 List<CurrentRow> possible;
                 if (stop) {
                     Set<CurrentRow> stops = new java.util.LinkedHashSet<>();
