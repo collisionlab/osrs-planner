@@ -31,6 +31,8 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
   onSelectFeatures?(keys: string[], point: WorldPoint): void;
   /** The world tiles in view after each move, a box per area drawn. */
   onView?(boxes: WorldBox[], resolution: number): void;
+  /** A network's hub was dragged to a tile; given, hubs can be dragged out of the way. */
+  onMoveHub?(key: string, point: WorldPoint): void;
   /** Where the map first opens when there is nothing to fit. */
   initialCentre?: { point: WorldPoint; zoom: number };
   /** A tile to move the view to; a new object moves it again. */
@@ -147,7 +149,8 @@ export function InsetMap(props: OsrsMapProps & { style: MapStyle; onFallback(): 
           overlay: overlay.current, inspectCoordinates: props.inspectCoordinates,
           onRoutingCrossing: crossing => callbacks.current.onRoutingCrossing?.(crossing),
           onSelectFeatures: props.onSelectFeatures && ((keys, point) => callbacks.current.onSelectFeatures?.(keys, point)),
-          onView: props.onView && ((boxes, resolution) => callbacks.current.onView?.(boxes, resolution)) });
+          onView: props.onView && ((boxes, resolution) => callbacks.current.onView?.(boxes, resolution)),
+          onMoveHub: props.onMoveHub && ((key, point) => callbacks.current.onMoveHub?.(key, point)) });
       composition.current = instance;
       // A link to a place opens there, unless the page wants its anchors in view.
       if (!previous && props.initialCentre && !props.route && (!overlay.current?.anchors.length || props.fitAnchors === false)) instance.centre(props.initialCentre.point, props.initialCentre.zoom);

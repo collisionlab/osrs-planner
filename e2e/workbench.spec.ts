@@ -90,6 +90,8 @@ test("reviews a pull request's transport rows on the inset map", async ({ page }
   const rows = page.getByRole("region", { name: "Rows" });
   await expect(rows.locator("del")).toHaveText("∅");
   await expect(rows.locator("ins")).toHaveText("Light source");
+  // The first change (in Tears of Guthix, plane 2) is drawn over the collision layer, which asks the release for its square.
+  await collision;
 
   // j moves to the next change and records it in the URL; an area the insets haven't named takes the pull request's heading.
   await page.keyboard.press("j");
@@ -99,8 +101,6 @@ test("reviews a pull request's transport rows on the inset map", async ({ page }
     new RegExp(`^https://github\\.com/Skretzo/shortest-path/compare/${MERGE_BASE}\\.\\.\\.${HEAD}#diff-[0-9a-f]{64}R5$`));
   await expect(page.locator(".wb-footer")).toContainText(`Tiles and collision ${tiles.version}`);
   await expect(page.locator(".wb-newer")).toHaveCount(0);
-  // The first change (in Tears of Guthix, plane 2) asked the release's collision layer for its square.
-  await collision;
 
   // The map's style can be switched here too, on any screen.
   const style = page.getByRole("group", { name: "Map style" });

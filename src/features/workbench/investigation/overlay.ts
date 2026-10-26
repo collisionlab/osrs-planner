@@ -1,6 +1,5 @@
 import type { WorldPoint } from "../../../domain/contracts";
 import type { InsetEntrance } from "../../../map/insets/assets";
-import type { CollisionMap } from "../../../map/insets/collision";
 import type { FeatureOverlay, MapFeature, OverlayRegion } from "../../../map/insets/features";
 import type { WorldBox } from "../../../map/insets/projection";
 import { transportFeatures, type TransportView } from "../transports";
@@ -41,7 +40,6 @@ export interface OverlayInput {
   transports?: { view: TransportView; boxes: WorldBox[] };
   draft?: { origin?: WorldPoint; destination?: WorldPoint };
   inspected?: WorldPoint;
-  collision?: CollisionMap;
   classify(point: WorldPoint): string;
 }
 
@@ -64,7 +62,7 @@ export function overlayRegions(input: Pick<OverlayInput, "data" | "area" | "plan
  * The map for an investigation: the area's regions by their exact terrain, and what the mode is
  * about: evidence and anchors for labelling; components, candidates, suspects and transports for
  * topology; and a link being drafted. The selected candidate, the draft's ends and the inspected
- * tile are the anchors, so collision is drawn around them.
+ * tile are the anchors, so the map lays out and fits them.
  */
 export function investigationOverlay(input: OverlayInput): FeatureOverlay {
   const { data, area, plane, mode, topology } = input;
@@ -121,6 +119,6 @@ export function investigationOverlay(input: OverlayInput): FeatureOverlay {
   // The selected candidate's regions stay laid out in either mode, so switching keeps what is shown.
   const chosen = input.candidate && input.item === key.candidate(input.candidate.id) ? [tilePoint(input.candidate.from.point), tilePoint(input.candidate.to.point)] : [];
   const focus = [...chosen, ...anchors.flatMap(feature => feature.kind === "point" ? [feature.point] : [])];
-  return { features: [...features, ...anchors], anchors, selected: input.item, collision: input.collision,
+  return { features: [...features, ...anchors], anchors, selected: input.item,
     regions: overlayRegions(input, focus) };
 }

@@ -1,7 +1,6 @@
 import type { TransportRow } from "./api";
 import type { Revision } from "./transports";
 import { geometryOverlay } from "./review";
-import type { CollisionMap } from "../../map/insets/collision";
 import type { WorldPoint } from "../../domain/contracts";
 
 export const categories = ["plane", "non_floor", "coordinate_offset", "missing_requirements", "unrepresentable_requirements",
@@ -73,9 +72,9 @@ export function filterUnits(units: CandidateUnit[], category: string, status: st
       .join(" ").toLowerCase().includes(word))));
 }
 
-export function candidateOverlay(unit: CandidateUnit, collision?: CollisionMap, selected?: string) {
+export function candidateOverlay(unit: CandidateUnit, selected?: string) {
   const overlay = geometryOverlay(unit.candidates.filter(c => candidateKind(c) !== "network_stop")
-    .map(c => ({ key: c.id, original: c.original, suggested: c.suggested })), collision, selected);
+    .map(c => ({ key: c.id, original: c.original, suggested: c.suggested })), selected);
   const violations = new Set(unit.candidates.filter(c => candidateKind(c) === "destination_violation").map(c => c.id));
   for (const feature of overlay.features) if (violations.has(feature.key)) {
     if (feature.kind === "point" || feature.kind === "edge") feature.title = "Current transport · destination violation";

@@ -196,8 +196,32 @@ export function viewOverlay(view: TransportView | undefined, selected: Transport
   return { features: [...spokes, ...features, ...nodes, ...anchors], anchors, selected: selected?.id ?? (network && networkKey(network)), collision };
 }
 
-/** The explorer's map layers, in the order the layer control lists them. */
-export const EXPLORER_LAYERS = ["transports", "banks", "collision", "components", "separators", "unreachable"];
+/** Every workbench map's layers, in the order the layer control lists them. */
+export const WORKBENCH_LAYERS = ["transports", "networks", "banks", "collision", "components", "separators", "unreachable"];
+
+/** Which layers are on and which transport types they show; undefined is the page's default. */
+export interface LayerSettings {
+  layers?: string[];
+  /** Undefined for every type. */
+  types?: string[];
+}
+
+/** The URL's `layers` and `types`, as every workbench page keeps them. */
+export function readLayerSettings(params: URLSearchParams): LayerSettings {
+  const settings: LayerSettings = {};
+  const layers = params.get("layers"), types = params.get("types");
+  if (layers !== null) settings.layers = layers.split(",").filter(id => WORKBENCH_LAYERS.includes(id));
+  if (types !== null) settings.types = types.split(",").filter(type => /^[A-Z_]+$/.test(type));
+  return settings;
+}
+
+export function writeLayerSettings(params: URLSearchParams, settings: LayerSettings) {
+  const next = new URLSearchParams(params);
+  for (const [name, value] of [["layers", settings.layers], ["types", settings.types]] as const) {
+    if (value) next.set(name, value.join(",")); else next.delete(name);
+  }
+  return next;
+}
 
 /** What the page's URL holds: the selected transport, where the map is, the types and layers shown and a search. */
 export interface ExplorerState {
@@ -208,8 +232,6 @@ export interface ExplorerState {
   query?: string;
   /** Undefined for the transports alone. */
   layers?: string[];
-  /** False to draw networks' stations without their hubs and spokes. */
-  hubs?: false;
 }
 
 /** Transports by family, as they are coloured: objects used where they stand, journeys, teleports. */
@@ -228,9 +250,8 @@ export function readState(search: string): ExplorerState {
   if (types !== null) state.types = types.split(",").filter(type => /^[A-Z_]+$/.test(type));
   const query = params.get("q");
   if (query) state.query = query;
-  const layers = readLayers(params, EXPLORER_LAYERS);
+  const layers = readLayers(params, WORKBENCH_LAYERS);
   if (layers) state.layers = layers;
-  if (params.get("hubs") === "0") state.hubs = false;
   return state;
 }
 
@@ -241,7 +262,6 @@ export function writeState(state: ExplorerState): string {
   if (state.types) params.set("types", state.types.join(","));
   if (state.query) params.set("q", state.query);
   if (state.layers) params.set("layers", state.layers.join(","));
-  if (state.hubs === false) params.set("hubs", "0");
   const text = params.toString().replace(/%2C/g, ",");
   return text ? `?${text}` : "";
 }

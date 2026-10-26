@@ -3,15 +3,19 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import tiles from "../../../tiles.json";
 import type { WorldPoint } from "../../domain/contracts";
 import { insetPin, mapLayers, savedStyle, saveStyle, type MapStyle } from "../../map/layers";
-import { CollisionMap, releaseTiles } from "../../map/insets/collision";
-import { COLLISION_RADIUS } from "../../map/insets/composition";
+import type { CollisionMap } from "../../map/insets/collision";
 import { featurePoints } from "../../map/insets/features";
+import { LayerControl } from "../../map/insets/LayerControl";
+import type { WorldBox } from "../../map/insets/projection";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "./provenance";
 import { baselineUrl, candidateKind, candidateLabel, candidateOverlay, categories, contributorUrl, displacement, fieldComparison, filterUnits,
   groupCandidates, loadCandidates, pointText, reconciliationStatuses, referencedGroups, reviewNote, type Candidate, type Catalogue, type ItemGroup } from "./candidates";
+import { useUrlLayerSettings, useWorkbenchLayers } from "./WorkbenchLayers";
 
 const InsetMap = lazy(() => import("../../map/insets/InsetMap").then(module => ({ default: module.InsetMap })));
 const label = (value: string) => value.replaceAll("_", " ");
+/** The layers candidates open with: their rows over the release's collision. */
+const CANDIDATE_LAYERS = ["collision"];
 
 export function CandidatesPage() {
   const location = useLocation(), navigate = useNavigate();
@@ -61,20 +65,22 @@ export function CandidatesPage() {
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
   }, [index, units, location.search]);
-  const collision = useMemo(() => new CollisionMap(releaseTiles(tiles.base, tiles.version)), []);
+  useEffect(() => setCopyStatus(""), [unit]);
+  const geometry = useMemo(() => unit && candidateOverlay(unit, selected?.id), [unit, selected]);
+  // The workbench's layers under the candidates: the release's collision unless the URL says otherwise.
+  const [settings, updateSettings] = useUrlLayerSettings();
+  const [inspected, setInspected] = useState<WorldPoint>();
+  const [focusBox, setFocusBox] = useState<WorldBox>();
+  const layers = useWorkbenchLayers({ settings, update: updateSettings, defaults: CANDIDATE_LAYERS, overlay: geometry, inspected, focus: setFocusBox });
+  // The candidates' own tiles' collision, for their flags in the panel whichever layers are on.
+  const collision = layers.collision;
   const [ready, setReady] = useState<string>();
   useEffect(() => {
-    setCopyStatus("");
-    if (!unit) return;
+    if (!unit || !geometry) return;
     const abort = new AbortController();
-    const points = candidateOverlay(unit).anchors.flatMap(featurePoints);
-    void collision.load(points, COLLISION_RADIUS + 1, abort.signal).then(() => {
-      if (!abort.signal.aborted) setReady(unit.id);
-    });
+    void collision.load(geometry.anchors.flatMap(featurePoints), 1, abort.signal).then(() => { if (!abort.signal.aborted) setReady(unit.id); });
     return () => abort.abort();
   }, [unit, collision]);
-  const overlay = useMemo(() => unit && candidateOverlay(unit, ready === unit.id ? collision : undefined, selected?.id),
-    [unit, ready, collision, selected]);
   const show = (p: WorldPoint) => setFocusTile({ point: p });
   return <div className="wb-page">
     <header className="wb-header">
@@ -111,11 +117,15 @@ export function CandidatesPage() {
           </button></li>)}</ol>
         </nav>
         <section className="wb-map wb-insets-map" aria-label="Candidate map">
-          {overlay && insetPin ? <Suspense fallback={<p className="wb-message">Loading inset map…</p>}>
-            <InsetMap inspectCoordinates overlay={overlay} focusTile={focusTile} style={style} insets onPick={() => {}} onFallback={() => {}}
-              onSelectFeatures={keys => {
-                const c = unit?.candidates.find(row => row.id === keys[0]);
-                if (c) navigate({ search: location.search, hash: "candidate=" + c.id });
+          {geometry && insetPin ? <Suspense fallback={<p className="wb-message">Loading inset map…</p>}>
+            <InsetMap inspectCoordinates overlay={layers.overlay} focusTile={focusTile} focusBox={focusBox} style={style} insets
+              onPick={point => { layers.clearPick(); setInspected(point); }} onFallback={() => {}}
+              onView={layers.onView} onMoveHub={layers.moveHub} onRoutingCrossing={layers.routing.selectCrossing}
+              onSelectFeatures={(keys, point) => {
+                // The topmost candidate under the click.
+                const c = keys.map(key => unit?.candidates.find(row => row.id === key)).find(Boolean);
+                if (c) { layers.clearPick(); navigate({ search: location.search, hash: "candidate=" + c.id }); return; }
+                if (!layers.pick(keys)) setInspected(point);
               }} />
           </Suspense> : <p className="wb-message">{unit ? "Insets are unavailable for these tiles." : "No candidates match these filters."}</p>}
           <div className="map-style-toggle wb-style" role="group" aria-label="Map style">
@@ -129,9 +139,12 @@ export function CandidatesPage() {
             <span>□ Origin · ■ Destination · shared tiles drawn once</span>
             {unit?.candidates[0].kind === "network_stop" && <span>Stop tiles only; no network routes implied</span>}
           </div>
+          {insetPin && geometry && <LayerControl layers={layers.layers} onToggle={layers.toggle} />}
         </section>
         <section className="wb-side-panel" aria-label="Candidate details">
           <div className="wb-panel-body">
+            {layers.panel}
+            {layers.routing.panel && <div className="wb-detail">{layers.routing.panel}</div>}
             {unit?.candidates[0].kind === "destination_violation" ? <>
               <p className="wb-callout">Current destination violations. Each landing tile is blocked and is not the exact origin of a transport. No correction has been proposed.</p>
               <p className="wb-note">Checks use the service's bundled plugin collision and transport data. Displayed map collision: tiles {tiles.version}, cache {manifest?.cacheId ?? "unknown"}; its revision may differ.</p>

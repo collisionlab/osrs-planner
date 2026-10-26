@@ -68,7 +68,7 @@ describe("transport explorer", () => {
     expect(viewOverlay(view, undefined, undefined, [box], "FAIRY_RING:0").selected).toBe("network:FAIRY_RING:0");
     const picked = viewOverlay(view, view.transports[0], undefined, [box]);
     expect(picked.anchors.map(f => f.kind)).toEqual(["edge", "point", "point"]);
-    // With hubs off: the stations' tiles alone.
+    // With the networks layer off: the stations' tiles alone.
     const bare = viewOverlay(view, undefined, undefined, [box], undefined, { networks: [] }).features;
     expect(bare.some(f => f.kind === "hub" || (f.kind === "edge" && f.spoke))).toBe(false);
     expect(bare.filter(f => f.kind === "point")).toHaveLength(4);
@@ -92,9 +92,9 @@ describe("transport explorer", () => {
     expect(readState(writeState(state))).toEqual(state);
     expect(readState("?t=nope&at=1,2&z=40")).toEqual({});
     expect(readState("?types=")).toEqual({ types: [] });
-    expect(writeState({ hubs: false })).toBe("?hubs=0");
-    expect(readState("?hubs=0")).toEqual({ hubs: false });
-    expect(readState("?hubs=1")).toEqual({});
+    // Networks are a layer of their own; only known layers are read.
+    expect(writeState({ layers: ["transports", "networks"] })).toBe("?layers=transports,networks");
+    expect(readState("?layers=networks,nope")).toEqual({ layers: ["networks"] });
   });
 
   it("reads typed tiles", () => {
