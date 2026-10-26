@@ -92,12 +92,14 @@ export function InsetInvestigation() {
   const [focusTile, setFocusTile] = useState<{ point: WorldPoint }>();
   const [focusBox, setFocusBox] = useState<WorldBox>();
   const onPlaneRegions = (target: Area | undefined, onPlane: number) => target?.regionIds.filter(id => data?.regions.get(id)?.plane === onPlane) || [];
-  // A link opens on its area unless it names a place.
+  // A link opens on its area unless it names a place (as it was opened: the map records where it is
+  // in the URL as soon as it settles, which may be before the data arrives).
   const opened = useRef(false);
+  const linkedPlace = useRef(!!state.at);
   useEffect(() => {
     if (!data || opened.current) return;
     opened.current = true;
-    if (area && !state.at) setFocusRegions({ ids: state.region ? [state.region] : onPlaneRegions(area, plane) });
+    if (area && !linkedPlace.current) setFocusRegions({ ids: state.region ? [state.region] : onPlaneRegions(area, plane) });
   }, [data]);
 
   const [correction, setCorrection] = useState<CorrectionInput>(() => emptyCorrection(undefined, undefined));
