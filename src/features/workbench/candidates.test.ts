@@ -70,7 +70,7 @@ describe("candidate geometry", () => {
   it("keeps dashed original edges, solid proposals, selection keys and unchanged points once", () => {
     const moved = { ...offset, suggested: { ...offset.suggested, origin: offset.original!.origin,
       destination: { ...offset.suggested!.destination!, x: offset.original!.destination!.x + 1 } } } as Candidate;
-    const overlay = candidateOverlay({ id: moved.id, candidates: [moved] }, undefined, moved.id);
+    const overlay = candidateOverlay({ id: moved.id, candidates: [moved] }, moved.id);
     const edges = overlay.features.filter(f => f.kind === "edge");
     expect(edges.map(e => e.dashed)).toEqual([true, false]);
     expect(overlay.features.filter(f => f.kind === "point" && f.role === "origin")).toHaveLength(1);

@@ -200,7 +200,7 @@ test("shows a network transport as the pairing of an origin row and a destinatio
 
 test("draws a network as spokes to its hub, which lists its stations", async ({ page }) => {
   await mockCatalogue(page);
-  await open(page, "?at=3110,3152,0&z=10");
+  await open(page, "?at=3110,3152,0&z=10&layers=transports,networks");
   await expect.poll(async () => (await featureCount(page)).hub).toBe(1);
   const list = page.getByRole("navigation", { name: "Transports" });
   // Clicked again should the map still be settling under load.
@@ -211,6 +211,29 @@ test("draws a network as spokes to its hub, which lists its stations", async ({ 
   }).toPass({ timeout: 20_000 });
   await list.getByRole("button", { name: /A L S/ }).click();
   await expect(list.locator(".wb-list-heading")).toContainText("At 2644 3495 0");
+});
+
+test("drags a network's hub out of the way, and puts it back", async ({ page }) => {
+  await mockCatalogue(page);
+  await open(page, "?at=3110,3152,0&z=10&layers=transports,networks");
+  await expect.poll(async () => (await featureCount(page)).hub).toBe(1);
+  const [x, y] = await settledPixel(page, RINGS.hub);
+  const [toX, toY] = await settledPixel(page, { x: RINGS.hub.x + 4, y: RINGS.hub.y - 3, plane: 0 });
+  const map = (await page.locator(".inset-map").boundingBox())!;
+  await page.mouse.move(map.x + x, map.y + y);
+  await page.mouse.down();
+  await page.mouse.move(map.x + toX, map.y + toY, { steps: 8 });
+  await page.mouse.up();
+  const layers = page.getByRole("group", { name: "Map layers" });
+  const putBack = layers.getByRole("button", { name: "Put the moved hub back" });
+  await expect(putBack).toBeVisible();
+  // The drag picked nothing; the hub is where it was left, and a click there picks its network.
+  const list = page.getByRole("navigation", { name: "Transports" });
+  await expect(list.locator(".wb-list-heading")).not.toContainText("Fairy rings");
+  await page.locator(".inset-map").click({ position: { x: toX, y: toY } });
+  await expect(list.locator(".wb-list-heading")).toContainText("Fairy rings 3 stations");
+  await putBack.click();
+  await expect(putBack).toHaveCount(0);
 });
 
 test("shows banks from the layer control, and a clicked bank's tiles and needs", async ({ page }) => {
@@ -228,13 +251,18 @@ test("shows banks from the layer control, and a clicked bank's tiles and needs",
   await expect(page.locator(".layer-status")).toContainText("Zoom in to see banks");
 });
 
-test("switches transport families and network hubs from the layer control", async ({ page }) => {
+test("switches transport families and networks from the layer control", async ({ page }) => {
   await mockCatalogue(page);
   await open(page, "?at=3110,3152,0&z=10");
   const layers = page.getByRole("group", { name: "Map layers" });
+  // Networks are off until switched on.
+  await expect.poll(async () => (await featureCount(page)).point).toBeGreaterThan(0);
+  expect((await featureCount(page)).hub).toBe(0);
+  await layers.getByRole("checkbox", { name: "Networks", exact: true }).check();
+  await expect(page).toHaveURL(/layers=transports,networks/);
   await expect.poll(async () => (await featureCount(page)).hub).toBe(1);
-  await layers.getByRole("checkbox", { name: "Network hubs" }).uncheck();
-  await expect(page).toHaveURL(/hubs=0/);
+  await layers.getByRole("checkbox", { name: "Networks", exact: true }).uncheck();
+  await expect(page).not.toHaveURL(/layers=/);
   await expect.poll(async () => (await featureCount(page)).hub).toBe(0);
   // A family is every type of its colour at once.
   await layers.getByRole("checkbox", { name: "Teleports" }).uncheck();
@@ -323,7 +351,7 @@ test("stays bounded over a dense network, and draws only network hubs zoomed out
   expect(close.edge).toBeLessThanOrEqual(fixture.meta.viewLimit);
   expect(await list.locator("ol li").count()).toBeLessThanOrEqual(200);
 
-  await open(page, "?at=3000,3300,0&z=5");
+  await open(page, "?at=3000,3300,0&z=5&layers=transports,networks");
   await expect(list.locator(".wb-list-heading")).toContainText("Zoom in to see transports");
   await expect(page.locator(".layer-status")).toContainText("Zoom in to see transports");
   const asked = views.length;

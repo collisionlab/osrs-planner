@@ -5,14 +5,13 @@ import type { WorldPoint } from "../../../domain/contracts";
 import { insetPin, mapLayers, savedStyle, saveStyle, type MapLayer, type MapStyle } from "../../../map/layers";
 import { loadInsetAssets, type InsetAssets } from "../../../map/insets/assets";
 import { CollisionMap, releaseTiles } from "../../../map/insets/collision";
-import { COLLISION_RADIUS } from "../../../map/insets/composition";
-import { LayerControl, toggleLayer } from "../../../map/insets/LayerControl";
+import { LayerControl } from "../../../map/insets/LayerControl";
 import { catalogueClassifier } from "../../../map/insets/preview";
 import type { WorldBox } from "../../../map/insets/projection";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "../provenance";
-import { ROUTING_LAYERS, useRoutingLayers } from "../RoutingPanel";
 import { loadMeta, loadView, type TransportMeta, type TransportView } from "../transports";
 import "../workbench.css";
+import { useWorkbenchLayers } from "../WorkbenchLayers";
 import { AreaBrowser } from "./AreaBrowser";
 import { loadInvestigation, tilePoint, type Area, type AreaFilter, type InvestigationData } from "./data";
 import type { CorrectionInput } from "./drafts";
@@ -25,6 +24,10 @@ import { nearbyBox, TopologyPanel } from "./TopologyPanel";
 const InsetMap = lazy(() => import("../../../map/insets/InsetMap").then(module => ({ default: module.InsetMap })));
 
 const LUMBRIDGE = { point: { x: 3222, y: 3218, plane: 0 }, zoom: 7 };
+/** The layers the page opens with: its own features over the release's collision. */
+const INVESTIGATION_LAYERS = ["collision"];
+/** The kinds of key the page's own features carry (overlay.ts); others are the layers'. */
+const OWN_KINDS = new Set(["cand", "sus", "comp", "ev", "t", "region", "anchor"]);
 /** The service takes at most this many boxes a view. */
 const MAX_BOXES = 24;
 const box = (id: string, data: InvestigationData): WorldBox | undefined => {
@@ -148,28 +151,27 @@ export function InsetInvestigation() {
     return () => abort.abort();
   }, [endsKey]);
 
-  // Collision around the tiles being looked at.
+  // The tiles being looked at: their collision, for the panel's facts whichever layers are on.
   const collision = useMemo(() => new CollisionMap(releaseTiles(tiles.base, tiles.version)), []);
   const looked = useMemo(() => [...ends, ...inspected ? [inspected] : []], [endsKey, inspected]);
   const [collisionFor, setCollisionFor] = useState("");
   useEffect(() => {
     if (!looked.length) return;
     const abort = new AbortController(), want = JSON.stringify(looked);
-    void collision.load(looked, COLLISION_RADIUS + 1, abort.signal).then(() => { if (!abort.signal.aborted) setCollisionFor(want); });
+    void collision.load(looked, 1, abort.signal).then(() => { if (!abort.signal.aborted) setCollisionFor(want); });
     return () => abort.abort();
   }, [looked, collision]);
   const collisionReady = collisionFor === JSON.stringify(looked);
 
-  const routing = useRoutingLayers(inspected, setFocusBox, state.layers ?? []);
-  const toggle = (id: string, on: boolean) => {
-    const next = toggleLayer(state.layers ?? [], id, on, ROUTING_LAYERS);
-    update({ layers: next.length ? next : undefined });
-  };
   const baseOverlay = useMemo(() => data && investigationOverlay({ data, area, plane, mode: state.mode, region: state.region, item: state.item,
-    beside: !!state.beside, topology, candidate, transports, draft, inspected, classify,
-    collision: collisionReady ? collision : undefined }), [data, area, plane, state.mode, state.region, state.item, state.beside, topology, checks, candidate, transports, draft, inspected, classify, collisionReady, collision]);
-
-  const overlay = useMemo(() => baseOverlay ? { ...baseOverlay, routing: routing.overlay } : undefined, [baseOverlay, routing.overlay]);
+    beside: !!state.beside, topology, candidate, transports, draft, inspected, classify }),
+    [data, area, plane, state.mode, state.region, state.item, state.beside, topology, checks, candidate, transports, draft, inspected, classify]);
+  // The workbench's layers under the investigation's own features: the release's collision unless the URL says otherwise.
+  const settings = useMemo(() => ({ layers: state.layers, types: state.types }), [state.layers, state.types]);
+  const layers = useWorkbenchLayers({ settings, update: next => update({ layers: next.layers, types: next.types }), defaults: INVESTIGATION_LAYERS,
+    overlay: baseOverlay, inspected, focus: setFocusBox, meta });
+  const { routing } = layers;
+  const overlay = baseOverlay ? layers.overlay : undefined;
 
   const mapRef = useRef<MapHandle>(undefined);
   const onPick = (point: WorldPoint) => {
@@ -188,9 +190,12 @@ export function InsetInvestigation() {
   const onSelectFeatures = (keys: string[], point: WorldPoint) => {
     if (picking) { onPick(point); return; }
     setInspected(point);
-    const chosen = keys.find(k => keyKind(k) !== "region" && k !== "tile" && k !== "draft");
-    if (chosen) update({ item: chosen });
-    else { const region = keys.find(k => keyKind(k) === "region"); if (region) chooseRegion(keyId(region)); }
+    // The page's own items first; then the layers' (a transport, bank or network), described in the panel.
+    const own = keys.filter(k => k === "tile" || k === "draft" || OWN_KINDS.has(keyKind(k)!));
+    const chosen = own.find(k => keyKind(k) !== "region" && k !== "tile" && k !== "draft");
+    if (chosen) { layers.clearPick(); update({ item: chosen }); return; }
+    if (layers.pick(keys.filter(k => !own.includes(k)))) return;
+    const region = own.find(k => keyKind(k) === "region"); if (region) chooseRegion(keyId(region));
   };
   const showPoint = (point: WorldPoint) => setFocusTile({ point });
 
@@ -224,7 +229,8 @@ export function InsetInvestigation() {
           <InsetMap inspectCoordinates assets={assets} areaPicker={false} overlay={overlay || undefined} style={style} insets keepFocus onPick={onPick} onFallback={() => {}}
             onSelectFeatures={onSelectFeatures} onRoutingCrossing={routing.selectCrossing} keepView fitAnchors={false} fitSelection={false}
             initialCentre={state.at ?? LUMBRIDGE} focusRegions={focusRegions} focusTile={focusTile} focusBox={focusBox}
-            onPlane={(_, next) => choosePlane(next)} onView={() => { const at = mapRef.current?.centreTile(); if (at) update({ at }); }}
+            onPlane={(_, next) => choosePlane(next)} onMoveHub={layers.moveHub}
+            onView={(boxes, resolution) => { layers.onView(boxes, resolution); const at = mapRef.current?.centreTile(); if (at) update({ at }); }}
             onReady={instance => { mapRef.current = instance; }} />
         </Suspense> : <p className="wb-message">Insets are not available for these map tiles.</p>}
         {area && <div className="wb-map-tools">
@@ -239,7 +245,7 @@ export function InsetInvestigation() {
         {insetPin && styles.length > 1 && <div className="map-style-toggle wb-style" role="group" aria-label="Map style">
           {styles.map(([id, { label }]) => <button key={id} type="button" aria-pressed={style === id} onClick={() => { setStyle(id); saveStyle(id); }}>{label}</button>)}
         </div>}
-        {insetPin && <LayerControl layers={routing.layers} onToggle={toggle} />}
+        {insetPin && <LayerControl layers={layers.layers} onToggle={layers.toggle} />}
         <div className="wb-tilebar" role="status" aria-label="Inspected tile">
           {picking ? `Click the map to choose the ${picking === "seed" ? "seed tile" : picking === "anchor" ? "anchor point" : picking}.`
             : inspected ? <><span className="wb-mono">{inspected.x} {inspected.y} {inspected.plane}</span> · {classify(inspected) === "main-world" ? "main map" : <span className="wb-mono">{classify(inspected)}</span>}</>
@@ -257,6 +263,7 @@ export function InsetInvestigation() {
             </div>
             {selectedRegion && <p className="wb-note">Region <span className="wb-mono">{selectedRegion.id}</span> · plane {selectedRegion.plane} · {selectedRegion.tileCount.toLocaleString()} tiles · bounds <span className="wb-mono">{selectedRegion.bounds.join(", ")}</span></p>}
           </div>
+          {layers.panel}
           {routing.panel}
           {state.mode === "topology"
             ? <TopologyPanel data={data} area={area} state={topologyState} checks={checks} topology={topology} candidate={candidate} item={state.item}
@@ -266,7 +273,7 @@ export function InsetInvestigation() {
             : <LabellingPanel data={data} area={area} region={state.region} item={state.item} plugin={data.plugin ?? meta?.plugin} onItem={item => update({ item })}
               onShow={showPoint} onRegion={chooseRegion} onArea={id => { const next = data.byId.get(id); if (next) chooseArea(next); }}
               correction={correction} onCorrection={setCorrection} picking={picking} onPicking={setPicking} shows={point => !!mapRef.current?.shows(point)} />}
-        </> : <><div className="wb-panel-body"><p className="wb-note">Choose an area to investigate, or click the map.</p></div>{routing.panel}</>}
+        </> : <><div className="wb-panel-body"><p className="wb-note">Choose an area to investigate, or click the map.</p></div>{layers.panel}{routing.panel}</>}
       </aside>
     </div>
     <footer className="wb-footer wb-provenance">

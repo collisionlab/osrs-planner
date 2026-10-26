@@ -2,14 +2,15 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import tiles from "../../../tiles.json";
 import { insetPin, mapLayers, savedStyle, saveStyle, type MapLayer, type MapStyle } from "../../map/layers";
-import { CollisionMap, releaseTiles } from "../../map/insets/collision";
-import { COLLISION_RADIUS } from "../../map/insets/composition";
+import { LayerControl } from "../../map/insets/LayerControl";
+import type { WorldBox } from "../../map/insets/projection";
 import { diffLineUrl, githubUrl, loadHeads, loadReview, parseSource, row, sourceLabel, sourcePath,
   type Review, type ReviewUnit, type RowChange } from "./api";
 import type { WorldPoint } from "../../domain/contracts";
 import { OpenPullPicker } from "./OpenPulls";
 import { loadCollisionManifest, type CollisionManifest } from "./provenance";
-import { changeOfKey, unitOverlay, unitPoints } from "./review";
+import { changeOfKey, unitOverlay } from "./review";
+import { useUrlLayerSettings, useWorkbenchLayers } from "./WorkbenchLayers";
 import "./workbench.css";
 
 const InsetMap = lazy(() => import("../../map/insets/InsetMap").then(module => ({ default: module.InsetMap })));
@@ -84,8 +85,8 @@ function RowTable({ review, unit, selected, onSelect, onShow }: { review: Review
   </table>;
 }
 
-/** The collision layer of the pinned tiles version, drawn around each unit. */
-const releaseCollision = () => new CollisionMap(releaseTiles(tiles.base, tiles.version));
+/** The layers a review opens with: the pull request's rows over the release's collision. */
+const REVIEW_LAYERS = ["collision"];
 
 export function ReviewPage() {
   const params = useParams();
@@ -103,7 +104,7 @@ export function ReviewPage() {
     loadReview(source, abort.signal).then(loaded => {
       // A pull request as it is now: name the push in the URL, so the link shows these rows for good.
       if (source.kind === "pull" && !source.range) {
-        navigate(sourcePath({ ...source, range: { base: loaded.base, head: loaded.head } }) + location.hash, { replace: true });
+        navigate(sourcePath({ ...source, range: { base: loaded.base, head: loaded.head } }) + location.search + location.hash, { replace: true });
       }
       setReview(loaded);
     }, reason => { if (!abort.signal.aborted) setError(String(reason instanceof Error ? reason.message : reason)); });
@@ -124,17 +125,13 @@ export function ReviewPage() {
   const [selectedChange, setSelectedChange] = useState<RowChange>();
   const [focusTile, setFocusTile] = useState<{ point: WorldPoint }>();
   useEffect(() => setSelectedChange(undefined), [unit]);
-  // The map is drawn without collision until the unit's squares arrive.
-  const collision = useMemo(releaseCollision, []);
-  const [collisionReady, setCollisionReady] = useState<ReviewUnit>();
-  useEffect(() => {
-    if (!unit) return;
-    const abort = new AbortController();
-    void collision.load(unitPoints(unit), COLLISION_RADIUS + 1, abort.signal).then(() => { if (!abort.signal.aborted) setCollisionReady(unit); });
-    return () => abort.abort();
-  }, [unit, collision]);
-  const overlay = useMemo(() => unit && unitOverlay(unit, collisionReady === unit ? collision : undefined, selectedChange),
-    [unit, collisionReady, collision, selectedChange]);
+  const rows = useMemo(() => unit && unitOverlay(unit, selectedChange), [unit, selectedChange]);
+  // The workbench's layers under the rows: the release's collision unless the URL says otherwise.
+  const [settings, updateSettings] = useUrlLayerSettings();
+  const [inspected, setInspected] = useState<WorldPoint>();
+  const [focusBox, setFocusBox] = useState<WorldBox>();
+  const layers = useWorkbenchLayers({ settings, update: updateSettings, defaults: REVIEW_LAYERS, overlay: rows, inspected, focus: setFocusBox });
+  const chooseChange = (change?: RowChange) => { layers.clearPick(); setSelectedChange(change); };
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.metaKey || event.ctrlKey) return;
@@ -174,18 +171,26 @@ export function ReviewPage() {
       </nav>
       <main className="wb-main">
         <section className="wb-map">
-          {insetPin && overlay ? <Suspense fallback={<div className="route-map" role="status">Loading inset map…</div>}>
-            <InsetMap inspectCoordinates overlay={overlay} focusTile={focusTile} style={style} insets keepFocus onPick={() => {}} onFallback={() => {}}
-              onSelectFeatures={keys => setSelectedChange(changeOfKey(unit, keys[0]))} />
+          {insetPin && rows ? <Suspense fallback={<div className="route-map" role="status">Loading inset map…</div>}>
+            <InsetMap inspectCoordinates overlay={layers.overlay} focusTile={focusTile} focusBox={focusBox} style={style} insets keepFocus
+              onPick={point => { layers.clearPick(); setInspected(point); }} onFallback={() => {}} onView={layers.onView} onMoveHub={layers.moveHub} onRoutingCrossing={layers.routing.selectCrossing}
+              onSelectFeatures={(keys, point) => {
+                const change = keys.map(key => changeOfKey(unit, key)).find(Boolean);
+                if (change) { chooseChange(change); return; }
+                if (!layers.pick(keys)) setInspected(point);
+              }} />
           </Suspense> : <p className="wb-message">Insets are not available for these map tiles.</p>}
           {insetPin && styles.length > 1 && <div className="map-style-toggle wb-style" role="group" aria-label="Map style">
             {styles.map(([id, { label }]) => <button key={id} type="button" aria-pressed={style === id}
               onClick={() => { setStyle(id); saveStyle(id); }}>{label}</button>)}
           </div>}
+          {insetPin && <LayerControl layers={layers.layers} onToggle={layers.toggle} />}
         </section>
+        {layers.panel}
+        {layers.routing.panel && <div className="wb-detail">{layers.routing.panel}</div>}
         <section className="wb-detail" aria-label="Rows">
           <h2>{unit.title} <small>{unit.file}</small></h2>
-          <RowTable review={review} unit={unit} selected={selectedChange} onSelect={setSelectedChange} onShow={point => setFocusTile({ point })} />
+          <RowTable review={review} unit={unit} selected={selectedChange} onSelect={chooseChange} onShow={point => setFocusTile({ point })} />
         </section>
       </main>
     </div>}

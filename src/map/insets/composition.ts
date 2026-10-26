@@ -70,6 +70,8 @@ export interface AreaOptions {
   onSelectFeatures?(keys: string[], point: WorldPoint): void;
   /** The world tiles in view, a box per area drawn, after each move. */
   onView?(boxes: WorldBox[], resolution: number): void;
+  /** A network's hub (by its features' key) was dragged to a tile; given, hubs can be dragged. */
+  onMoveHub?(key: string, point: WorldPoint): void;
 }
 
 /** The coarsest view anchors open at: 8 px a game tile, where collision is drawn. */
@@ -544,6 +546,23 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     // OL emits click events separately; singleclick must not turn a drag into a pick.
     queueMicrotask(() => { draggingEndpoint = false; });
   });
+  // A network's hub can be dragged out of the way; its spokes follow it, and the page is told where it was left.
+  if (areas.onMoveHub) {
+    const hubs = new Translate({ layers: [featureLayer], hitTolerance: 4, filter: feature => feature.get("kind") === "hub" && !feature.get("station") });
+    map.addInteraction(hubs);
+    const spokes = (key: string) => featureSource.getFeatures().filter(feature => feature.get("spoke") && feature.get("key") === key);
+    hubs.on("translatestart", () => { draggingEndpoint = true; });
+    hubs.on("translating", event => {
+      for (const spoke of spokes(event.features.item(0).get("key"))) {
+        const line = spoke.getGeometry() as LineString;
+        line.setCoordinates([line.getFirstCoordinate(), event.coordinate]);
+      }
+    });
+    hubs.on("translateend", event => {
+      areas.onMoveHub?.(event.features.item(0).get("key"), pickWorld(event.coordinate, assets, picked, 0));
+      queueMicrotask(() => { draggingEndpoint = false; });
+    });
+  }
   map.on("singleclick", event => {
     if (draggingEndpoint) return;
     const door = map.forEachFeatureAtPixel(event.pixel, feature => feature, { layerFilter: candidate => candidate === doorLayer, hitTolerance: 4 });
@@ -564,7 +583,8 @@ export function createComposition(target: HTMLElement, releaseAssets: InsetAsset
     if (event.dragging) return;
     const door = map.forEachFeatureAtPixel(event.pixel, feature => feature, { layerFilter: candidate => candidate === doorLayer, hitTolerance: 4 });
     const hit = door || map.forEachFeatureAtPixel(event.pixel, feature => feature, { layerFilter: candidate => candidate === routes || (candidate === featureLayer && !!areas.onSelectFeatures), hitTolerance: 4 });
-    target.style.cursor = hit ? "pointer" : "";
+    const hub = !door && areas.onMoveHub && hit?.get("kind") === "hub" && !hit.get("station");
+    target.style.cursor = hub ? "grab" : hit ? "pointer" : "";
     target.title = door ? `${door.get("name")} — click to ${door.get("open") ? "hide" : "show"}` : "";
     // Every overlay item under the pointer: the topmost lit, and each one's title (or its tile) listed.
     const under = door ? [] : map.getFeaturesAtPixel(event.pixel, { layerFilter: candidate => candidate === featureLayer, hitTolerance: 4 });
