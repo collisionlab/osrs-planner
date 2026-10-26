@@ -35,6 +35,17 @@ All twelve suggestion lists are imported, for **4,635 source rows**:
 | New transports in copied areas | 231 |
 | New teleports in copied areas | 2 |
 
+The running service splits **New transports with Wiki/cache citations** into
+`sourced_transport` (both ends in existing routing components) and
+`sourced_transport_outside_routing` (at least one end outside, including both ends).
+Membership uses the bundled A* routing data: an exact search tile or an existing
+transport site attached to at least one component. It does not snap proposed tiles
+to nearby components. Both ends belonging to components does not mean they belong
+to the same component, or that the transport is usable with a player's requirements.
+This split is computed against the running plugin revision, without changing source
+rows, candidate IDs or review decisions. The combined source count remains 1,587.
+The category selector includes explanations for every category.
+
 The nine definitions in `item-groups.tsv` are supporting evidence, not additional
 candidate rows or changes to the requirement model. Other reported differences,
 needs outside the format and unchecked tick estimates remain visible verbatim.
@@ -207,7 +218,9 @@ The category **destination violation** adds current plugin rows to the same revi
 queue. These are validation failures, not contributor proposals: the destination
 must be walkable according to the plugin's `CollisionMap.isBlocked`, or must be the
 exact origin of a transport on the same plane. Nearby open tiles, nearby origins,
-and the older walk-away check do not exempt a row. Network landing rows and
+and the older walk-away check do not exempt a row. Seasonal transports are excluded
+from this validation: their destinations are not listed and their origins cannot
+exempt a permanent transport's destination. Network landing rows and
 teleports are checked too; rows without a destination are not landing failures.
 
 The service checks the transport resources and collision bundled with its plugin

@@ -22,6 +22,14 @@ class TransportCandidatesTest {
             TransportCandidates.parse(FILE, 88, ORIGINAL, HEADER), TransportCandidates.rows(FILE, HEADER + "\n" + contents));
     }
 
+    @Test void sourcedTransportsSplitWhenEitherOrBothEndsAreOutsideRouting() {
+        var row = TransportCandidates.parse(FILE, 2, SUGGESTED, HEADER);
+        assertEquals("sourced_transport", TransportCandidates.sourcedCategory(row, p -> true));
+        assertEquals("sourced_transport_outside_routing", TransportCandidates.sourcedCategory(row, row.origin::equals));
+        assertEquals("sourced_transport_outside_routing", TransportCandidates.sourcedCategory(row, row.destination::equals));
+        assertEquals("sourced_transport_outside_routing", TransportCandidates.sourcedCategory(row, p -> false));
+    }
+
     @Test void exactRowsNotLineNumbersAndAlreadyPresent() {
         assertEquals("matches_current", reconcile("# unrelated new section\n" + ORIGINAL).status);
         assertEquals(3, reconcile("# section\n" + ORIGINAL).rows.get(0).row.line);
@@ -57,6 +65,11 @@ class TransportCandidatesTest {
         assertEquals(2, served.findValuesAsText("category").stream().filter("plane"::equals).count());
         assertEquals(32, served.findValuesAsText("category").stream().filter("non_floor"::equals).count());
         assertEquals(212, served.findValuesAsText("category").stream().filter("coordinate_offset"::equals).count());
+        long inside = served.findValuesAsText("category").stream().filter("sourced_transport"::equals).count();
+        long outside = served.findValuesAsText("category").stream().filter("sourced_transport_outside_routing"::equals).count();
+        assertEquals(1587, inside + outside);
+        assertTrue(inside > 0 && outside > 0, "the bundled catalogue exercises both routing categories");
+        System.out.printf("Sourced transports: %d inside routing, %d with an endpoint outside%n", inside, outside);
         JsonNode first = served.get(0);
         assertTrue(first.path("original").path("origin").isNull(), "teleport has no invented origin");
         assertEquals(2862, first.path("original").path("destination").path("x").asInt());

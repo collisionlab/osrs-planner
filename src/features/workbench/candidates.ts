@@ -4,7 +4,23 @@ import { geometryOverlay } from "./review";
 import type { WorldPoint } from "../../domain/contracts";
 
 export const categories = ["plane", "non_floor", "coordinate_offset", "missing_requirements", "unrepresentable_requirements",
-  "sourced_transport", "sourced_teleport", "network_stop", "cache_transport", "unsourced_transport", "copied_area", "copied_area_teleport", "destination_violation"] as const;
+  "sourced_transport", "sourced_transport_outside_routing", "sourced_teleport", "network_stop", "cache_transport", "unsourced_transport", "copied_area", "copied_area_teleport", "destination_violation"] as const;
+export const categoryDescriptions: Record<typeof categories[number], string> = {
+  plane: "The proposed correction changes an endpoint's plane.",
+  non_floor: "The contributor reports an endpoint on a tile without floor in their cache data.",
+  coordinate_offset: "The proposed correction moves an endpoint's coordinates.",
+  missing_requirements: "The proposal adds requirements missing from an existing transport.",
+  unrepresentable_requirements: "Reported requirements cannot be expressed in the current TSV format; no replacement row is supplied.",
+  sourced_transport: "New transport with Wiki/cache citations. Both endpoints belong to existing routing components (including attached transport sites); they need not be in the same component.",
+  sourced_transport_outside_routing: "New transport with Wiki/cache citations where at least one endpoint is outside existing routing components. Both ends may be outside; investigate tiles and routing coverage.",
+  sourced_teleport: "New teleport with source citations; it has a destination and no fixed origin.",
+  network_stop: "Proposed boarding/landing stop for a transport network, not a complete route between stops.",
+  cache_transport: "New ladder, stairs or crossing inferred from cache data; not verified in-game.",
+  unsourced_transport: "New transport whose endpoint tiles lack supporting sources.",
+  copied_area: "New transport in a copy of another area; instance and location applicability need checking.",
+  copied_area_teleport: "New teleport into a copied area; instance and location applicability need checking.",
+  destination_violation: "Current non-seasonal transport lands on a blocked tile with no transport starting on that exact tile and plane. No correction is proposed. Seasonal rows are excluded.",
+};
 export const reconciliationStatuses = ["matches_current", "already_present", "diverged", "missing", "ambiguous", "proposed_new", "possible_existing", "violation"] as const;
 export type Category = typeof categories[number];
 export type ReconciliationStatus = typeof reconciliationStatuses[number];
