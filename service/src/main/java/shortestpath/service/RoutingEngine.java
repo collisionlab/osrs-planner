@@ -11,8 +11,6 @@ import shortestpath.accounts.Account;
 import shortestpath.pathfinder.CollisionMap;
 import shortestpath.pathfinder.AStarPathfinder;
 import shortestpath.pathfinder.AStarRoutingStaticProvider;
-import shortestpath.pathfinder.Pathfinder;
-import shortestpath.pathfinder.PathfinderBackend;
 import shortestpath.pathfinder.PathfinderResult;
 import shortestpath.pathfinder.PluginResources;
 import shortestpath.pathfinder.astar.AStarForwardSearch;
@@ -26,8 +24,7 @@ import shortestpath.routeapi.RouteApi;
 import shortestpath.routeapi.RoutePlans;
 
 /**
- * Plans routes on the backend the settings choose, caching each account's config and exact search
- * session, and finished plans.
+ * Plans routes with A*, caching each account's config and search session, and finished plans.
  */
 final class RoutingEngine {
     private final ObjectMapper mapper;
@@ -77,19 +74,12 @@ final class RoutingEngine {
         if (compiled[0]) {
             stats.put("accountCompileMs", millis(System.nanoTime() - compileStart));
         }
-        stats.put("backend", account.backend.name());
-        PathfinderResult result;
-        if (account.backend == PathfinderBackend.LEGACY) {
-            Pathfinder pathfinder = new Pathfinder(account.config, start, Set.of(target));
-            pathfinder.run();
-            result = pathfinder.getResult();
-        } else {
-            AStarPathfinder pathfinder = new AStarPathfinder(account.config, routingStatic, account.session,
-                start, Set.of(target), null, account.config.getAStarHeuristicWeight());
-            pathfinder.run();
-            result = pathfinder.getResult();
-            astarStats(pathfinder, stats);
-        }
+        stats.put("backend", "ASTAR");
+        AStarPathfinder pathfinder = new AStarPathfinder(account.config, routingStatic, account.session,
+            start, Set.of(target), null, account.config.getAStarHeuristicWeight());
+        pathfinder.run();
+        PathfinderResult result = pathfinder.getResult();
+        astarStats(pathfinder, stats);
         if (result == null) {
             throw new IllegalStateException("the pathfinder returned no result");
         }
@@ -100,7 +90,7 @@ final class RoutingEngine {
         stats.put("pathSteps", result.getPathSteps() == null ? 0 : result.getPathSteps().size());
 
         RouteApi.RoutePlan plan = RoutePlans.plan(request.start, request.destination, result, account.config,
-            account.backend, ItemCatalog::name);
+            ItemCatalog::name);
         routes.put(routeKey, plan);
         return new Routed(plan, stats);
     }
@@ -169,7 +159,6 @@ final class RoutingEngine {
     /** A request's account and settings compiled once, and the exact search state its routes share. */
     private static final class AccountSession {
         private final AccountPathfinderConfig config;
-        private final PathfinderBackend backend;
         private final AStarRoutingSession session = new AStarRoutingSession();
 
         private AccountSession(RouteApi.RouteRequest request) {
@@ -179,7 +168,6 @@ final class RoutingEngine {
                 settings.applyPoh(account.poh(), true);
             }
             config = CompiledAccount.of(account, settings).getConfig();
-            backend = settings.pathfinderBackend();
         }
     }
 }

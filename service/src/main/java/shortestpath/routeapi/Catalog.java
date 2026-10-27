@@ -1,6 +1,8 @@
 package shortestpath.routeapi;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -8,6 +10,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import net.runelite.api.Quest;
 import net.runelite.api.Skill;
+import shortestpath.Util;
 import shortestpath.accounts.Diary;
 import shortestpath.accounts.PlantedSpiritTree;
 import shortestpath.accounts.Poh;
@@ -52,11 +55,21 @@ public final class Catalog {
     public final List<Option> spellbooks = options(Arrays.stream(Spellbook.values()), Catalog::title);
     public final List<Option> houseLocations = options(Arrays.stream(Poh.Location.values()), Catalog::title);
     public final List<Option> jewelleryBoxes = options(Arrays.stream(Poh.JewelleryBox.values()), Catalog::title);
-    public final List<Option> portals = Arrays.stream(PohNexusPortal.values())
-        .map(portal -> new Option(portal.getDisplayInfos().get(0), portal.toString())).collect(Collectors.toList());
+    public final List<Option> portals = portals();
     public final List<Option> plantedSpiritTrees = Arrays.stream(PlantedSpiritTree.values())
         .map(tree -> new Option(tree.name(), tree.pluginName)).collect(Collectors.toList());
     public final List<PlannerSettings.Setting> settings = PlannerSettings.catalog();
+
+    private static List<Option> portals() {
+        List<Option> portals = new ArrayList<>();
+        try {
+            Util.each("/poh-nexus-portals.tsv", (line, cols) ->
+                portals.add(new Option(cols[3].split(",")[0], PohNexusPortal.valueOf(cols[0]).toString())));
+        } catch (IOException e) {
+            throw new IllegalStateException("failed to load POH portals", e);
+        }
+        return List.copyOf(portals);
+    }
 
     private static <T extends Enum<T>> List<Option> options(java.util.stream.Stream<T> values, Function<T, String> name) {
         return values.map(value -> new Option(value.name(), name.apply(value))).collect(Collectors.toList());

@@ -3,6 +3,7 @@ package shortestpath.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -62,11 +63,10 @@ class RoutingEngineTest {
     }
 
     @Test
-    void theLegacyBackendCanBeChosen() {
+    void theRemovedLegacyBackendIsRejected() {
         RouteApi.RouteRequest request = Requests.route("mid", 3222, 3218, 3210, 3424);
         request.settings.put("pathfinderBackend", "LEGACY");
-        RouteApi.RoutePlan plan = ENGINE.route(request);
-        assertTrue(plan.reachable);
-        assertEquals("legacy-v1", plan.metadata.routingEngineVersion);
+        assertEquals("unknown setting: pathfinderBackend",
+            assertThrows(IllegalArgumentException.class, () -> ENGINE.route(request)).getMessage());
     }
 }

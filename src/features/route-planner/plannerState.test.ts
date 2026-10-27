@@ -73,9 +73,15 @@ describe("planner URL state", () => {
     }
   });
 
-  it("renames settings from before the plugin's A* rename", () => {
+  it("migrates settings from before the plugin's A* changes", () => {
     expect(readPlannerUrl(new URLSearchParams("from=lumbridge&pathfinderBackend=EXACT&exactHeuristicWeight=150")).settings)
-      .toEqual({ pathfinderBackend: "ASTAR", aStarHeuristicWeight: 150 });
+      .toEqual({ aStarHeuristicWeight: 150 });
     expect(readPlannerUrl(new URLSearchParams(), { exactHeuristicWeight: 120 }).settings).toEqual({ aStarHeuristicWeight: 120 });
+    for (const backend of ["LEGACY", "ASTAR", "EXACT"]) {
+      expect(readPlannerUrl(new URLSearchParams(`pathfinderBackend=${backend}&costBoats=12`)).settings)
+        .toEqual({ costBoats: 12 });
+      expect(readPlannerUrl(new URLSearchParams(), { pathfinderBackend: backend, useFairyRings: false }).settings)
+        .toEqual({ useFairyRings: false });
+    }
   });
 });

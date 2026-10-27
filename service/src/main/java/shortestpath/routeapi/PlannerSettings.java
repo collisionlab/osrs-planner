@@ -15,7 +15,6 @@ import shortestpath.settings.ConfigKey;
 import shortestpath.settings.Effect;
 import shortestpath.settings.TeleportationItem;
 import shortestpath.accounts.Unlock;
-import shortestpath.pathfinder.PathfinderBackend;
 import shortestpath.profiles.PluginSettings;
 
 /**
@@ -37,7 +36,7 @@ public final class PlannerSettings {
         "useTeleportationPortalsPoh", "pohNexusPortals", "pohJewelleryBoxTier", "pohMountedItems", "usePohMountedItems",
         "usePohObelisk");
     /** Config keys whose {@link PluginSettings} accessor, and so planner key, has another name. */
-    private static final Map<String, String> ACCESSORS = Map.of("pathfinderAlgorithm", "pathfinderBackend",
+    private static final Map<String, String> ACCESSORS = Map.of(
         "unreachableTargetDistanceThreshold", "unreachableTargetDistance");
     private static final Set<String> SEASONAL = Set.of("useSeasonalTransports", "costSeasonalTransports");
 
@@ -54,7 +53,7 @@ public final class PlannerSettings {
     }
 
     private static final Set<String> EVERYDAY = Set.of("avoidWilderness", "includeBankPath", "useTeleportationItems");
-    private static final Set<String> ADVANCED = Set.of("pathfinderBackend", "currencyThreshold",
+    private static final Set<String> ADVANCED = Set.of("currencyThreshold",
         "unreachableTargetDistance", "calculationCutoff", "aStarHeuristicWeight", "collisionAwareBlockedTargets");
     /** Plugin settings that are account facts, edited as unlocks. */
     static final Set<String> ACCOUNT = Arrays.stream(Unlock.values()).filter(unlock -> unlock.kind == Unlock.Kind.SETTING)
@@ -140,7 +139,6 @@ public final class PlannerSettings {
         settings.setIncludeBankPath(true);
         settings.setCurrencyThreshold(Integer.MAX_VALUE);
         settings.setCalculationCutoff(25);
-        settings.setPathfinderBackend(PathfinderBackend.ASTAR);
         settings.setUseSeasonalTransports(false);
         return settings;
     }
