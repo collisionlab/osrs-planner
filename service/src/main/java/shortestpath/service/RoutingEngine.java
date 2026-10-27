@@ -37,6 +37,11 @@ final class RoutingEngine {
         this.routingStatic = new AStarRoutingStaticProvider(() -> new CollisionMap(PluginResources.map())).get();
     }
 
+    /** The static routing data every A* plan uses. */
+    RoutingStatic routingStatic() {
+        return routingStatic;
+    }
+
     RouteApi.RoutePlan route(RouteApi.RouteRequest request) {
         return routeWithStats(request).plan;
     }

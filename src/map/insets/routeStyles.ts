@@ -55,7 +55,8 @@ function endpointHit(resolution: number): Style[] {
 /** Feature colours: review rows by change, transports by kind. */
 export const TONES: Record<FeatureTone, string> = { added: "#5ee08a", removed: "#ff6b6b", changed: "#ffc44d",
   object: "#c8ff3c", journey: "#6fc3ff", teleport: "#c79bff", bank: "#ffcc33",
-  area: "#ffae47", candidate: "#ff7ad9", suspect: "#ff6b6b", component: "#7ee0d0", evidence: "#ffe066", entrance: "#f7f1dc", draft: "#5ee08a" };
+  area: "#ffae47", candidate: "#ff7ad9", suspect: "#ff6b6b", component: "#7ee0d0", evidence: "#ffe066", entrance: "#f7f1dc", draft: "#5ee08a",
+  start: "#46c8ff", target: "#ff7a45", coverage: "#e8e2c8" };
 
 /** A tile's size on screen, at a view resolution. */
 const tilePixels = (resolution: number) => TILE_UNITS / resolution;
@@ -133,6 +134,7 @@ const markStyles = new Map<string, Style[]>();
  */
 export function markStyle(feature: FeatureLike, resolution: number, selected = false, hovered = false): Style[] {
   const tone = feature.get("tone") as FeatureTone, role = feature.get("role") as string;
+  if (tone === "start" || tone === "target") return coverageStyle(tone, resolution, selected, hovered);
   const width = Math.round(scaled(resolution, 0.13, 1.5, 4.5) * 2) / 2, state = selected ? "selected" : hovered ? "hovered" : "plain";
   const dashed = !!feature.get("dashed"), lineDash = dashed ? [3, 3] : undefined;
   const key = `${tone}/${role}/${width}/${state}/${dashed}`;
@@ -150,6 +152,24 @@ export function markStyle(feature: FeatureLike, resolution: number, selected = f
         image: new RegularShape({ points: 4, radius: scaled(resolution, 0.17, 1.5, 5.5), angle: Math.PI / 4, fill: new Fill({ color: ink }) }) })]),
     ];
     markStyles.set(key, styles);
+  }
+  return styles;
+}
+
+const coverageStyles = new Map<string, Style[]>();
+/**
+ * A benchmark case's start or target: a dot in its tone over its tile, never smaller than a few pixels, so
+ * where cases start and end shows over the whole world as well as on single tiles.
+ */
+function coverageStyle(tone: FeatureTone, resolution: number, selected: boolean, hovered: boolean): Style[] {
+  const radius = Math.round(Math.max(3.5, tilePixels(resolution) * 0.5) * 2) / 2, state = selected ? "selected" : hovered ? "hovered" : "plain";
+  const key = `${tone}/${radius}/${state}`;
+  let styles = coverageStyles.get(key);
+  if (!styles) {
+    const centre = (mark: FeatureLike) => (mark.getGeometry() as Polygon).getInteriorPoint();
+    styles = [new Style({ geometry: centre, zIndex: 1, image: new Circle({ radius: radius + (selected ? 2 : 0),
+      fill: new Fill({ color: TONES[tone] }), stroke: new Stroke({ color: selected ? "#ffffff" : hovered ? "#f7f1dc" : ink, width: selected ? 2.5 : 1.5 }) }) })];
+    coverageStyles.set(key, styles);
   }
   return styles;
 }

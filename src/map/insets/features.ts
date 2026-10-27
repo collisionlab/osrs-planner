@@ -18,7 +18,9 @@ export type FeatureTone =
   | "bank"
   /** Inset investigation: an area's own regions, a link a diagnostic suggests, a doubtful transport end,
    * a walking component, an evidence coordinate, an area's way in, and a link being drafted by hand. */
-  | "area" | "candidate" | "suspect" | "component" | "evidence" | "entrance" | "draft";
+  | "area" | "candidate" | "suspect" | "component" | "evidence" | "entrance" | "draft"
+  /** Benchmark coverage: where cases start, where they end, and the line between. */
+  | "start" | "target" | "coverage";
 
 /** Each feature's `title`, where it has one, is what the map shows on hovering it. */
 export type MapFeature =

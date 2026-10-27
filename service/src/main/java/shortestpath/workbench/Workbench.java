@@ -75,6 +75,22 @@ public final class Workbench {
         });
     }
 
+    /**
+     * The benchmark cases of the bundled tooling ({@link Benchmarks}): the list, and a run of one, planned on
+     * demand and kept. A run waits for the one benchmark worker; with too many waiting it answers 503.
+     */
+    public static void benchmarkRoutes(Javalin app, Supplier<Benchmarks> benchmarks) {
+        app.get("/workbench/v1/benchmarks", ctx -> ctx.header("Cache-Control", "public, max-age=300")
+            .json(benchmarks.get().index()));
+        app.get("/workbench/v1/benchmarks/run", ctx -> {
+            String suite = ctx.queryParam("suite"), name = ctx.queryParam("name");
+            if (suite == null || name == null) throw new IllegalArgumentException("expected suite= and name=");
+            ctx.future(() -> benchmarks.get().run(suite, name)
+                .orTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                .thenAccept(result -> ctx.header("Cache-Control", "no-cache").json(result)));
+        });
+    }
+
     /** The banks of the bundled plugin, all at once (there are about a hundred), for the explorer's banks layer. */
     public static void bankRoutes(Javalin app, Supplier<BankCatalog> catalog, Provenance provenance) {
         app.get("/workbench/v1/banks", ctx -> {
