@@ -7,7 +7,7 @@ import { CollisionMap, releaseTiles } from "../../map/insets/collision";
 import { COLLISION_RADIUS } from "../../map/insets/composition";
 import { featurePoints } from "../../map/insets/features";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "./provenance";
-import { baselineUrl, candidateKind, candidateLabel, candidateOverlay, categories, categoryDescriptions, contributorUrl, displacement, fieldComparison, filterUnits,
+import { baselineUrl, candidateKind, candidateLabel, candidateOverlay, areaSize, areaSizes, categories, categoryDescriptions, contributorUrl, displacement, fieldComparison, filterUnits,
   groupCandidates, loadCandidates, pointText, reconciliationStatuses, referencedGroups, reviewNote, type Candidate, type Catalogue, type ItemGroup } from "./candidates";
 
 const InsetMap = lazy(() => import("../../map/insets/InsetMap").then(module => ({ default: module.InsetMap })));
@@ -17,6 +17,7 @@ export function CandidatesPage() {
   const location = useLocation(), navigate = useNavigate();
   const params = new URLSearchParams(location.search);
   const category = params.get("category") ?? "", status = params.get("status") ?? "", query = params.get("q") ?? "";
+  const size = params.get("areaSize") ?? "";
   const wanted = new URLSearchParams(location.hash.slice(1)).get("candidate");
   const [catalogue, setCatalogue] = useState<Catalogue>();
   const [error, setError] = useState("");
@@ -32,7 +33,7 @@ export function CandidatesPage() {
     return () => abort.abort();
   }, []);
   const allUnits = useMemo(() => groupCandidates(catalogue?.candidates ?? []), [catalogue]);
-  const units = useMemo(() => filterUnits(allUnits, category, status, query), [allUnits, category, status, query]);
+  const units = useMemo(() => filterUnits(allUnits, category, status, query, size), [allUnits, category, status, query, size]);
   const index = Math.max(0, units.findIndex(unit => unit.candidates.some(c => c.id === wanted)));
   const unit = units[index];
   const pageStart = Math.floor(index / 80) * 80;
@@ -96,6 +97,10 @@ export function CandidatesPage() {
             <label>Reconciliation status<select aria-label="Reconciliation status" value={status} onChange={e => filter("status", e.target.value)}>
               <option value="">All statuses</option>{reconciliationStatuses.map(s => <option key={s} value={s}>{label(s)} ({catalogue.candidates.filter(row => row.reconciliation.status === s).length})</option>)}
             </select></label>
+            <label>Unreachable area size<select aria-label="Unreachable area size" value={size} onChange={e => filter("areaSize", e.target.value)}>
+              <option value="">All sizes</option>{Object.entries(areaSizes).map(([key, text]) => <option key={key} value={key}>{text} ({catalogue.candidates.filter(c => areaSize(c) === key).length})</option>)}
+            </select></label>
+            <p className="wb-note">For sourced transports outside routing. Uses the larger walking area when both ends are outside. Sizes exclude transport connections; 10,000+ is a lower bound.</p>
             <label>Search candidates<input value={query} placeholder="File, action, tile or source" onChange={e => filter("q", e.target.value)} /></label>
             <p className="wb-note" role="status">{units.reduce((n, u) => n + u.candidates.length, 0)} rows · {units.length} review units shown</p>
             <div className="wb-inline">
@@ -194,6 +199,10 @@ function CandidateDetail({ candidate: c, selected, collision, show, select, copy
         })}
       </tr>)}</tbody>
     </table>
+    {c.unreachableAreas && <p><b>Unreachable walking area:</b> {(["origin", "destination"] as const).map(end => {
+      const area = c.unreachableAreas?.[end];
+      return <span key={end}>{end}: {area ? area.tiles === 0 ? "no walkable area" : `${area.atLeast ? "at least " : ""}${area.tiles.toLocaleString("en-GB")} tiles` : "in existing routing"}; </span>;
+    })}</p>}
     {c.original && c.suggested && <p>Origin: {displacement(c.original.origin, c.suggested.origin)}<br />Destination: {displacement(c.original.destination, c.suggested.destination)}</p>}
     <p className="wb-note">Displayed collision flags (original → suggested):<br />
       Origin: {collisionText(c.original?.origin ?? null)} → {collisionText(c.suggested?.origin ?? null)}<br />

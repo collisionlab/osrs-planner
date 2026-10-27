@@ -241,3 +241,15 @@ choose **Copy coordinates**. The menu holds the tile you right-clicked while you
 move to its button; Escape or clicking outside closes it. Typing in a form keeps
 working normally. Insets use their real world coordinates and plane after moving.
 The main route planner does not enable coordinate inspection or its shortcut.
+
+## Unreachable walking-area size
+
+The area-size filter subdivides sourced transports outside routing into no walkable
+area, 1–9, 10–99, 100–999, 1,000–9,999 and 10,000+ tiles. Each outside endpoint is
+measured by flooding ordinary walking connections on its plane using the bundled
+plugin collision. Transport edges and proposed connections are not followed.
+Blocked endpoints report no walkable area; they are not snapped to nearby floor.
+The filter uses the larger area when both ends are outside; details show each end.
+Measurements stop at 10,000 tiles and show a lower bound for larger areas. They are
+cached for the running plugin data. These are walking-area sizes, not a claim that
+the proposal unlocks that many tiles or that the terrain is valid in-game.

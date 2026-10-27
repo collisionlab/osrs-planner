@@ -25,6 +25,8 @@ public final class TransportCandidates {
     private static final shortestpath.pathfinder.AStarRoutingStaticProvider ROUTING =
         new shortestpath.pathfinder.AStarRoutingStaticProvider(() -> new CollisionMap(PluginResources.map()));
 
+    private static final UnreachableAreas AREAS = new UnreachableAreas(new CollisionMap(PluginResources.map()));
+
     private TransportCandidates() { }
 
     static boolean inRoutingComponent(TransportDiff.Point point) {
@@ -214,6 +216,12 @@ public final class TransportCandidates {
                 value.put("suggested", proposal);
                 if (candidate.path("category").asText().equals("sourced_transport")) {
                     value.put("category", sourcedCategory(proposal, TransportCandidates::inRoutingComponent));
+                    if (value.get("category").equals("sourced_transport_outside_routing")) {
+                        Map<String, Object> areas = new LinkedHashMap<>();
+                        areas.put("origin", proposal.origin == null || inRoutingComponent(proposal.origin) ? null : AREAS.at(proposal.origin));
+                        areas.put("destination", proposal.destination == null || inRoutingComponent(proposal.destination) ? null : AREAS.at(proposal.destination));
+                        value.put("unreachableAreas", areas);
+                    }
                 }
                 List<CurrentRow> possible;
                 if (stop) {

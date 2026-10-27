@@ -3,7 +3,7 @@ import fixture from "../../../e2e/fixtures/candidates.json";
 import typesFixture from "../../../e2e/fixtures/candidate-types.json";
 import imported from "../../../service/src/main/resources/candidates/catalogue.json";
 import headers from "../../../service/src/main/resources/candidates/headers.json";
-import { candidateOverlay, displacement, fieldComparison, filterUnits, groupCandidates, referencedGroups, reviewNote, type Candidate, type ItemGroup } from "./candidates";
+import { areaSize, candidateOverlay, displacement, fieldComparison, filterUnits, groupCandidates, referencedGroups, reviewNote, type Candidate, type ItemGroup } from "./candidates";
 import { markStyle } from "../../map/insets/routeStyles";
 import Feature from "ol/Feature";
 
@@ -145,5 +145,20 @@ describe("current destination violations", () => {
     expect(note).toContain("Proposed correction: none yet");
     expect(note).toContain("https://github.com/Skretzo/shortest-path/blob/" + "a".repeat(40));
     expect(note).not.toContain("bestpath-candidates");
+  });
+});
+
+
+describe("unreachable area sizes", () => {
+  it("buckets the larger endpoint area and filters review units", () => {
+    const candidate = (tiles: number): Candidate => ({ ...plane, unreachableAreas: { origin: null, destination: { tiles, atLeast: tiles >= 10000 } } });
+    expect([0, 1, 9, 10, 99, 100, 999, 1000, 9999, 10000].map(n => areaSize(candidate(n))))
+      .toEqual(["blocked", "tiny", "tiny", "small", "small", "medium", "medium", "large", "large", "huge"]);
+    const both = { ...candidate(5), unreachableAreas: { origin: { tiles: 500, atLeast: false }, destination: { tiles: 5, atLeast: false } } };
+    expect(areaSize(both)).toBe("medium");
+    expect(areaSize(plane)).toBe("");
+    const units = [{ id: both.id, candidates: [both] }];
+    expect(filterUnits(units, "", "", "", "medium")).toEqual(units);
+    expect(filterUnits(units, "", "", "", "tiny")).toEqual([]);
   });
 });

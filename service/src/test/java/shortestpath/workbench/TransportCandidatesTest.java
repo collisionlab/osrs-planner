@@ -70,6 +70,17 @@ class TransportCandidatesTest {
         assertEquals(1587, inside + outside);
         assertTrue(inside > 0 && outside > 0, "the bundled catalogue exercises both routing categories");
         System.out.printf("Sourced transports: %d inside routing, %d with an endpoint outside%n", inside, outside);
+        var areaBuckets = new java.util.TreeMap<Integer, Integer>();
+        for (JsonNode candidate : served) {
+            if (!candidate.path("category").asText().equals("sourced_transport_outside_routing")) continue;
+            JsonNode areas = candidate.path("unreachableAreas");
+            assertTrue(areas.isObject());
+            int size = Math.max(areas.path("origin").path("tiles").asInt(), areas.path("destination").path("tiles").asInt());
+            assertTrue(size >= 0 && size <= UnreachableAreas.LIMIT);
+            int bucket = size == 0 ? 0 : size < 10 ? 1 : size < 100 ? 10 : size < 1000 ? 100 : size < 10000 ? 1000 : 10000;
+            areaBuckets.merge(bucket, 1, Integer::sum);
+        }
+        System.out.println("Unreachable area size buckets: " + areaBuckets);
         JsonNode first = served.get(0);
         assertTrue(first.path("original").path("origin").isNull(), "teleport has no invented origin");
         assertEquals(2862, first.path("original").path("destination").path("x").asInt());
