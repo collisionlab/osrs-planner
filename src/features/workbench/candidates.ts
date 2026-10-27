@@ -27,6 +27,7 @@ export type ReconciliationStatus = typeof reconciliationStatuses[number];
 export interface Candidate {
   id: string; category: Category; file: string | null; originalLine: number | null;
   kind?: "correction" | "requirement_note" | "addition" | "network_stop" | "destination_violation";
+  unreachableAreas?: { origin: { tiles: number; atLeast: boolean } | null; destination: { tiles: number; atLeast: boolean } | null };
   originalRaw: string | null; suggestedRaw: string;
   original: TransportRow | null; suggested: TransportRow | null;
   proposalHeader?: string; sourceHeader?: string; sourceRaw?: string;
@@ -80,9 +81,17 @@ export function groupCandidates(candidates: Candidate[]): CandidateUnit[] {
   });
 }
 
-export function filterUnits(units: CandidateUnit[], category: string, status: string, query: string) {
+export const areaSizes = { blocked: "No walkable area", tiny: "1–9 tiles", small: "10–99 tiles", medium: "100–999 tiles", large: "1,000–9,999 tiles", huge: "10,000+ tiles" };
+export function areaSize(c: Candidate): string {
+  if (!c.unreachableAreas) return "";
+  const tiles = Math.max(c.unreachableAreas.origin?.tiles ?? 0, c.unreachableAreas.destination?.tiles ?? 0);
+  return tiles === 0 ? "blocked" : tiles < 10 ? "tiny" : tiles < 100 ? "small" : tiles < 1000 ? "medium" : tiles < 10000 ? "large" : "huge";
+}
+
+export function filterUnits(units: CandidateUnit[], category: string, status: string, query: string, size = "") {
   const words = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
   return units.filter(unit => unit.candidates.some(c => (!category || c.category === category)
+    && (!size || areaSize(c) === size)
     && (!status || c.reconciliation.status === status)
     && words.every(word => [c.file, c.sourceFile, candidateLabel(c), c.originalRaw, c.suggestedRaw, c.source, c.whatChanges, c.alsoDiffers, c.needs, c.network]
       .join(" ").toLowerCase().includes(word))));

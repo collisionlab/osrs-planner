@@ -363,3 +363,19 @@ test("destination violations show current evidence without suggesting a correcti
   await expect(detail.getByRole("link").first()).toHaveAttribute("href", /Skretzo\/shortest-path\/blob\/a{40}/);
   await expect(page.locator(".wb-summary")).toContainText("1 destination violations");
 });
+
+test("unreachable area sizes filter candidates and survive reload", async ({ page }) => {
+  const source = candidateTypes.candidates.find(c => c.category === "sourced_transport")!;
+  const large = { ...source, id: "outside-large", category: "sourced_transport_outside_routing",
+    unreachableAreas: { origin: null, destination: { tiles: 2400, atLeast: false } } };
+  const tiny = { ...large, id: "outside-tiny", unreachableAreas: { origin: null, destination: { tiles: 4, atLeast: false } } };
+  await mockCandidates(page, { ...candidateTypes, candidates: [large, tiny] });
+  await openCandidate(page, large.id, "?areaSize=large");
+  await expect(page.getByRole("navigation", { name: "Candidates" })).toContainText("1 rows · 1 review units shown");
+  await expect(page.locator(".wb-candidate-detail.selected")).toContainText("destination: 2,400 tiles");
+  await page.getByLabel("Unreachable area size", { exact: true }).selectOption("tiny");
+  await expect(page).toHaveURL(/areaSize=tiny#candidate=outside-tiny/);
+  await expect(page.locator(".wb-candidate-detail.selected")).toContainText("destination: 4 tiles");
+  await page.reload();
+  await expect(page.getByLabel("Unreachable area size", { exact: true })).toHaveValue("tiny");
+});
