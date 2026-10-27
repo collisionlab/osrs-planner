@@ -32,7 +32,7 @@ describe("route settings", () => {
   });
 
   it("groups the settings and counts the changed ones", () => {
-    renderSettings({ pathfinderBackend: "LEGACY" });
+    renderSettings({ currencyThreshold: 1000 });
     expect(screen.getByText("Advanced").parentElement?.textContent).toContain("1 changed");
     // Unlocks the game doesn't report belong to the account panel.
     expect(screen.queryByLabelText("Axe stored at a canoe station")).toBeNull();
@@ -55,8 +55,8 @@ describe("route settings", () => {
     expect(empty.value).toBe(""); expect(empty.placeholder).toBe("No limit");
   });
 
-  it("names the pathfinder backends plainly", () => {
+  it("omits the retired backend selector", () => {
     renderSettings();
-    expect(screen.getByRole("option", { name: "A*" })).toBeTruthy();
+    expect(screen.queryByRole("combobox", { name: "Pathfinder algorithm" })).toBeNull();
   });
 });

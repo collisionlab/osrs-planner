@@ -30,6 +30,8 @@ class RequirementCoverageTest {
      * teleport timers). Remove an entry once the account model covers it; the test says when.
      * Added 2026-10-19 with the Chasm of Tears transports: the While Guthix Sleeps skull door (10820), a
      * quest varbit the account's quest states don't set.
+     * Added 2026-10-27: Slepey tablet activation (12416) needs an account unlock, and
+     * The Great Conch progress (18321) needs a quest-variable mapping; both remain unavailable.
      */
     private static final Set<String> KNOWN_GAPS = Set.of(
         "varbit 571",
@@ -56,9 +58,11 @@ class RequirementCoverageTest {
         "varbit 10150",
         "varbit 10820",
         "varbit 11479",
+        "varbit 12416",
         "varbit 16632",
         "varbit 16752",
         "varbit 16757",
+        "varbit 18321",
         "varbit 19540",
         "varbit 19541",
         "varbit 19543",

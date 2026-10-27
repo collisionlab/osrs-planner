@@ -28,14 +28,14 @@ function parseSettingValue(value: string): SettingValue {
 }
 
 /**
- * Settings under the names the plugin uses now, for links and saved settings from before its A*
- * rename: the exact backend became ASTAR and its weight setting `aStarHeuristicWeight`.
+ * Migrate old links and saved settings to the current plugin: A* is the only engine, and its
+ * weight setting is now `aStarHeuristicWeight`.
  */
 export function renamedSettings(settings: ChangedSettings): ChangedSettings {
   const result: ChangedSettings = {};
   for (const [key, value] of Object.entries(settings)) {
     if (key === "exactHeuristicWeight") result.aStarHeuristicWeight = value;
-    else result[key] = key === "pathfinderBackend" && value === "EXACT" ? "ASTAR" : value;
+    else if (key !== "pathfinderBackend") result[key] = value;
   }
   return result;
 }

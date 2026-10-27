@@ -72,7 +72,7 @@ public final class RouteItemNames {
             }
         }
         // Fairy rings need a staff, pouch runes need a pouch, and currencies pay for fares.
-        add(result, ItemVariations.DRAMEN_STAFF.getIds());
+        add(result, ItemVariations.fromName("DRAMEN_STAFF").getIds());
         result.addAll(OwnedItems.RUNE_POUCHES);
         result.addAll(TransportItems.CURRENCIES);
         return result;

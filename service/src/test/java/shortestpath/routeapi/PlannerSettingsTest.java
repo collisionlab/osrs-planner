@@ -10,7 +10,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.Test;
 import shortestpath.settings.TeleportationItem;
-import shortestpath.pathfinder.PathfinderBackend;
 import shortestpath.profiles.PluginSettings;
 
 public class PlannerSettingsTest {
@@ -18,11 +17,12 @@ public class PlannerSettingsTest {
     public void everyRoutingConfigItemIsASettingAndDisplayAndHouseItemsAreNot() {
         Set<String> keys = PlannerSettings.catalog().stream().map(setting -> setting.key).collect(Collectors.toSet());
         assertTrue(keys.containsAll(Set.of("useFairyRings", "costBoats", "useTeleportationItems", "currencyThreshold",
-            "pathfinderBackend", "aStarHeuristicWeight", "costBankVisit")));
+            "aStarHeuristicWeight", "costBankVisit")));
         // Unlocks the game doesn't report are account facts, not route settings.
         assertFalse(keys.contains("unlockCanoeAxe"));
         assertFalse(keys.contains("respawnPrifddinas"));
         assertFalse(keys.contains("drawMap"));
+        assertFalse(keys.contains("pathfinderBackend"));
         assertFalse(keys.contains("usePohFairyRing"));
         assertFalse(keys.contains("pohJewelleryBoxTier"));
         assertFalse(keys.contains("usePohMountedItems"));
@@ -36,14 +36,13 @@ public class PlannerSettingsTest {
         assertEquals(PlannerSettings.Group.EVERYDAY, groups.get("avoidWilderness"));
         assertEquals(PlannerSettings.Group.TRANSPORT, groups.get("useFairyRings"));
         assertEquals(PlannerSettings.Group.THRESHOLD, groups.get("costBoats"));
-        assertEquals(PlannerSettings.Group.ADVANCED, groups.get("pathfinderBackend"));
+        assertEquals(PlannerSettings.Group.ADVANCED, groups.get("aStarHeuristicWeight"));
         assertThrows(IllegalStateException.class, () -> PlannerSettings.group("drawNewThing", "Settings", boolean.class));
     }
 
     @Test
     public void jsonValuesOverrideThePlannerDefaults() {
         PluginSettings defaults = PlannerSettings.fromJson(null);
-        assertEquals(PathfinderBackend.ASTAR, defaults.pathfinderBackend());
         assertFalse(defaults.isBypassVarbitChecks());
         assertEquals(TeleportationItem.INVENTORY_AND_BANK, defaults.useTeleportationItems());
 

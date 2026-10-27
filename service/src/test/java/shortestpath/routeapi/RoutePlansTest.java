@@ -8,7 +8,6 @@ import shortestpath.WorldPointUtil;
 import shortestpath.pathfinder.BankVisitState;
 import shortestpath.pathfinder.PathStep;
 import shortestpath.pathfinder.PathTerminationReason;
-import shortestpath.pathfinder.PathfinderBackend;
 import shortestpath.pathfinder.PathfinderResult;
 import shortestpath.profiles.Profiles;
 import shortestpath.profiles.ProfileContext;
@@ -28,7 +27,7 @@ public class RoutePlansTest {
             0, 0, 0, PathTerminationReason.TARGET_REACHED);
         RouteApi.RoutePlan plan = RoutePlans.plan(null, null, result,
             Profiles.EARLY.setup(new ProfileContext(start, true)).compile().getConfig(),
-            PathfinderBackend.ASTAR, String::valueOf);
+            String::valueOf);
 
         assertEquals(1, plan.segments.stream().filter(RouteApi.BankSegment.class::isInstance).count());
         RouteApi.TravelSegment travel = (RouteApi.TravelSegment) plan.segments.stream()

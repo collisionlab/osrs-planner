@@ -32,8 +32,6 @@ export const catalog: Catalog = {
     setting("useFairyRings", "Use fairy rings", "boolean", true, "TRANSPORT"),
     setting("costBoats", "Boat threshold", "integer", 0, "THRESHOLD"),
     setting("currencyThreshold", "Currency threshold", "integer", 2147483647, "ADVANCED"),
-    setting("pathfinderBackend", "Pathfinder algorithm", "choice", "ASTAR", "ADVANCED",
-      [{ id: "LEGACY", name: "Legacy" }, { id: "ASTAR", name: "A*" }]),
   ],
 };
 
