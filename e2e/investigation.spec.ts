@@ -12,7 +12,10 @@ test.use({ baseURL: "http://workbench.localhost:5179" });
 
 const fixture = (name: string) => readFileSync(path.resolve(import.meta.dirname, "fixtures", name), "utf8");
 const investigations = fixture("insets/investigations.json");
-const topology = JSON.parse(fixture("insets/topology.json"));
+// The report was recorded on cache 2746; it claims the pinned tiles' cache so a new game cache leaves it verified.
+const CACHE = Number(tiles.version.split("-")[0]);
+const recorded = JSON.parse(fixture("insets/topology.json"));
+const topology = { ...recorded, collision: { ...recorded.collision, cacheId: CACHE } };
 const transports = JSON.parse(fixture("transports.json")) as {
   meta: unknown; transports: { id: string; label: string; origin: Point | null; destination: Point }[];
 };
@@ -59,7 +62,7 @@ async function mock(page: Page, { investigationsFile = investigations as string 
     return route.fulfill({ status: 404, json: { error: "not mocked" } });
   });
   await page.route(`${tiles.base}/collision/${tiles.version}/manifest.json`, route => route.fulfill({ json: {
-    layer: "collision", cacheId: 2746, dumperSource: { repository: "osrs-pathfinding/shortest-path-tooling", rev: "e615afa705469cdb541c496f1fe99d7ce7e5d4e5" } } }));
+    layer: "collision", cacheId: CACHE, dumperSource: { repository: "osrs-pathfinding/shortest-path-tooling", rev: "e615afa705469cdb541c496f1fe99d7ce7e5d4e5" } } }));
   await page.addInitScript(() => localStorage.setItem("osrs-planner.map-style", "tactical"));
 }
 
@@ -146,7 +149,7 @@ test("inspects a candidate link between two regions, with its evidence and rows"
   await open(page, `?area=area:taverley-dungeon&region=${TAVERLEY}`);
   const panel = details(page);
   await panel.getByText("Checks and what “reached” means").click();
-  await expect(panel.getByText("cache 2746, as the insets")).toBeVisible();
+  await expect(panel.getByText(`cache ${CACHE}, as the insets`)).toBeVisible();
   await panel.getByRole("button", { name: /2905 9681 0 → 2791 9819 1/ }).click();
   await expect(page).toHaveURL(/sel=cand:k-taverley-upper/);
   const candidate = panel.getByRole("region", { name: "Selected candidate" });
@@ -248,7 +251,7 @@ test("marks a report from another cache or plugin as unverified", async ({ page 
   await open(page, "?area=area:taverley-dungeon&sel=cand:k-taverley-upper");
   const panel = details(page);
   await expect(panel.getByRole("alert")).toContainText("Unverified");
-  await expect(panel).toContainText("report flooded cache 2700, but these insets were cut from cache 2746");
+  await expect(panel).toContainText(`report flooded cache 2700, but these insets were cut from cache ${CACHE}`);
   await expect(panel).toContainText("the explorer shows @12728cc");
   await expect(panel.getByRole("region", { name: "Selected candidate" })).toContainText("unverified report");
   await expect(page.locator(".wb-footer")).toContainText("unverified against this page");

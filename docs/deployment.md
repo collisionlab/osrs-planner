@@ -4,7 +4,9 @@ Production runs one image: the planner frontend and route service, built from a 
 infra's `releases/osrs-planner.json` chooses which image runs. Everything else reaches production by
 changing a pin in this repository. That makes a new commit on `main`, which builds a new image.
 
-To see where every pin stands, run `scripts/pin-status`. It exits 1 when a pin is dirty.
+To see where every pin stands, run `scripts/pin-status`. It exits 1 when a pin is dirty. You don't
+have to: `watch-pins.yml` checks daily and opens the issue **Automation needs attention** only when
+something is stuck (see [Watching](#watching)).
 
 ## The pins
 
@@ -14,6 +16,7 @@ To see where every pin stands, run `scripts/pin-status`. It exits 1 when a pin i
 | shortest-path-tooling | `tooling` submodule (`.gitmodules`: upstream `master`) | `bump-tooling.yml` → `scripts/bump-tooling` → PR `pin/tooling` | daily 05:17 UTC, or `gh workflow run bump-tooling -R collisionlab/osrs-planner` | itself, once CI passes |
 | Shortest Path plugin | `tooling/shortest-path`, the commit tooling pins | upstream tooling's own bot (`chore: update shortest-path submodule to …`), then our tooling bump | when upstream tooling bumps it; ours follows the next day | with the tooling bump |
 | Tiles (every plane, both styles) | `tiles.json` `version` | osrs-tiles `publish.yml` renders and uploads; its `insets.yml` opens the PR `pin/map-assets` | Thursdays 06:00 UTC (game cache), a renderer push to osrs-tiles `main`, or a manual run | with the insets, below |
+| Routing layers | `tiles.json` `routingLayers` | osrs-tiles `routing-layers.yml` (dispatch) → `scripts/pin-routing-layers` | by hand, when the plugin's collision or transports change | with a hand-written PR. They keep their own `tileVersion`: the tiles release whose collision is the plugin's `collision-map.zip`, which may be older than the map's tiles. The planner checks them against that, so a new game cache never invalidates them; the workbench's provenance line says when they differ |
 | Insets (metadata only) | `tiles.json` `insets` | osrs-tiles `insets.yml` → `scripts/pin-insets` → PR `pin/map-assets` | after each publish, an inset-code push to osrs-tiles `main`, daily 07:30 UTC | itself once CI passes, unless it is a **draft** waiting for you (the PR body says why) |
 
 What tiles and inset bundles contain, and their URL layout, is in osrs-tiles' `docs/tiles.md`.
@@ -109,7 +112,7 @@ has an anchor, and a `reason` (osrs-tiles `docs/tiles.md`). Push it the same way
 
 | Symptom | Why | What to do |
 |---|---|---|
-| `pin/tooling` open with red CI | the new tooling or plugin broke a guard (for example `RequirementCoverageTest`, `CatalogTest`, `RouteSchemaTest`) or a build | push the planner fixes to `pin/tooling`; the daily job won't overwrite a branch that has commits from anyone other than collisionlab-bot. CI passing then merges it |
+| `pin/tooling` open with red CI | the new tooling or plugin broke a contract (for example `CatalogTest`, `RouteSchemaTest`) or a build. Transport variables the account model can't set don't fail it: `RequirementCoverageTest` lists them as follow-ups | push the planner fixes to `pin/tooling`; the daily job won't overwrite a branch that has commits from anyone other than collisionlab-bot. CI passing then merges it |
 | `pin/map-assets` open as a **draft** | something needs a person: the first insets, more than 10% of a style's tiles changed (`tile-review`), or more than 10% of inset areas changed (`compare-insets`) | follow the PR's **Action needed** list: check and mark it ready, and CI then merges it |
 | `pin/map-assets` open with red CI | `scripts/check-map-assets` found the tiles and insets incompatible, or a style's tiles missing a square an inset covers | fix in osrs-tiles; the next build refreshes the PR |
 | infra `pin/osrs-planner-…` open | infra's plan or checks failed | fix in infra; nothing reaches production until it merges |
@@ -123,6 +126,26 @@ tile update.
 
 `pin/tooling` and `pin/map-assets` are fixed branch names that are refreshed in place, so at most one of
 each is open. Infra opens one pin PR per planner commit.
+
+## Watching
+
+`watch-pins.yml` runs `scripts/watch-pins` daily at 09:45 UTC (or `gh workflow run watch-pins -R
+collisionlab/osrs-planner`; `scripts/watch-pins --dry-run` prints what it would do). It keeps two
+issues in this repository:
+
+- **Automation needs attention**: a bot pin PR that is a draft, red for more than 6 hours, or open for
+  more than 12; an infra release pin open for more than 12 hours; `main` not in infra's release pin, or
+  the live `/version` not matching it, 3 hours after the commit; `bump-tooling`, `ci` on `main`, or
+  osrs-tiles `publish`/`insets` failing on their last two runs. It is created, or gets a comment, only
+  when something new appears, and closes itself once everything is clear. Nothing else needs a
+  person.
+- **Follow-ups**: reachable inset areas without a name or anchor, or whose curated name lost its
+  evidence (the pinned bundle's `review.json`), and transport variables no account fact sets (the
+  latest `main` CI run's `requirement-gaps.md`, from `RequirementCoverageTest`). Its body is
+  rewritten in place without notifying anyone.
+
+It also closes infra `pin/osrs-planner-*` PRs that a newer merged pin has overtaken, so a failed
+plan for an old release doesn't linger.
 
 ## Clean, current and dirty
 
@@ -147,3 +170,4 @@ PRs.
 | 05:17 | `bump-tooling` (this repository) |
 | Thu 06:00 | osrs-tiles `publish` |
 | 07:30 | osrs-tiles `insets` |
+| 09:45 | `watch-pins` (this repository) |

@@ -1,0 +1,36 @@
+name: watch-pins
+
+# Daily, after the morning pins have had time to merge: keep the "Automation needs attention" and
+# "Follow-ups" issues current, and close infra pins a newer release has overtaken (scripts/watch-pins).
+on:
+  schedule:
+    - cron: "45 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+  checks: read
+  pull-requests: read
+
+concurrency:
+  group: watch-pins
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+          owner: collisionlab
+          repositories: infra
+      - name: Watch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INFRA_TOKEN: ${{ steps.bot.outputs.token }}
+        run: scripts/watch-pins

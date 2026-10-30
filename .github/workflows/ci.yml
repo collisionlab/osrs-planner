@@ -24,6 +24,20 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Route service and route API
         run: nix develop -c gradle --no-daemon :service:test
+      # Gaps that don't fail the build (RequirementCoverageTest): on the run's summary, and from main's
+      # runs into the Follow-ups issue (watch-pins.yml).
+      - name: Follow-ups
+        run: |
+          if [ -s service/build/reports/requirement-gaps.md ]; then
+            { echo "### Follow-ups: transport variables no account fact sets"; cat service/build/reports/requirement-gaps.md; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
+        with:
+          name: follow-ups
+          path: service/build/reports/requirement-gaps.md
+          if-no-files-found: ignore
+          retention-days: 30
       - name: Validate pinned map assets
         run: nix develop -c python3 scripts/check-map-assets
       - name: Frontend
