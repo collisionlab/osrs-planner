@@ -36,9 +36,17 @@ class RequirementCoverageTest {
      * quest varbit the account's quest states don't set.
      * Added 2026-10-27: Slepey tablet activation (12416) needs an account unlock, and
      * The Great Conch progress (18321) needs a quest-variable mapping; both remain unavailable.
+     * Added 2026-10-30 with the master scroll book teleports: the book's stored scroll counts (9650,
+     * 10967, 10995, 11029, 15749, 16238) and the Spider cave teleport's quest progress (varplayer 302).
      */
     private static final Set<String> KNOWN_GAPS = Set.of(
         "varbit 571",
+        "varbit 9650",
+        "varbit 10967",
+        "varbit 10995",
+        "varbit 11029",
+        "varbit 15749",
+        "varbit 16238",
         "varbit 1499",
         "varbit 1869",
         "varbit 1990",
@@ -72,6 +80,7 @@ class RequirementCoverageTest {
         "varbit 19543",
         "varplayer 32",
         "varplayer 267",
+        "varplayer 302",
         "varplayer 892",
         "varplayer 4560",
         "varplayer 4566");
