@@ -328,7 +328,7 @@ test("says when collision wasn't made from the transport data's revision", async
   await open(page, "?at=3210,3214,0&z=9");
   const footer = page.locator(".wb-provenance");
   await expect(footer).toContainText(fixture.meta.plugin.rev.slice(0, 7));
-  await expect(footer.locator(".wb-prov.differs")).toHaveAttribute("title", /walls may not match/);
+  await expect(footer.locator(".wb-prov.differs", { hasText: "Collision" })).toHaveAttribute("title", /walls may not match/);
   await expect(footer).toContainText(`Insets ${tiles.insets.version.slice(0, 12)}`);
 });
 
@@ -336,7 +336,7 @@ test("trusts collision made from the same revision", async ({ page }) => {
   await mockCatalogue(page, { collisionRev: fixture.meta.tooling.rev });
   await open(page, "?at=3210,3214,0&z=9");
   await expect(page.locator(".wb-provenance")).toContainText("Collision");
-  await expect(page.locator(".wb-provenance .wb-prov.differs")).toHaveCount(0);
+  await expect(page.locator(".wb-provenance .wb-prov.differs", { hasText: "Collision" })).toHaveCount(0);
 });
 
 test("stays bounded over a dense network, and draws only network hubs zoomed out", async ({ page }) => {

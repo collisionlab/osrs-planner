@@ -44,5 +44,9 @@ export function provenance(data: { plugin: Revision; tooling: Revision } | undef
   }
   lines.push(insetPin ? { subject: "Insets", status: insetPin.tileVersion === tiles.version ? "ok" : "differs", label: insetPin.version.slice(0, 12),
     text: `${insetPin.version.slice(0, 12)} for tiles ${insetPin.tileVersion}` } : { subject: "Insets", status: "unknown", label: "none", text: "none pinned" });
+  const routing = tiles.routingLayers as { version: string; tileVersion: string } | null | undefined;
+  if (routing) lines.push({ subject: "Routing layers", status: routing.tileVersion === tiles.version ? "ok" : "differs", label: routing.version.slice(0, 12),
+    text: `${routing.version.slice(0, 12)} for tiles ${routing.tileVersion}`
+      + (routing.tileVersion === tiles.version ? "" : " — the plugin's collision is from that release, so a few walls may differ from these tiles") });
   return lines;
 }
