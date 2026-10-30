@@ -15,19 +15,22 @@ something is stuck (see [Watching](#watching)).
 | Release image | infra `releases/osrs-planner.json` | `ci.yml` `release` job → `scripts/pin-release` → infra PR `pin/osrs-planner-<sha>` | every push to `main` | itself, once infra's tofu plan and checks pass; the merge applies and deploys |
 | shortest-path-tooling | `tooling` submodule (`.gitmodules`: upstream `master`) | `bump-tooling.yml` → `scripts/bump-tooling` → PR `pin/tooling` | daily 05:17 UTC, or `gh workflow run bump-tooling -R collisionlab/osrs-planner` | itself, once CI passes |
 | Shortest Path plugin | `tooling/shortest-path`, the commit tooling pins | upstream tooling's own bot (`chore: update shortest-path submodule to …`), then our tooling bump | when upstream tooling bumps it; ours follows the next day | with the tooling bump |
-| Tiles (every plane, both styles) | `tiles.json` `version` | osrs-tiles `publish.yml` renders and uploads; its `insets.yml` opens the PR `pin/map-assets` | Thursdays 06:00 UTC (game cache), a renderer push to osrs-tiles `main`, or a manual run | with the insets, below |
+| Collision dumper for the tiles | osrs-tiles `flake.lock` `tooling` input | osrs-tiles `bump-tooling.yml` → its `scripts/bump-tooling` → osrs-tiles PR `pin/tooling`, to the tooling commit this repository pins | daily 05:50 UTC, when the dumper (`collision-map-update/`) differs | itself, once osrs-tiles' checks pass; the merge publishes a new tiles version |
+| Tiles (every plane, both styles) | `tiles.json` `version` | osrs-tiles `publish.yml` renders and uploads; its `insets.yml` opens the PR `pin/map-assets` | Thursdays 06:00 UTC (game cache), a renderer or dumper push to osrs-tiles `main`, or a manual run | with the insets, below |
 | Routing layers | `tiles.json` `routingLayers` | osrs-tiles `insets.yml` → `scripts/build-routing-layers` → the same PR `pin/map-assets` | when the planner's pinned plugin differs from the layers' (so after a tooling bump), at the next insets run | with the insets. They keep their own `tileVersion`: the tiles release whose collision is closest to the plugin's `collision-map.zip`, which may be older than the map's tiles; the manifest lists the squares that differ. The planner checks them against that tiles release, and the workbench's provenance line says when it isn't the map's. A failed build keeps the old layers and is a follow-up |
 | Insets (metadata only) | `tiles.json` `insets` | osrs-tiles `insets.yml` → `scripts/pin-insets` → PR `pin/map-assets` | after each publish, an inset-code push to osrs-tiles `main`, daily 07:30 UTC | itself once CI passes, unless it is a **draft** waiting for you (the PR body says why) |
 
 What tiles and inset bundles contain, and their URL layout, is in osrs-tiles' `docs/tiles.md`.
 
-Nothing updates `flake.lock`, `package-lock.json` or the Gradle dependencies. Those change only through
+Nothing updates this repository's `flake.lock`, `package-lock.json` or the Gradle dependencies. Those change only through
 hand-written PRs.
 
 ```mermaid
 flowchart LR
   upPlugin[Skretzo/shortest-path master] -->|upstream tooling bot| upTooling[shortest-path-tooling master]
   upTooling -->|bump-tooling, daily 05:17| pinTooling[PR pin/tooling]
+  main -->|its tooling commit| tilesBump[osrs-tiles bump-tooling, daily 05:50]
+  tilesBump -->|PR pin/tooling, merges itself| tilesRepo
   tilesRepo[osrs-tiles publish, Thursdays] -->|tile candidate| insets[osrs-tiles insets, daily 07:30]
   main -->|its transports| insets
   insets -->|tiles, insets, routing layers| pinAssets[PR pin/map-assets]
@@ -114,6 +117,7 @@ has an anchor, and a `reason` (osrs-tiles `docs/tiles.md`). Push it the same way
 |---|---|---|
 | `pin/tooling` open with red CI | the new tooling or plugin broke a contract (for example `CatalogTest`, `RouteSchemaTest`) or a build. Transport variables the account model can't set don't fail it: `RequirementCoverageTest` lists them as follow-ups | push the planner fixes to `pin/tooling`; the daily job won't overwrite a branch that has commits from anyone other than collisionlab-bot. CI passing then merges it |
 | `pin/map-assets` open as a **draft** | something needs a person: the first insets, more than 10% of a style's tiles changed (`tile-review`), or more than 10% of inset areas changed (`compare-insets`) | follow the PR's **Action needed** list: check and mark it ready, and CI then merges it |
+| osrs-tiles `pin/tooling` open with red CI | the new dumper doesn't compile against the tiles' RuneLite cache library, or broke a check | push fixes to osrs-tiles' `pin/tooling`; its daily job leaves a branch with someone else's commits alone |
 | `pin/map-assets` open with red CI | `scripts/check-map-assets` found the tiles and insets incompatible, or a style's tiles missing a square an inset covers | fix in osrs-tiles; the next build refreshes the PR |
 | infra `pin/osrs-planner-…` open | infra's plan or checks failed | fix in infra; nothing reaches production until it merges |
 | live `/version` differs from the infra pin | deploy in progress, or the smoke checks refused the new release (blue/green keeps the old one) | check infra's `tofu` run on `main` |
@@ -133,10 +137,10 @@ each is open. Infra opens one pin PR per planner commit.
 collisionlab/osrs-planner`; `scripts/watch-pins --dry-run` prints what it would do). It keeps two
 issues in this repository:
 
-- **Automation needs attention**: a bot pin PR that is a draft, red for more than 6 hours, or open for
+- **Automation needs attention**: a bot pin PR (here or in osrs-tiles) that is a draft, red for more than 6 hours, or open for
   more than 12; an infra release pin open for more than 12 hours; `main` not in infra's release pin, or
   the live `/version` not matching it, 3 hours after the commit; `bump-tooling`, `ci` on `main`, or
-  osrs-tiles `publish`/`insets` failing on their last two runs. It is created, or gets a comment, only
+  osrs-tiles `bump-tooling`/`publish`/`insets` failing on their last two runs. It is created, or gets a comment, only
   when something new appears, and closes itself once everything is clear. Nothing else needs a
   person.
 - **Follow-ups**: reachable inset areas without a name or anchor, or whose curated name lost its
@@ -169,6 +173,7 @@ PRs.
 | hourly :17 | infra `uptime` |
 | 03:17 | infra `tofu` drift check |
 | 05:17 | `bump-tooling` (this repository) |
+| 05:50 | osrs-tiles `bump-tooling` |
 | Thu 06:00 | osrs-tiles `publish` |
 | 07:30 | osrs-tiles `insets` |
 | 09:45 | `watch-pins` (this repository) |
