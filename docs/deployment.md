@@ -16,7 +16,7 @@ something is stuck (see [Watching](#watching)).
 | shortest-path-tooling | `tooling` submodule (`.gitmodules`: upstream `master`) | `bump-tooling.yml` → `scripts/bump-tooling` → PR `pin/tooling` | daily 05:17 UTC, or `gh workflow run bump-tooling -R collisionlab/osrs-planner` | itself, once CI passes |
 | Shortest Path plugin | `tooling/shortest-path`, the commit tooling pins | upstream tooling's own bot (`chore: update shortest-path submodule to …`), then our tooling bump | when upstream tooling bumps it; ours follows the next day | with the tooling bump |
 | Tiles (every plane, both styles) | `tiles.json` `version` | osrs-tiles `publish.yml` renders and uploads; its `insets.yml` opens the PR `pin/map-assets` | Thursdays 06:00 UTC (game cache), a renderer push to osrs-tiles `main`, or a manual run | with the insets, below |
-| Routing layers | `tiles.json` `routingLayers` | osrs-tiles `routing-layers.yml` (dispatch) → `scripts/pin-routing-layers` | by hand, when the plugin's collision or transports change | with a hand-written PR. They keep their own `tileVersion`: the tiles release whose collision is the plugin's `collision-map.zip`, which may be older than the map's tiles. The planner checks them against that, so a new game cache never invalidates them; the workbench's provenance line says when they differ |
+| Routing layers | `tiles.json` `routingLayers` | osrs-tiles `insets.yml` → `scripts/build-routing-layers` → the same PR `pin/map-assets` | when the planner's pinned plugin differs from the layers' (so after a tooling bump), at the next insets run | with the insets. They keep their own `tileVersion`: the tiles release whose collision is closest to the plugin's `collision-map.zip`, which may be older than the map's tiles; the manifest lists the squares that differ. The planner checks them against that tiles release, and the workbench's provenance line says when it isn't the map's. A failed build keeps the old layers and is a follow-up |
 | Insets (metadata only) | `tiles.json` `insets` | osrs-tiles `insets.yml` → `scripts/pin-insets` → PR `pin/map-assets` | after each publish, an inset-code push to osrs-tiles `main`, daily 07:30 UTC | itself once CI passes, unless it is a **draft** waiting for you (the PR body says why) |
 
 What tiles and inset bundles contain, and their URL layout, is in osrs-tiles' `docs/tiles.md`.
@@ -30,7 +30,7 @@ flowchart LR
   upTooling -->|bump-tooling, daily 05:17| pinTooling[PR pin/tooling]
   tilesRepo[osrs-tiles publish, Thursdays] -->|tile candidate| insets[osrs-tiles insets, daily 07:30]
   main -->|its transports| insets
-  insets -->|validated pair| pinAssets[PR pin/map-assets]
+  insets -->|tiles, insets, routing layers| pinAssets[PR pin/map-assets]
   pinTooling -->|CI green: merge-pin| main[osrs-planner main]
   pinAssets -->|CI green, not draft: merge-pin| main
   human[hand-written PRs] --> main
@@ -140,7 +140,8 @@ issues in this repository:
   when something new appears, and closes itself once everything is clear. Nothing else needs a
   person.
 - **Follow-ups**: reachable inset areas without a name or anchor, or whose curated name lost its
-  evidence (the pinned bundle's `review.json`), and transport variables no account fact sets (the
+  evidence (the pinned bundle's `review.json`), routing layers from another plugin commit than the
+  pinned one, and transport variables no account fact sets (the
   latest `main` CI run's `requirement-gaps.md`, from `RequirementCoverageTest`). Its body is
   rewritten in place without notifying anyone.
 

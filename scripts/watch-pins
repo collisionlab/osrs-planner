@@ -138,6 +138,14 @@ def scheduled(attention):
 
 def follow_ups(items):
     tiles = json.loads(base64.b64decode(gh("api", f"repos/{PLANNER}/contents/tiles.json", "--jq", ".content")))
+    routing = tiles.get("routingLayers")
+    if routing:
+        tooling = gh("api", f"repos/{PLANNER}/contents/tooling", "--jq", ".sha").strip()
+        plugin = gh("api", f"repos/osrs-pathfinding/shortest-path-tooling/contents/shortest-path?ref={tooling}",
+                    "--jq", ".sha").strip()
+        if routing["pluginRevision"] != plugin:
+            items.append(f"The routing layers are from plugin `{routing['pluginRevision'][:12]}`, the planner pins "
+                         f"`{plugin[:12]}`: osrs-tiles' `insets` run rebuilds them, so check its log if this stays.")
     insets = tiles.get("insets")
     if insets:
         review = fetch(f"{tiles['base']}/insets/{insets['version']}/review.json")
