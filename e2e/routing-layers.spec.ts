@@ -5,24 +5,33 @@ import tiles from "../tiles.json" with { type: "json" };
 
 test.use({ baseURL: "http://workbench.localhost:5179" });
 
-// A snapshot of the pinned routing release: the squares these tests look at, with their original bytes.
+// A snapshot of one routing release (719d50c9): the squares these tests look at, with their original
+// bytes. The page is served the snapshot's own pin in place of tiles.json's, so a new routing release,
+// which renumbers components, doesn't change what these tests see.
 const root = path.resolve(import.meta.dirname, "fixtures/routing");
 const fixture = JSON.parse(readFileSync(path.join(root, "dungeon.json"), "utf8"));
-const release = `${tiles.base}/routing-layers/${tiles.routingLayers.version}`;
+const snapshot = JSON.parse(readFileSync(path.join(root, "manifest.json"), "utf8"));
+const pin = {
+  version: snapshot.version, tileVersion: snapshot.tileVersion, collisionContentSha256: snapshot.collisionContentSha256,
+  transportSha256: snapshot.transportSha256, separatorSha256: snapshot.separatorSha256, pluginRevision: snapshot.plugin.revision,
+};
+const release = `${tiles.base}/routing-layers/${pin.version}`;
 
 type Point = { x: number; y: number; plane: number };
 type InsetMapHandle = { showTile(p: Point): void; pixel(p: Point): number[]; fitRegions(ids: string[]): void };
 const point = (p: number[]): Point => ({ x: p[0], y: p[1], plane: p[2] });
 
 async function setup(page: Page) {
-  // Offer Blueprint even while the published pin has two styles.
+  // Offer Blueprint even while the published pin has two styles, and pin the snapshot's release. Vite
+  // serves tiles.json as a module with one `export const` per key.
   await page.route(url => url.pathname === "/tiles.json", async route => {
     const response = await route.fetch();
-    const body = (await response.text()).replace('"tactical"', '"tactical", "blueprint"');
+    const body = (await response.text()).replace('"tactical"', '"tactical", "blueprint"')
+      .replace(/^export const routingLayers = .*;$/m, `export const routingLayers = ${JSON.stringify(pin)};`);
     await route.fulfill({ response, body });
   });
   await page.route(`${release}/**`, route => {
-    const relative = new URL(route.request().url()).pathname.split(`/${tiles.routingLayers.version}/`)[1];
+    const relative = new URL(route.request().url()).pathname.split(`/${pin.version}/`)[1];
     const file = path.join(root, relative);
     if (!existsSync(file)) return route.fulfill({ status: 404 });
     return route.fulfill({ body: readFileSync(file), contentType: relative.endsWith(".json") ? "application/json" : "application/octet-stream" });
