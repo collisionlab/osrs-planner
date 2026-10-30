@@ -38,7 +38,8 @@ export function useRoutingLayers(inspected: WorldPoint | undefined, focus: (box:
   useEffect(() => {
     if (!pin || !(active || wanted) || data) return;
     const abort = new AbortController();
-    RoutingData.load(`${tiles.base}/routing-layers/${pin.version}`, pin, tiles.version, abort.signal).then(
+    // Built from the plugin's collision, so from the tiles release it matches, which may be older than the map's.
+    RoutingData.load(`${tiles.base}/routing-layers/${pin.version}`, pin, pin.tileVersion, abort.signal).then(
       value => { if (!abort.signal.aborted) setData(value); },
       error => { if (!abort.signal.aborted) setError(String(error)); });
     return () => abort.abort();

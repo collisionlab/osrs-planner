@@ -1,0 +1,227 @@
+#!/usr/bin/env python3
+"""Keep two issues in collisionlab/osrs-planner up to date, so a person only looks when needed.
+
+- "Automation needs attention": things the bots cannot get past alone. A bot pin PR that is a draft or
+  has been red for a while, a pin that should have merged and hasn't, a release that hasn't reached
+  production, or a scheduled job that failed twice in a row. It opens, or gets a comment, when
+  something new appears, which notifies watchers. It closes itself once everything is clear.
+- "Follow-ups": gaps that hold nothing back. Reachable inset areas without a name or an anchor (the
+  pinned bundle's review.json), and transport variables the account model can't set (the latest main
+  CI run's requirement-gaps.md). Its body is rewritten in place, which notifies nobody.
+
+It also closes infra pin/osrs-planner-* PRs that a newer merged pin has overtaken.
+
+  scripts/watch-pins [--dry-run]
+  GH_TOKEN: osrs-planner issues, actions and checks (GITHUB_TOKEN); INFRA_TOKEN: collisionlab-bot on infra.
+See docs/deployment.md.
+"""
+import argparse
+import base64
+import json
+import os
+import re
+import subprocess
+import tempfile
+import urllib.request
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+PLANNER = "collisionlab/osrs-planner"
+INFRA = "collisionlab/infra"
+TILES = "collisionlab/osrs-tiles"
+SITE = "https://osrs.collisionlab.world"
+ATTENTION = "Automation needs attention"
+FOLLOW_UPS = "Follow-ups"
+# A red pin gets this long for a refresh (the next scheduled run, or a fix pushed to its branch).
+RED_GRACE = timedelta(hours=6)
+# A green, ready pin merges within minutes; one open this long is stuck.
+OPEN_GRACE = timedelta(hours=12)
+RELEASE_GRACE = timedelta(hours=3)
+KEYS = re.compile(r"<!-- keys: (.*?) -->")
+now = datetime.now(timezone.utc)
+
+
+def gh(*args, token=None, check=True):
+    env = dict(os.environ)
+    if token:
+        env["GH_TOKEN"] = token
+    for attempt in range(3):
+        result = subprocess.run(["gh", *args], text=True, capture_output=True, env=env)
+        if result.returncode == 0 or not check:
+            return result.stdout
+        # GitHub's GraphQL API fails now and then ("Something went wrong while executing your query").
+        if "Something went wrong" not in result.stderr and "HTTP 5" not in result.stderr:
+            break
+    raise RuntimeError(f"gh {' '.join(args[:3])}: {result.stderr.strip()}")
+
+
+def when(text):
+    return datetime.fromisoformat(text.replace("Z", "+00:00"))
+
+
+def age(text):
+    hours = (now - when(text)).total_seconds() / 3600
+    return f"{hours:.0f} h" if hours < 48 else f"{hours / 24:.0f} days"
+
+
+def fetch(url):
+    request = urllib.request.Request(url, headers={"User-Agent": "collisionlab-watch-pins/1.0"})
+    with urllib.request.urlopen(request, timeout=60) as response:
+        return json.load(response)
+
+
+def planner_pins(attention):
+    prs = json.loads(gh("pr", "list", "--repo", PLANNER, "--state", "open", "--json",
+                        "number,headRefName,isDraft,title,url,createdAt,body,statusCheckRollup"))
+    for pr in prs:
+        if not pr["headRefName"].startswith("pin/"):
+            continue
+        key, link = f"planner#{pr['number']}", f"[#{pr['number']}]({pr['url']}) {pr['title']}"
+        checks = pr["statusCheckRollup"] or []
+        failed = [c for c in checks if c.get("conclusion") in ("FAILURE", "TIMED_OUT", "CANCELLED", "STARTUP_FAILURE")]
+        if pr["isDraft"]:
+            actions = [line[6:].replace("**", "") for line in (pr["body"] or "").splitlines() if line.startswith("- [ ] ")]
+            attention.append((key + "-draft", f"{link} is a draft waiting for you: "
+                              + ("; ".join(actions) or "the PR body says why") + ". Mark it ready and CI merges it."))
+        elif failed:
+            if any(now - when(c["completedAt"]) <= RED_GRACE for c in failed if c.get("completedAt")):
+                continue
+            names = ", ".join(sorted({c.get("name") or c.get("context", "?") for c in failed}))
+            attention.append((key + "-red", f"{link} has failed CI ({names}) for {age(max(c['completedAt'] for c in failed))}. "
+                              f"Push fixes to `{pr['headRefName']}`; the bot leaves a branch with someone else's commits alone."))
+        elif now - when(pr["createdAt"]) > OPEN_GRACE and not any(c.get("status") in ("IN_PROGRESS", "QUEUED") for c in checks):
+            attention.append((key + "-open", f"{link} has been open {age(pr['createdAt'])} without merging; check its CI and the merge-pin job."))
+
+
+def infra_pins(attention, infra_token, dry_run):
+    prs = json.loads(gh("pr", "list", "--repo", INFRA, "--state", "all", "--limit", "40", "--json",
+                        "number,headRefName,state,title,url,createdAt,mergedAt", token=infra_token))
+    prs = [pr for pr in prs if pr["headRefName"].startswith("pin/osrs-planner-")]
+    merged = [pr["createdAt"] for pr in prs if pr["state"] == "MERGED"]
+    newest_merged = max(merged) if merged else ""
+    for pr in prs:
+        if pr["state"] != "OPEN":
+            continue
+        if pr["createdAt"] < newest_merged:
+            print(f"closing superseded {INFRA}#{pr['number']}")
+            if not dry_run:
+                gh("pr", "close", str(pr["number"]), "--repo", INFRA, "--delete-branch", "--comment",
+                   "A newer osrs-planner release has been deployed since; closing this pin (scripts/watch-pins).",
+                   token=infra_token)
+        elif now - when(pr["createdAt"]) > OPEN_GRACE:
+            attention.append((f"infra#{pr['number']}", f"[infra#{pr['number']}]({pr['url']}) {pr['title']} has been open "
+                              f"{age(pr['createdAt'])}: infra's plan or checks failed, so the release isn't deployed."))
+
+
+def release(attention, infra_token):
+    main = json.loads(gh("api", f"repos/{PLANNER}/commits/main", "--jq", "{sha, date: .commit.committer.date}"))
+    pinned = json.loads(base64.b64decode(gh("api", f"repos/{INFRA}/contents/releases/osrs-planner.json",
+                                             "--jq", ".content", token=infra_token)))
+    live = fetch(f"{SITE}/version").get("release")
+    if pinned["commit"] != main["sha"] and now - when(main["date"]) > RELEASE_GRACE:
+        attention.append(("release-behind", f"osrs-planner main `{main['sha'][:12]}` isn't in infra's release pin "
+                          f"(`{pinned['commit'][:12]}`) after {age(main['date'])}: check main's `release` job."))
+    if live != pinned["commit"] and now - when(main["date"]) > RELEASE_GRACE:
+        attention.append(("live-differs", f"{SITE}/version says `{str(live)[:12]}`, but infra pins `{pinned['commit'][:12]}`: "
+                          "the deploy failed or the smoke checks refused it (infra's `tofu` run on main)."))
+
+
+def scheduled(attention):
+    """A scheduled job that failed on its last two runs. One failure is often GitHub's, and the next run fixes it."""
+    for repo, workflow in ((PLANNER, "bump-tooling"), (PLANNER, "ci"), (TILES, "publish"), (TILES, "insets")):
+        runs = json.loads(gh("run", "list", "--repo", repo, "--workflow", workflow, "--branch", "main", "--limit", "10",
+                             "--json", "conclusion,status,event,url,createdAt"))
+        done = [r for r in runs if r["status"] == "completed" and r["event"] != "pull_request"][:2]
+        if len(done) == 2 and all(r["conclusion"] == "failure" for r in done):
+            attention.append((f"{repo}:{workflow}", f"`{workflow}` in {repo} failed on its last two runs: [latest]({done[0]['url']})."))
+
+
+def follow_ups(items):
+    tiles = json.loads(base64.b64decode(gh("api", f"repos/{PLANNER}/contents/tiles.json", "--jq", ".content")))
+    insets = tiles.get("insets")
+    if insets:
+        review = fetch(f"{tiles['base']}/insets/{insets['version']}/review.json")
+        seen = set()
+        for issue in review["issues"]:
+            if (issue["componentId"], issue["reason"]) in seen:
+                continue
+            seen.add((issue["componentId"], issue["reason"]))
+            need = ("needs an anchor" if "anchor" in issue["reason"] else "needs a name" if "unnamed" in issue["reason"]
+                    else "has a curated name whose evidence or component no longer matches the data")
+            items.append(f"Inset `{issue['componentId']}` {need} ({issue['reason']}): osrs-tiles "
+                         "`data/inset-labels/annotations.json`")
+    runs = json.loads(gh("run", "list", "--repo", PLANNER, "--workflow", "ci", "--branch", "main", "--event", "push",
+                         "--status", "success", "--limit", "1", "--json", "databaseId"))
+    if runs:
+        with tempfile.TemporaryDirectory() as work:
+            got = subprocess.run(["gh", "run", "download", str(runs[0]["databaseId"]), "--repo", PLANNER,
+                                  "--name", "follow-ups", "--dir", work], capture_output=True)
+            gaps = Path(work, "requirement-gaps.md")
+            if got.returncode == 0 and gaps.exists():
+                items += [line[2:] for line in gaps.read_text().splitlines() if line.startswith("- ")]
+
+
+def find_issue(title):
+    issues = json.loads(gh("issue", "list", "--repo", PLANNER, "--state", "open", "--search", f'in:title "{title}"',
+                           "--json", "number,title,body"))
+    return next((i for i in issues if i["title"] == title), None)
+
+
+def sync_attention(attention, dry_run):
+    issue = find_issue(ATTENTION)
+    keys = sorted(key for key, _ in attention)
+    body = ("The release automation is stuck on these. Each is rechecked daily by `watch-pins`; the issue closes "
+            "itself once all are fixed. What each means: docs/deployment.md, \"When automation stops and waits for you\".\n\n"
+            + "".join(f"- [ ] {text}\n" for _, text in attention)
+            + f"\nChecked {now:%Y-%m-%d %H:%M} UTC.\n<!-- keys: {' '.join(keys)} -->\n")
+    print(body if attention else "Nothing needs attention")
+    if dry_run:
+        return
+    if not attention:
+        if issue:
+            gh("issue", "close", str(issue["number"]), "--repo", PLANNER, "--comment", "All clear.")
+        return
+    if not issue:
+        gh("issue", "create", "--repo", PLANNER, "--title", ATTENTION, "--body", body)
+        return
+    old = KEYS.search(issue["body"] or "")
+    new = [text for key, text in attention if key not in (old.group(1).split() if old else [])]
+    gh("issue", "edit", str(issue["number"]), "--repo", PLANNER, "--body", body)
+    if new:
+        gh("issue", "comment", str(issue["number"]), "--repo", PLANNER, "--body",
+           "New:\n\n" + "".join(f"- {text}\n" for text in new))
+
+
+def sync_follow_ups(items, dry_run):
+    issue = find_issue(FOLLOW_UPS)
+    body = ("Gaps that hold no release back. `watch-pins` rewrites this list daily, and closes the issue when it is "
+            "empty.\n\n" + "".join(f"- {item}\n" for item in items) + f"\nChecked {now:%Y-%m-%d %H:%M} UTC.\n")
+    print(body if items else "No follow-ups")
+    if dry_run:
+        return
+    if not items:
+        if issue:
+            gh("issue", "close", str(issue["number"]), "--repo", PLANNER, "--comment", "Nothing left.")
+    elif issue:
+        gh("issue", "edit", str(issue["number"]), "--repo", PLANNER, "--body", body)
+    else:
+        gh("issue", "create", "--repo", PLANNER, "--title", FOLLOW_UPS, "--body", body)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--dry-run", action="store_true", help="print, and change nothing")
+    args = parser.parse_args()
+    infra_token = os.environ.get("INFRA_TOKEN")
+    attention, items = [], []
+    planner_pins(attention)
+    infra_pins(attention, infra_token, args.dry_run)
+    release(attention, infra_token)
+    scheduled(attention)
+    follow_ups(items)
+    sync_attention(attention, args.dry_run)
+    sync_follow_ups(items, args.dry_run)
+
+
+if __name__ == "__main__":
+    main()

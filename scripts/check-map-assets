@@ -14,7 +14,26 @@ def fetch(url):
         return response.read()
 
 
+def check_routing(pin, get=fetch):
+    """The routing layers keep their own tiles release (the one whose collision is the plugin's), which
+    may be older than the map's: check the sidecar against its pin, not against the map's tiles."""
+    routing = pin.get('routingLayers')
+    if routing is None:
+        return
+    manifest = json.loads(get(f"{pin['base']}/routing-layers/{routing['version']}/manifest.json"))
+    expected = {'schemaVersion': 3, 'version': routing['version'], 'tileVersion': routing['tileVersion'],
+                **{key: routing[key] for key in ('collisionContentSha256', 'transportSha256', 'separatorSha256')}}
+    wrong = sorted(key for key, value in expected.items() if manifest.get(key) != value)
+    if manifest.get('plugin', {}).get('revision') != routing['pluginRevision']:
+        wrong.append('pluginRevision')
+    if wrong:
+        raise ValueError(f"Routing layers {routing['version']} do not match their pin: {', '.join(wrong)}")
+    if 'components.json' not in manifest.get('files', {}):
+        raise ValueError('Incomplete routing manifest')
+
+
 def check(pin, get=fetch):
+    check_routing(pin, get)
     inset = pin.get('insets')
     if inset is None:
         return
