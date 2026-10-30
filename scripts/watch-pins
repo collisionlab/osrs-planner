@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Keep two issues in collisionlab/osrs-planner up to date, so a person only looks when needed.
 
-- "Automation needs attention": things the bots cannot get past alone. A bot pin PR that is a draft or
-  has been red for a while, a pin that should have merged and hasn't, a release that hasn't reached
-  production, or a scheduled job that failed twice in a row. It opens, or gets a comment, when
-  something new appears, which notifies watchers. It closes itself once everything is clear.
+- "Automation needs attention": things the bots cannot get past alone. A bot pin PR (here or in
+  osrs-tiles) that is a draft or has been red for a while, a pin that should have merged and hasn't,
+  a release that hasn't reached production, or a scheduled job that failed twice in a row. It opens,
+  or gets a comment, when something new appears, which notifies watchers. It closes itself once
+  everything is clear.
 - "Follow-ups": gaps that hold nothing back. Reachable inset areas without a name or an anchor (the
   pinned bundle's review.json), and transport variables the account model can't set (the latest main
   CI run's requirement-gaps.md). Its body is rewritten in place, which notifies nobody.
@@ -70,13 +71,13 @@ def fetch(url):
         return json.load(response)
 
 
-def planner_pins(attention):
-    prs = json.loads(gh("pr", "list", "--repo", PLANNER, "--state", "open", "--json",
+def bot_pins(attention, repo, prefix):
+    prs = json.loads(gh("pr", "list", "--repo", repo, "--state", "open", "--json",
                         "number,headRefName,isDraft,title,url,createdAt,body,statusCheckRollup"))
     for pr in prs:
         if not pr["headRefName"].startswith("pin/"):
             continue
-        key, link = f"planner#{pr['number']}", f"[#{pr['number']}]({pr['url']}) {pr['title']}"
+        key, link = f"{prefix}#{pr['number']}", f"[{repo.split('/')[1]}#{pr['number']}]({pr['url']}) {pr['title']}"
         checks = pr["statusCheckRollup"] or []
         failed = [c for c in checks if c.get("conclusion") in ("FAILURE", "TIMED_OUT", "CANCELLED", "STARTUP_FAILURE")]
         if pr["isDraft"]:
@@ -128,7 +129,7 @@ def release(attention, infra_token):
 
 def scheduled(attention):
     """A scheduled job that failed on its last two runs. One failure is often GitHub's, and the next run fixes it."""
-    for repo, workflow in ((PLANNER, "bump-tooling"), (PLANNER, "ci"), (TILES, "publish"), (TILES, "insets")):
+    for repo, workflow in ((PLANNER, "bump-tooling"), (PLANNER, "ci"), (TILES, "bump-tooling"), (TILES, "publish"), (TILES, "insets")):
         runs = json.loads(gh("run", "list", "--repo", repo, "--workflow", workflow, "--branch", "main", "--limit", "10",
                              "--json", "conclusion,status,event,url,createdAt"))
         done = [r for r in runs if r["status"] == "completed" and r["event"] != "pull_request"][:2]
@@ -222,7 +223,8 @@ def main():
     args = parser.parse_args()
     infra_token = os.environ.get("INFRA_TOKEN")
     attention, items = [], []
-    planner_pins(attention)
+    bot_pins(attention, PLANNER, "planner")
+    bot_pins(attention, TILES, "tiles")
     infra_pins(attention, infra_token, args.dry_run)
     release(attention, infra_token)
     scheduled(attention)
