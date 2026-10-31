@@ -211,3 +211,12 @@ button.wb-chip[aria-pressed="true"] { border-color: var(--orange); }
 .wb-key.blocked { height: 10px; border: 0; background: rgba(235, 38, 58, .75); }
 .wb-key.wall { border-color: #ffe23d; box-shadow: 0 0 0 1px #0e100e; }
 .wb-key.object { border-top-style: dashed; border-color: #ffffff; box-shadow: 0 0 0 1px #0e100e; }
+/* Benchmarks: the filters above the list, a case's verdict and the transports its route takes */
+.wb-bench-filters { display: grid; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.wb-bench-filters > label { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.wb-bench-filters select, .wb-bench-filters input[type="search"] { flex: 1; min-width: 0; padding: 5px 6px; color: var(--text); background: var(--ink);
+  border: 1px solid var(--line); font: inherit; }
+.wb-bench-filters .wb-filters { padding: 0; border: 0; max-height: 40vh; overflow: auto; }
+.wb-verdict { display: inline-block; margin-right: 8px; padding: 1px 6px; color: #141914; font: 10px var(--pixel); vertical-align: middle; }
+.wb-steps { margin: 0; padding-left: 18px; }
+.wb-steps li { margin: 2px 0; }

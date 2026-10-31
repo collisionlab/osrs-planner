@@ -4,6 +4,7 @@ import { OpenPullList } from "./OpenPulls";
 import { ReviewPage } from "./ReviewPage";
 import { TransportExplorer } from "./TransportExplorer";
 import { CandidatesPage } from "./CandidatesPage";
+import { BenchmarksPage } from "./BenchmarksPage";
 import { InsetInvestigation } from "./investigation/InsetInvestigation";
 import "./workbench.css";
 
@@ -24,6 +25,7 @@ export function WorkbenchRoutes() {
     <Route path="/transports" element={<TransportExplorer />} />
     <Route path="/candidates" element={<CandidatesPage />} />
     <Route path="/insets" element={<InsetInvestigation />} />
+    <Route path="/benchmarks" element={<BenchmarksPage />} />
     <Route path="/github/:owner/:repo/pull/:number" element={<ReviewPage />} />
     <Route path="/github/:owner/:repo/pull/:number/files" element={<ReviewPage />} />
     <Route path="/github/:owner/:repo/pull/:number/files/:range" element={<ReviewPage />} />
@@ -54,6 +56,7 @@ function WorkbenchHome({ missing }: { missing?: boolean }) {
       <nav className="wb-tools" aria-label="Tools">
         <Link to="/candidates" aria-label="Transport candidates"><b>Transport candidates</b><span>Review proposed transport corrections against bundled data, map tiles and collision.</span></Link>
         <Link to="/transports"><b>Transport explorer</b><span>Every transport on the map: where it goes, what it needs, and its row.</span></Link>
+        <Link to="/benchmarks"><b>Benchmarks</b><span>Every benchmark case in shortest-path-tooling: where they start and end, and each one run on the engine.</span></Link>
         <Link to="/insets"><b>Inset investigation</b><span>Areas off the main map: their entrances, connections and names.</span></Link>
         <a href="#review"><b>Pull request review</b><span>A pull request's transport changes on the map.</span></a>
       </nav>
