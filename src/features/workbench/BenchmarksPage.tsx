@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { WorldPoint } from "../../domain/contracts";
-import type { FeatureOverlay, MapFeature } from "../../map/insets/features";
+import type { FeatureOverlay } from "../../map/insets/features";
 import { LayerControl, type MapLayerEntry } from "../../map/insets/LayerControl";
 import { insetPin, mapLayers, savedStyle, saveStyle, type MapLayer, type MapStyle } from "../../map/layers";
 import type { WorldBox } from "../../map/insets/projection";
@@ -107,11 +107,9 @@ export function BenchmarksPage() {
   const coverage = state.layers ?? DEFAULT_COVERAGE;
   const coverageKey = coverage.join(",");
   const marks = useMemo(() => coverageFeatures(shown, coverage), [shown, coverageKey]);
-  const page = useMemo<FeatureOverlay>(() => {
-    // A selected case is about its route, which lays out the map; otherwise the coverage marks are
-    const anchors: MapFeature[] = selected ? [] : marks.filter(feature => feature.kind === "point");
-    return { features: marks, anchors, selected: atMark?.key };
-  }, [marks, selected, atMark?.key]);
+  // The marks are never anchors: anchored, every area a listed case touches would get an inset, laid
+  // out again whenever the filters change. They are drawn where the map already shows terrain.
+  const page = useMemo<FeatureOverlay>(() => ({ features: marks, anchors: [], selected: atMark?.key }), [marks, atMark?.key]);
 
   const [focusBox, setFocusBox] = useState<WorldBox>();
   const [focusTile, setFocusTile] = useState<{ point: WorldPoint }>();
