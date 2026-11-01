@@ -1,0 +1,143 @@
+{
+ "rules": {
+  "destination": "A transport lands on a walkable tile or on the exact origin of another transport.",
+  "entry": "A transport starts on a walkable tile, or on a blocked tile that a chain of transports reaches from open ground or a teleport. Fairy rings are not checked yet.",
+  "location": "A location (bank, altar, anvil, apothecary) is a walkable tile in a walking area that a chain of transports reaches from Lumbridge, ignoring requirements."
+ },
+ "findings": [
+  {
+   "id": "destination-aaaaaaaaaaaaaaaaaaaaaaaa",
+   "invariant": "destination",
+   "file": "src/main/resources/transports/transports.tsv",
+   "line": 1330,
+   "raw": "2862 2997 0\t2862 2996 1\tClimb-up Ladder 17384\t\t\t\t\t\t\t",
+   "row": {
+    "file": "src/main/resources/transports/transports.tsv",
+    "line": 1330,
+    "section": "Shilo Village",
+    "fields": {
+     "Origin": "2862 2997 0",
+     "Destination": "2862 2996 1",
+     "menuOption menuTarget objectID": "Climb-up Ladder 17384",
+     "Skills": "",
+     "Items": "",
+     "Quests": "",
+     "Varbits": "",
+     "VarPlayers": "",
+     "Duration": "",
+     "Display info": ""
+    },
+    "origin": {
+     "x": 2862,
+     "y": 2997,
+     "plane": 0
+    },
+    "destination": {
+     "x": 2862,
+     "y": 2996,
+     "plane": 1
+    },
+    "label": "Climb-up Ladder 17384"
+   },
+   "focus": {
+    "x": 2862,
+    "y": 2996,
+    "plane": 1
+   },
+   "failure": "Lands on a blocked tile where no transport starts.",
+   "review": {
+    "status": "unreviewed"
+   }
+  },
+  {
+   "id": "entry-bbbbbbbbbbbbbbbbbbbbbbbb",
+   "invariant": "entry",
+   "file": "src/main/resources/transports/transports.tsv",
+   "line": 1331,
+   "raw": "2862 2996 1\t2862 2997 0\tClimb-down Ladder 17385\t\t\t\t\t\t\t",
+   "row": {
+    "file": "src/main/resources/transports/transports.tsv",
+    "line": 1331,
+    "section": "Shilo Village",
+    "fields": {
+     "Origin": "2862 2996 1",
+     "Destination": "2862 2997 0",
+     "menuOption menuTarget objectID": "Climb-down Ladder 17385",
+     "Skills": "",
+     "Items": "",
+     "Quests": "",
+     "Varbits": "",
+     "VarPlayers": "",
+     "Duration": "",
+     "Display info": ""
+    },
+    "origin": {
+     "x": 2862,
+     "y": 2996,
+     "plane": 1
+    },
+    "destination": {
+     "x": 2862,
+     "y": 2997,
+     "plane": 0
+    },
+    "label": "Climb-down Ladder 17385"
+   },
+   "focus": {
+    "x": 2862,
+    "y": 2996,
+    "plane": 1
+   },
+   "failure": "Starts on a blocked tile that no transport reaches, so a route can only walk onto it.",
+   "review": {
+    "status": "needs_evidence",
+    "explanation": "Fixture: check the ladder in game"
+   }
+  },
+  {
+   "id": "location-cccccccccccccccccccccccc",
+   "invariant": "location",
+   "file": "src/main/resources/destinations/game_features/bank.tsv",
+   "line": 12,
+   "raw": "2864 2999 0\tFixture bank",
+   "row": {
+    "file": "src/main/resources/destinations/game_features/bank.tsv",
+    "line": 12,
+    "section": "",
+    "fields": {
+     "Destination": "2864 2999 0",
+     "Info": "Fixture bank"
+    },
+    "origin": null,
+    "destination": {
+     "x": 2864,
+     "y": 2999,
+     "plane": 0
+    },
+    "label": "Fixture bank"
+   },
+   "focus": {
+    "x": 2864,
+    "y": 2999,
+    "plane": 0
+   },
+   "failure": "The bank is in a walking area of 14 tiles that no chain of transports reaches from Lumbridge.",
+   "location": {
+    "kind": "bank",
+    "name": "Fixture bank",
+    "areaTiles": 14
+   },
+   "review": {
+    "status": "unreviewed"
+   }
+  }
+ ],
+ "plugin": {
+  "repository": "Skretzo/shortest-path",
+  "rev": "1111111111111111111111111111111111111111"
+ },
+ "tooling": {
+  "repository": "osrs-pathfinding/shortest-path-tooling",
+  "rev": "2222222222222222222222222222222222222222"
+ }
+}
