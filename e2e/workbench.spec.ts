@@ -3,8 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import tiles from "../tiles.json" with { type: "json" };
-import candidateFixture from "./fixtures/candidates.json" with { type: "json" };
-import candidateTypes from "./fixtures/candidate-types.json" with { type: "json" };
+import invariantFixture from "./fixtures/invariants.json" with { type: "json" };
 
 // The workbench's transport review, on its own host, against a mocked review service: a pull
 // request that adds the Fractured Archive entrance and edits a row. The pinned insets' labels lose
@@ -142,194 +141,76 @@ test("explains a URL that isn't a pull request", async ({ page }) => {
   await expect(page.getByRole("alert")).toHaveText("Paste a github.com pull request or compare URL.");
 });
 
-// Candidate review uses the same service mocking and the same real inset map as PR reviews.
-const [CAPE, MEDALLION, STAIRS_UP, STAIRS_DOWN, OFFSET, DIVERGED] = candidateFixture.candidates;
-type CandidateMap = {
+// Invariant findings use the same service mocking and the same real inset map as PR reviews.
+const [DESTINATION, ENTRY, LOCATION] = invariantFixture.findings;
+type FindingMap = {
   shows(point: { x: number; y: number; plane: number }): boolean;
   pixel(point: { x: number; y: number; plane: number }): number[];
   featureSummary(): { key: string; kind: string; tone: string; dashed: boolean }[];
 };
-const candidateMap = <T,>(page: Page, call: (handle: CandidateMap) => T) =>
+const findingMap = <T,>(page: Page, call: (handle: FindingMap) => T) =>
   page.evaluate(`(${call.toString()})(window.insetMap)`) as Promise<T>;
 
-async function mockCandidates(page: Page, data: unknown = candidateFixture) {
+async function mockInvariants(page: Page, data: unknown = invariantFixture) {
   await mockService(page);
-  await page.route("**/api/workbench/v1/candidates", route => route.fulfill({ json: data }));
+  await page.route("**/api/workbench/v1/invariants", route => route.fulfill({ json: data }));
   await page.route(`${tiles.base}/collision/${tiles.version}/manifest.json`, route => route.fulfill({ json: {
     cacheId: 2746, dumperSource: { repository: "osrs-pathfinding/shortest-path-tooling", rev: "3".repeat(40) },
   } }));
   await page.addInitScript(() => localStorage.setItem("osrs-planner.map-style", "tactical"));
 }
 
-async function openCandidate(page: Page, id: string, search = "") {
-  await page.goto(`/candidates${search}#candidate=${id}`);
+async function openFinding(page: Page, id: string, search = "") {
+  await page.goto(`/invariants${search}#finding=${id}`);
   await expect(page.locator(".inset-map")).toBeVisible();
   await page.waitForFunction(() => Boolean((window as unknown as { insetMap?: unknown }).insetMap));
-  await expect(page.locator(".wb-candidate-detail.selected")).toHaveAttribute("data-candidate-id", id);
+  await expect(page.locator(".wb-finding-detail")).toHaveAttribute("data-finding-id", id);
 }
 
-test("candidate plane change shows original and proposed floors, collision provenance and stable selection", async ({ page }) => {
-  await mockCandidates(page);
-  const oldCollision = page.waitForRequest(url => url.url().includes("/collision/") && url.url().endsWith("/8/29/27.bin"));
-  const newCollision = page.waitForRequest(url => url.url().includes("/collision/") && url.url().endsWith("/p1/8/29/27.bin"));
-  await openCandidate(page, CAPE.id, "?category=plane");
-  await expect(page).toHaveTitle("Transport candidates · Workbench");
-  await expect.poll(() => candidateMap(page, map => map.shows({ x: 2862, y: 2997, plane: 0 }))).toBe(true);
-  await expect.poll(() => candidateMap(page, map => map.shows({ x: 2862, y: 2996, plane: 1 }))).toBe(true);
-  await expect.poll(() => candidateMap(page, map => map.featureSummary().filter(f => f.kind === "point").map(f => [f.tone, f.dashed]).sort()))
-    .toEqual([["added", false], ["removed", true]]);
-  await oldCollision; await newCollision;
-  const detail = page.locator(".wb-candidate-detail.selected");
-  await expect(detail).toContainText("plane 0 → 1");
-  await expect(detail).toContainText("Other reported differences");
-  await expect(page.getByRole("region", { name: "Candidate details" })).toContainText("cache 2735");
-  await expect(page.getByRole("region", { name: "Candidate details" })).toContainText("cache 2746");
-  await expect(page.locator(".wb-footer")).toContainText("1111111");
-  await page.reload();
-  await expect(page.locator(".wb-candidate-detail.selected")).toHaveAttribute("data-candidate-id", CAPE.id);
-  await page.getByRole("button", { name: "Previous", exact: true }).click();
-  await expect(page).toHaveURL(new RegExp("#candidate=" + MEDALLION.id + "$"));
+test("a destination finding draws its row across floors and marks the landing", async ({ page }) => {
+  await mockInvariants(page);
+  await openFinding(page, DESTINATION.id);
+  await expect(page).toHaveTitle("Transport invariants · Workbench");
+  await expect(page.locator(".wb-summary")).toHaveText("1 destination · 1 entry · 1 location");
+  await expect.poll(() => findingMap(page, map => map.shows({ x: 2862, y: 2997, plane: 0 }))).toBe(true);
+  await expect.poll(() => findingMap(page, map => map.shows({ x: 2862, y: 2996, plane: 1 }))).toBe(true);
+  await expect.poll(() => findingMap(page, map => map.featureSummary().filter(f => f.tone === "suspect").length)).toBe(1);
+  const detail = page.locator(".wb-finding-detail");
+  await expect(detail).toContainText("Lands on a blocked tile where no transport starts.");
+  await expect(detail.getByRole("link", { name: "transports.tsv:1330" }))
+    .toHaveAttribute("href", `https://github.com/Skretzo/shortest-path/blob/${"1".repeat(40)}/src/main/resources/transports/transports.tsv#L1330`);
   await page.keyboard.press("j");
-  await expect(page).toHaveURL(new RegExp("#candidate=" + CAPE.id + "$"));
+  await expect(page).toHaveURL(new RegExp("#finding=" + ENTRY.id + "$"));
+  await expect(page.locator(".wb-finding-detail")).toContainText("needs_evidence — Fixture: check the ladder in game");
 });
 
-test("requirement corrections show verbatim fields and contributor item-group evidence", async ({ page }) => {
-  await mockCandidates(page, candidateTypes);
-  const c = candidateTypes.candidates.find(c => c.category === "missing_requirements")!;
-  await openCandidate(page, c.id, "?category=missing_requirements");
-  const detail = page.locator(".wb-candidate-detail.selected");
-  await expect(detail.getByRole("table").filter({ hasText: "Items" })).toContainText("[light source]=1");
-  await detail.getByText("Contributor item groups (1)", { exact: true }).click();
-  await expect(detail).toContainText("Lit candle 33");
-  await expect.poll(() => candidateMap(page, map => map.featureSummary().filter(f => f.kind === "edge").map(f => f.tone))).toEqual(["changed"]);
-  await expect(detail).toContainText("not evaluated capabilities");
-});
-
-test("unrepresentable requirements retain an original row without fabricating a replacement", async ({ page }) => {
-  await mockCandidates(page, candidateTypes);
-  const c = candidateTypes.candidates.find(c => c.category === "unrepresentable_requirements")!;
-  await openCandidate(page, c.id);
-  const detail = page.locator(".wb-candidate-detail.selected");
-  await expect(detail).toContainText("no representable replacement row");
-  await expect(detail).toContainText("quest Regicide started");
-  await expect.poll(() => candidateMap(page, map => map.featureSummary().every(f => f.tone === "changed"))).toBe(true);
-  await detail.getByText("Exact TSV rows and bundled correspondences", { exact: true }).click();
-  await expect(detail).toContainText("No representable replacement supplied");
-});
-
-test("proposed new transports pair only their proposed directions and preserve unchecked evidence", async ({ page }) => {
-  await mockCandidates(page, candidateTypes);
-  const c = candidateTypes.candidates.find(c => c.category === "sourced_transport")!;
-  await openCandidate(page, c.id, "?category=sourced_transport");
-  await expect(page.locator(".wb-candidate-detail")).toHaveCount(2);
-  await expect(page.getByRole("navigation", { name: "Candidates" })).toContainText("2 rows · 1 review units shown");
-  const detail = page.locator(".wb-candidate-detail.selected");
-  await expect(detail).toContainText("No original upstream row was supplied");
-  await expect(detail).toContainText("Contributor ticks (unchecked): 10 (estimate)");
-  await expect.poll(() => candidateMap(page, map => map.featureSummary().filter(f => f.kind === "edge").map(f => f.tone))).toEqual(["added", "added"]);
-  await detail.getByText("Exact TSV rows and bundled correspondences", { exact: true }).click();
-  await expect(detail).toContainText("No upstream row supplied");
-  await expect(detail).toContainText("Complete contributor record");
-});
-
-test("a network stop displays its boarding and landing tiles without inventing network edges", async ({ page }) => {
-  await mockCandidates(page, candidateTypes);
-  const c = candidateTypes.candidates.find(c => c.category === "network_stop")!;
-  await openCandidate(page, c.id, "?category=network_stop");
-  const detail = page.locator(".wb-candidate-detail.selected");
-  await expect(detail.getByRole("cell", { name: "Board at", exact: true })).toBeVisible();
-  await expect(detail.getByRole("cell", { name: "Land at", exact: true })).toBeVisible();
-  await expect(detail).toContainText("Fairy ring");
-  await expect(detail).toContainText("needs one of: item 772/9084 worn");
-  await expect.poll(() => candidateMap(page, map => map.featureSummary().filter(f => f.kind === "edge").length)).toBe(0);
-  await expect.poll(() => candidateMap(page, map => map.featureSummary().filter(f => f.kind === "point").length)).toBe(1);
-  await expect(page.getByLabel("Geometry legend")).toContainText("no network routes implied");
-});
-
-test("new teleports and copied-area suggestions keep missing tile evidence explicit", async ({ page }) => {
-  await mockCandidates(page, candidateTypes);
-  const c = candidateTypes.candidates.find(c => c.category === "copied_area_teleport")!;
-  await openCandidate(page, c.id);
-  const detail = page.locator(".wb-candidate-detail.selected");
-  await expect(detail).toContainText("Missing evidence — none recorded");
-  await expect(detail).toContainText("quest or cutscene instance");
-  await expect.poll(() => candidateMap(page, map => map.featureSummary().filter(f => f.kind === "point").length)).toBe(1);
-  await expect.poll(() => candidateMap(page, map => map.featureSummary().filter(f => f.kind === "edge").length)).toBe(0);
-});
-
-test("large catalogues page navigation while keeping selection links stable", async ({ page }) => {
-  const rows = Array.from({ length: 165 }, (_, i) => ({ ...candidateFixture.candidates[0], id: i.toString().padStart(24, "0") }));
-  await mockCandidates(page, { ...candidateFixture, candidates: rows });
-  await openCandidate(page, rows[0].id);
-  const list = page.getByRole("navigation", { name: "Candidates" });
-  await expect(list.locator("ol > li")).toHaveCount(80);
-  await list.getByRole("button", { name: "Next page", exact: true }).click();
-  await expect(page).toHaveURL(new RegExp("#candidate=" + rows[80].id + "$"));
-  await expect(list).toContainText("Units 81–160 of 165");
-  await page.reload();
-  await expect(page.locator(".wb-candidate-detail.selected")).toHaveAttribute("data-candidate-id", rows[80].id);
-  await page.getByRole("button", { name: "Next page", exact: true }).click();
-  await expect(list.locator("ol > li")).toHaveCount(5);
-});
-
-test("non-floor reverse-paired staircase is one review unit and map features select its source row", async ({ page }) => {
-  await mockCandidates(page);
-  await openCandidate(page, STAIRS_UP.id, "?category=non_floor");
-  const navigation = page.getByRole("navigation", { name: "Candidates" });
-  await expect(navigation).toContainText("2 rows · 1 review units shown");
-  await expect(navigation.locator("ol > li")).toHaveCount(1);
-  await expect(page.locator(".wb-candidate-detail")).toHaveCount(2);
-  await expect.poll(() => candidateMap(page, map => map.shows({ x: 1523, y: 3562, plane: 2 }))).toBe(true);
-  await expect.poll(() => candidateMap(page, map => map.featureSummary().filter(f => f.kind === "edge").map(f => [f.tone, f.dashed]).sort()))
-    .toEqual([["added", false], ["added", false], ["removed", true], ["removed", true]]);
-  await page.getByRole("button", { name: "Climb Stairs 27202", exact: true }).click();
-  await expect(page).toHaveURL(new RegExp("#candidate=" + STAIRS_DOWN.id + "$"));
-  await expect(page.locator(".wb-candidate-detail.selected")).toContainText("the start 1523,3563,1 is no floor");
-  await expect(page.getByLabel("Geometry legend")).toContainText("Original: dashed");
-  // Click the actual map using the established map handle's projection. The uppermost marker
-  // belongs to the opposite direction, and must identify that source candidate.
-  // Selection fits the map with an animation. Re-project for each attempt rather than retaining
-  // a pixel from before that animation or an inset rebuild finished.
-  await expect(async () => {
-    const [x, y] = await candidateMap(page, map => map.pixel({ x: 1523, y: 3562, plane: 2 }));
-    const bounds = await page.locator(".inset-map").boundingBox();
-    await page.mouse.click(bounds!.x + x, bounds!.y + y);
-    await expect(page).toHaveURL(new RegExp("#candidate=" + STAIRS_UP.id + "$"), { timeout: 500 });
-  }).toPass({ timeout: 10000 });
-  await expect(page.locator(".wb-candidate-detail.selected")).toHaveCount(1);
-});
-
-test("coordinate candidates retain unresolved reconciliation and checked-in decisions through filtering", async ({ page }) => {
-  await mockCandidates(page);
+test("filters findings by invariant and search, and the old candidates link lands here", async ({ page }) => {
+  await mockInvariants(page);
   await page.goto("/");
-  await page.getByRole("link", { name: "Transport candidates", exact: true }).click();
-  await expect(page).toHaveURL(/\/candidates/);
-  await page.getByLabel("Category", { exact: true }).selectOption("coordinate_offset");
-  await expect(page.locator(".wb-candidate-detail")).toHaveCount(2);
-  await expect(page.locator(".wb-summary")).toContainText("6 suggestion rows · 0 destination violations · 4 review units");
-  await page.getByLabel("Reconciliation status").selectOption("diverged");
-  await expect(page.locator(".wb-candidate-detail", { hasText: DIVERGED.id })).toContainText("diverged");
-  await page.getByLabel("Search candidates").fill("27200");
-  await expect(page.locator(".wb-candidate-detail")).toHaveCount(2);
-  await page.locator(`[data-candidate-id="${DIVERGED.id}"]`).getByRole("button", { name: "Climb Stairs 27200", exact: true }).click();
-  await expect(page).toHaveURL(new RegExp("#candidate=" + DIVERGED.id + "$"));
-  await expect(page.locator(".wb-candidate-detail.selected")).toContainText("The starting row is unresolved or has changed");
-  await expect(page.locator(".wb-candidate-detail.selected")).toContainText("tiles (Δx");
-  await expect(page.locator(`[data-candidate-id="${OFFSET.id}"]`)).toBeVisible();
-  await openCandidate(page, MEDALLION.id);
-  await expect(page.locator(".wb-candidate-detail.selected")).toContainText("needs_evidence — Fixture: needs in-game verification");
+  await page.getByRole("link", { name: /Transport invariants/ }).click();
+  await expect(page).toHaveURL(/\/invariants/);
+  await page.getByLabel("Invariant", { exact: true }).selectOption("location");
+  await expect(page.getByRole("navigation", { name: "Findings" })).toContainText("1 findings shown");
+  await expect(page).toHaveURL(new RegExp("invariant=location#finding=" + LOCATION.id + "$"));
+  await expect(page.locator(".wb-finding-detail")).toContainText("Bank · Fixture bank");
+  await expect(page.locator(".wb-finding-detail")).toContainText("walking area of 14 tiles");
+  await page.getByLabel("Invariant", { exact: true }).selectOption("");
+  await page.getByLabel("Search findings").fill("climb-down");
+  await expect(page.locator(".wb-finding-detail")).toHaveAttribute("data-finding-id", ENTRY.id);
+  await page.goto("/candidates");
+  await expect(page).toHaveURL(/\/invariants/);
 });
 
 test("developer coordinate hover copies surface and inset tiles and freezes the context-menu tile", async ({ page }) => {
-  await mockCandidates(page);
+  await mockInvariants(page);
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "clipboard", { value: { writeText: async (value: string) => { (window as unknown as { copied: string }).copied = value; } } });
   });
-  await openCandidate(page, CAPE.id, "?category=plane");
+  await openFinding(page, DESTINATION.id);
   const map = page.locator(".inset-map"), readout = page.locator(".map-coordinates");
   const hoverTile = async (point: { x: number; y: number; plane: number }) => {
     await page.waitForTimeout(400); // Wait for any fit animation before resolving screen pixels.
-    const pixel = await page.evaluate(p => (window as unknown as { insetMap: CandidateMap }).insetMap.pixel(p), point);
+    const pixel = await page.evaluate(p => (window as unknown as { insetMap: FindingMap }).insetMap.pixel(p), point);
     const box = (await map.boundingBox())!;
     await page.mouse.move(box.x + pixel[0], box.y + pixel[1]);
     await expect(readout).toContainText(`${point.x} ${point.y} ${point.plane}`);
@@ -344,38 +225,17 @@ test("developer coordinate hover copies surface and inset tiles and freezes the 
   await page.getByRole("button", { name: "Copy coordinates", exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as unknown as { copied: string }).copied)).toBe("2862 2996 1");
   await expect(readout).toContainText("Copied");
-  await page.getByLabel("Search candidates").fill("c");
-  await expect(page.getByLabel("Search candidates")).toHaveValue("c");
+  await page.getByLabel("Search findings").fill("c");
+  await expect(page.getByLabel("Search findings")).toHaveValue("c");
 });
 
-test("destination violations show current evidence without suggesting a correction", async ({ page }) => {
-  const violation = { ...CAPE, id: "destination-example", kind: "destination_violation", category: "destination_violation",
-    suggested: null, suggestedRaw: "", whatChanges: "Blocked destination with no transport starting on that exact tile.",
-    sourceRepository: "Skretzo/shortest-path", sourceCommit: "a".repeat(40), upstreamCommit: "a".repeat(40),
-    reconciliation: { status: "violation", rows: [] } };
-  await mockCandidates(page, { ...candidateFixture, candidates: [...candidateFixture.candidates, violation] });
-  await openCandidate(page, violation.id, "?category=destination_violation");
-  const detail = page.locator(".wb-candidate-detail.selected");
-  await expect(detail).toContainText("No proposed correction yet");
-  await expect(detail).toContainText("Current world coordinates");
-  await expect(detail).not.toContainText("Contributor");
-  await expect(detail).not.toContainText("Suggested");
-  await expect(detail.getByRole("link").first()).toHaveAttribute("href", /Skretzo\/shortest-path\/blob\/a{40}/);
-  await expect(page.locator(".wb-summary")).toContainText("1 destination violations");
-});
-
-test("unreachable area sizes filter candidates and survive reload", async ({ page }) => {
-  const source = candidateTypes.candidates.find(c => c.category === "sourced_transport")!;
-  const large = { ...source, id: "outside-large", category: "sourced_transport_outside_routing",
-    unreachableAreas: { origin: null, destination: { tiles: 2400, atLeast: false } } };
-  const tiny = { ...large, id: "outside-tiny", unreachableAreas: { origin: null, destination: { tiles: 4, atLeast: false } } };
-  await mockCandidates(page, { ...candidateTypes, candidates: [large, tiny] });
-  await openCandidate(page, large.id, "?areaSize=large");
-  await expect(page.getByRole("navigation", { name: "Candidates" })).toContainText("1 rows · 1 review units shown");
-  await expect(page.locator(".wb-candidate-detail.selected")).toContainText("destination: 2,400 tiles");
-  await page.getByLabel("Unreachable area size", { exact: true }).selectOption("tiny");
-  await expect(page).toHaveURL(/areaSize=tiny#candidate=outside-tiny/);
-  await expect(page.locator(".wb-candidate-detail.selected")).toContainText("destination: 4 tiles");
+test("large finding lists page navigation while keeping selection links stable", async ({ page }) => {
+  const findings = Array.from({ length: 165 }, (_, i) => ({ ...DESTINATION, id: "destination-" + i.toString().padStart(24, "0") }));
+  await mockInvariants(page, { ...invariantFixture, findings });
+  await openFinding(page, findings[0].id);
+  await page.getByRole("button", { name: "Next page" }).click();
+  await expect(page).toHaveURL(new RegExp("#finding=" + findings[80].id + "$"));
+  await expect(page.getByRole("navigation", { name: "Findings" })).toContainText("Findings 81–160 of 165");
   await page.reload();
-  await expect(page.getByLabel("Unreachable area size", { exact: true })).toHaveValue("tiny");
+  await expect(page.locator(".wb-finding-detail")).toHaveAttribute("data-finding-id", findings[80].id);
 });
