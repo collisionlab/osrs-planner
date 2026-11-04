@@ -15,8 +15,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.IntFunction;
 import shortestpath.WorldPointUtil;
 import shortestpath.pathfinder.AStarPathfinder;
+import shortestpath.pathfinder.AlternativeRoute;
+import shortestpath.pathfinder.PathTerminationReason;
 import shortestpath.pathfinder.PathStep;
 import shortestpath.pathfinder.PathfinderResult;
+import shortestpath.pathfinder.astar.ReusePenalty;
 import shortestpath.pathfinder.astar.RoutingStatic;
 import shortestpath.routeapi.RouteApi;
 import shortestpath.routeapi.RoutePlans;
@@ -34,6 +37,8 @@ import shortestpath.transport.Transport;
  * theirs; the time is this service's.
  */
 public final class Benchmarks {
+    /** How many routes besides the first a run looks for. */
+    private static final int ALTERNATIVES = 2;
     /** Runs waiting for the worker; beyond this a run is refused as busy. */
     static final int QUEUE = 8;
 
@@ -186,9 +191,45 @@ public final class Benchmarks {
             body.put("phasesMs", phases);
             body.put("statesPopped", search.getAStarStats() == null ? null : search.getAStarStats().statesPopped());
         }
+        route(body, result.getPathSteps());
+        // The route as the planner draws one, its steps grouped into walks and transports like the route API's
+        body.put("plan", plan(scenario, observation, result, itemName));
+        List<Map<String, Object>> alternatives = new ArrayList<>();
+        if (search != null && observation.isReached()) {
+            for (AlternativeRoute alternative : search.findAlternatives(ALTERNATIVES)) {
+                alternatives.add(alternative(scenario, observation, alternative, itemName));
+            }
+        }
+        body.put("alternatives", alternatives);
+        return body;
+    }
+
+    private static Map<String, Object> alternative(Scenario scenario, Observation observation, AlternativeRoute route,
+            IntFunction<String> itemName) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("cost", route.getPathCost());
+        body.put("extraCost", route.getPathCost() - observation.getResult().getPathCost());
+        body.put("reusedJourneys", route.getReusedJourneys());
+        body.put("searchMs", millis(route.getSearchNanos()));
+        body.put("statesPopped", route.getNodesChecked());
+        route(body, route.getPathSteps());
+        List<PathStep> steps = route.getPathSteps();
+        body.put("plan", plan(scenario, observation, new PathfinderResult(scenario.getRouteStart(), scenario.getTarget(), true,
+            steps, steps.get(steps.size() - 1).getPackedPosition(), route.getPathCost(), route.getNodesChecked(), 0,
+            route.getSearchNanos(), PathTerminationReason.TARGET_REACHED), itemName));
+        return body;
+    }
+
+    private static RouteApi.RoutePlan plan(Scenario scenario, Observation observation, PathfinderResult result,
+            IntFunction<String> itemName) {
+        return RoutePlans.plan(location(scenario.getRouteStart(), "Start"), location(scenario.getTarget(), "Target"),
+            result, observation.getAccount().getConfig(), itemName);
+    }
+
+    /** A route's {@code path} and {@code transports}, each transport marked if it counts as a choice of route. */
+    private static void route(Map<String, Object> body, List<PathStep> steps) {
         List<int[]> path = new ArrayList<>();
         List<Map<String, Object>> transports = new ArrayList<>();
-        List<PathStep> steps = result.getPathSteps();
         for (int i = 0; i < steps.size(); i++) {
             PathStep step = steps.get(i);
             int packed = step.getPackedPosition();
@@ -202,15 +243,12 @@ public final class Benchmarks {
                 if (transport.getDisplayInfo() != null) used.put("info", transport.getDisplayInfo());
                 if (transport.getObjectInfo() != null) used.put("object", transport.getObjectInfo());
                 used.put("duration", transport.getDuration());
+                used.put("journey", ReusePenalty.isJourney(transport));
                 transports.add(used);
             }
         }
         body.put("path", path);
         body.put("transports", transports);
-        // The route as the planner draws one, its steps grouped into walks and transports like the route API's
-        body.put("plan", RoutePlans.plan(location(scenario.getRouteStart(), "Start"), location(scenario.getTarget(), "Target"),
-            result, observation.getAccount().getConfig(), itemName));
-        return body;
     }
 
     private static RouteApi.Location location(int packed, String name) {

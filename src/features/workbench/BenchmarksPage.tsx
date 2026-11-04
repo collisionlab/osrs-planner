@@ -35,7 +35,9 @@ function Verdict({ run }: { run: BenchmarkRun }) {
   return <span className="wb-verdict" style={{ background: TONES[tone] }} title={why || undefined}>{label}</span>;
 }
 
-function RunPanel({ c, run, error, onShow }: { c: BenchmarkCase; run?: BenchmarkRun; error?: string; onShow(point: WorldPoint): void }) {
+function RunPanel({ c, run, error, shown, onChoose, onShow }: { c: BenchmarkCase; run?: BenchmarkRun; error?: string; shown: number;
+  onChoose(route: number): void; onShow(point: WorldPoint): void }) {
+  const route = run && (shown === 0 ? run : run.alternatives[shown - 1]);
   const tile = (p: WorldPoint) => <button type="button" className="wb-tile" title="Show on the map" onClick={() => onShow(p)}>{point(p)}</button>;
   const phases = run?.phasesMs ? Object.entries(run.phasesMs).filter(([, ms]) => ms >= 0.01) : [];
   return <section className="wb-detail" aria-label="Benchmark case">
@@ -54,9 +56,16 @@ function RunPanel({ c, run, error, onShow }: { c: BenchmarkCase; run?: Benchmark
             {run.statesPopped != null && <span className="wb-note"> · {run.statesPopped.toLocaleString()} states popped</span>}
             {phases.length > 0 && <details className="wb-source"><summary>Phases</summary>
               <div className="wb-details">{phases.map(([name, ms]) => <span key={name}><b>{name}</b> {ms} ms</span>)}</div></details>}</dd>
-          <dt>Transports</dt><dd>{run.transports.length ? <ol className="wb-steps">{run.transports.map(used =>
+          {run.reached && <><dt>Routes</dt><dd><div className="map-style-toggle" role="group" aria-label="Route">
+            <button type="button" aria-pressed={shown === 0} onClick={() => onChoose(0)}>Fastest</button>
+            {run.alternatives.map((alternative, index) => <button key={index} type="button" aria-pressed={shown === index + 1}
+              title={`Shares ${alternative.reusedJourneys} journeys with earlier routes; searched ${alternative.statesPopped.toLocaleString()} states in ${alternative.searchMs} ms`}
+              onClick={() => onChoose(index + 1)}>+{alternative.extraCost} ticks</button>)}
+          </div>{run.alternatives.length === 0 && <span className="wb-note">no alternatives found</span>}
+            {shown > 0 && route && <span className="wb-note"> {run.alternatives[shown - 1].cost} ticks · shares {run.alternatives[shown - 1].reusedJourneys} journeys · searched in {run.alternatives[shown - 1].searchMs} ms</span>}</dd></>}
+          <dt>Transports</dt><dd>{route?.transports.length ? <ol className="wb-steps">{route.transports.map(used =>
             <li key={used.step}><button type="button" className="wb-tile" title="Show on the map"
-              onClick={() => { const [x, y, plane] = run.path[used.step]; onShow({ x, y, plane }); }}>{used.info || used.object || used.type}</button>
+              onClick={() => { const [x, y, plane] = route.path[used.step]; onShow({ x, y, plane }); }}>{used.journey ? <b>{used.info || used.object || used.type}</b> : used.info || used.object || used.type}</button>
               <span className="wb-note"> {used.type.toLowerCase().replace(/_/g, " ")} · {used.duration} ticks</span></li>)}</ol> : "none"}</dd>
         </>}
     </dl>
@@ -94,8 +103,11 @@ export function BenchmarksPage() {
   // The selected case, run once by the service and drawn as a route.
   const [run, setRun] = useState<BenchmarkRun>();
   const [runError, setRunError] = useState<string>();
+  // Which of the run's routes is drawn: 0 the first, then its alternatives.
+  const [shownRoute, setShownRoute] = useState(0);
+  const plan = shownRoute === 0 ? run?.plan : run?.alternatives[shownRoute - 1]?.plan;
   useEffect(() => {
-    setRun(undefined); setRunError(undefined);
+    setRun(undefined); setRunError(undefined); setShownRoute(0);
     if (!selected) return;
     const abort = new AbortController();
     runBenchmark(selected.suite, selected.name, abort.signal).then(setRun, reason => { if (!abort.signal.aborted) setRunError(message(reason)); });
@@ -200,7 +212,7 @@ export function BenchmarksPage() {
         <section className="wb-map">
           {insetPin ? <Suspense fallback={<div className="route-map" role="status">Loading inset map…</div>}>
             <InsetMap inspectCoordinates overlay={layers.overlay} style={style} insets keepFocus
-              route={run?.plan} start={run?.plan.start} destination={run?.plan.destination}
+              route={plan} start={plan?.start} destination={plan?.destination}
               onPick={tile => setPicked(tile)} onRoutingCrossing={layers.routing.selectCrossing} onFallback={() => {}}
               onSelectFeatures={onSelectFeatures} onView={layers.onView} fitSelection={false} fitAnchors={false}
               initialCentre={WORLD} focusBox={focusBox} focusTile={focusTile} />
@@ -212,7 +224,7 @@ export function BenchmarksPage() {
           {insetPin && <LayerControl layers={[...coverageEntries, ...layers.layers]} onToggle={toggle} />}
         </section>
         <div className="wb-below-map">
-          {selected ? <RunPanel c={selected} run={run} error={runError} onShow={p => setFocusTile({ point: p })} />
+          {selected ? <RunPanel c={selected} run={run} error={runError} shown={shownRoute} onChoose={setShownRoute} onShow={p => setFocusTile({ point: p })} />
             : <section className="wb-detail wb-hint-panel"><p className="wb-note">Pick a case to run it on the service's engine and see its route,
               or click a mark on the map for the cases starting or ending there. The filters choose the cases listed and marked.</p></section>}
           {layers.panel && <div className="wb-detail">{layers.panel}</div>}

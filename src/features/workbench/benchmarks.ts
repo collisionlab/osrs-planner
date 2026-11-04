@@ -34,7 +34,24 @@ export interface BenchmarkIndex {
   scenarios: BenchmarkCase[];
 }
 
-export interface BenchmarkRun {
+/** One way of drawing a run: its first route, or an alternative. */
+export interface BenchmarkRoute {
+  /** Each step: x, y, plane, bank layer (0 carried, 1 banked). */
+  path: [number, number, number, number][];
+  transports: { step: number; type: string; info?: string; object?: string; duration: number; journey: boolean }[];
+  plan: RoutePlan;
+}
+
+export interface BenchmarkAlternative extends BenchmarkRoute {
+  cost: number;
+  extraCost: number;
+  /** How many of its journeys land where a route found before it landed. */
+  reusedJourneys: number;
+  searchMs: number;
+  statesPopped: number;
+}
+
+export interface BenchmarkRun extends BenchmarkRoute {
   suite: string;
   name: string;
   backend: string;
@@ -47,10 +64,7 @@ export interface BenchmarkRun {
   totalMs: number;
   phasesMs?: Record<string, number>;
   statesPopped?: number | null;
-  /** Each step: x, y, plane, bank layer (0 carried, 1 banked). */
-  path: [number, number, number, number][];
-  transports: { step: number; type: string; info?: string; object?: string; duration: number }[];
-  plan: RoutePlan;
+  alternatives: BenchmarkAlternative[];
 }
 
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {

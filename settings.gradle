@@ -3,7 +3,7 @@ rootProject.name = 'osrs-planner'
 // Route planning comes from shortest-path-tooling (the tooling/ submodule, which in turn pins the
 // plugin): the service uses its :routing and :accounts projects exactly as tooling's own tests do, and
 // its :scenarios project for the workbench's benchmark cases.
-includeBuild('tooling') {
+includeBuild(providers.gradleProperty('toolingDir').getOrElse('tooling')) {
     dependencySubstitution {
         substitute module('tooling:routing') using project(':routing')
         substitute module('tooling:accounts') using project(':accounts')
