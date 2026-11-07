@@ -47,6 +47,9 @@ public final class Workbench {
         // Read-only: the invariants of the plugin data on this classpath.
         app.get("/workbench/v1/invariants", ctx -> ctx.header("Cache-Control", "no-cache")
             .json(TransportInvariants.bundled(provenance)));
+        // Read-only: cache connectors that would join an unreached area, judged against the same plugin.
+        app.get("/workbench/v1/candidates", ctx -> ctx.header("Cache-Control", "no-cache")
+            .json(CandidatesView.bundled(provenance)));
         String transports = "/workbench/v1/transports";
         String cache = "public, max-age=300";
         app.get(transports + "/meta", ctx -> {

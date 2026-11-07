@@ -113,10 +113,15 @@ public final class TransportInvariants {
     }
 
     static void validateLedger(JsonNode ledger, Set<String> ids) {
-        if (!ledger.isObject()) throw new IllegalArgumentException("invariants/reviews.json must be an object keyed by finding ID");
+        validateLedger(ledger, ids, "invariants/reviews.json");
+    }
+
+    /** A review ledger: an object keyed by known ids, each a valid status with a nonempty explanation. */
+    static void validateLedger(JsonNode ledger, Set<String> ids, String file) {
+        if (!ledger.isObject()) throw new IllegalArgumentException(file + " must be an object keyed by finding ID");
         ledger.fields().forEachRemaining(entry -> {
             JsonNode decision = entry.getValue();
-            if (!ids.contains(entry.getKey())) throw new IllegalArgumentException("Unknown finding in review ledger: " + entry.getKey());
+            if (!ids.contains(entry.getKey())) throw new IllegalArgumentException("Unknown finding in " + file + ": " + entry.getKey());
             if (!Set.of("accepted", "rejected", "needs_evidence", "deferred").contains(decision.path("status").asText())
                 || !decision.path("explanation").isTextual() || decision.path("explanation").asText().isBlank()) {
                 throw new IllegalArgumentException("Review " + entry.getKey() + " needs a valid status and nonempty explanation");

@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { Link, Route, Routes, useNavigate } from "react-router-dom";
 import { OpenPullList } from "./OpenPulls";
 import { ReviewPage } from "./ReviewPage";
 import { TransportExplorer } from "./TransportExplorer";
 import { InvariantsPage } from "./InvariantsPage";
+import { CandidatesPage } from "./CandidatesPage";
 import { BenchmarksPage } from "./BenchmarksPage";
 import { InsetInvestigation } from "./investigation/InsetInvestigation";
 import "./workbench.css";
@@ -24,7 +25,7 @@ export function WorkbenchRoutes() {
     <Route path="/" element={<WorkbenchHome />} />
     <Route path="/transports" element={<TransportExplorer />} />
     <Route path="/invariants" element={<InvariantsPage />} />
-    <Route path="/candidates" element={<Navigate to="/invariants" replace />} />
+    <Route path="/candidates" element={<CandidatesPage />} />
     <Route path="/insets" element={<InsetInvestigation />} />
     <Route path="/benchmarks" element={<BenchmarksPage />} />
     <Route path="/github/:owner/:repo/pull/:number" element={<ReviewPage />} />
@@ -56,6 +57,7 @@ function WorkbenchHome({ missing }: { missing?: boolean }) {
       {error && <p role="alert">{error}</p>}
       <nav className="wb-tools" aria-label="Tools">
         <Link to="/invariants"><b>Transport invariants</b><span>Rows that break a rule of the transport data: where they land, where they start, and which locations nothing reaches.</span></Link>
+        <Link to="/candidates"><b>Transport candidates</b><span>Ladders, stairs, cave entrances and world map links with no transport into areas nothing else reaches, agility shortcuts and dungeon map links with no transport.</span></Link>
         <Link to="/transports"><b>Transport explorer</b><span>Every transport on the map: where it goes, what it needs, and its row.</span></Link>
         <Link to="/benchmarks"><b>Benchmarks</b><span>Every benchmark case in shortest-path-tooling: where they start and end, and each one run on the engine.</span></Link>
         <Link to="/insets"><b>Inset investigation</b><span>Areas off the main map: their entrances, connections and names.</span></Link>
