@@ -92,6 +92,8 @@ export function CandidatesPage() {
             <details className="wb-funnel"><summary>How the list was narrowed</summary>
               <table className="wb-rows"><tbody>{Object.entries(report.funnel).map(([step, n]) => <tr key={step}><th>{step}</th><td>{n.toLocaleString()}</td></tr>)}</tbody></table>
               <p className="wb-note">Snapshot from cache {report.cache}: {Object.entries(report.extraction).map(([step, n]) => `${n.toLocaleString()} ${step}`).join(" · ")}.</p>
+              {report.dungeonMarker && <p className="wb-note">Dungeon entrance icon {report.dungeonMarker.field ?? "not found"}:
+                {" "}{report.dungeonMarker.iconsNearRows} of its {report.dungeonMarker.icons} placements have a row going down or in within 5 tiles.</p>}
               {report.shortcutMarker && <p className="wb-note">Agility shortcut icon {report.shortcutMarker.field ?? "not found"}:
                 {" "}{report.shortcutMarker.iconsNearRows} of its {report.shortcutMarker.icons} placements have a shortcut row within 5 tiles.</p>}
             </details>
@@ -124,7 +126,7 @@ export function CandidatesPage() {
           </div>
           <div className="wb-finding-legend" aria-label="Geometry legend">
             <span>□ Where the connector is used · ■ Its partner</span>
-            <span className="suspect">Dashed box: the unreached area · highlighted: the shortcut icon</span>
+            <span className="suspect">Dashed box: the unreached area · highlighted: the shortcut or dungeon icon</span>
           </div>
           {insetPin && geometry && <LayerControl layers={layers.layers} onToggle={layers.toggle} />}
         </section>
@@ -166,6 +168,8 @@ function CandidateDetail({ item, show, copy }: { item: CandidateItem; show(p: Wo
         <td>{c.connector.partner ? <>{partnerText(c.connector)}<div className="wb-note">{c.connector.partner.rule} pair</div>{tile(c.partnerStand)}</> : "—"}</td>
       </tr>)}
     </tbody></table>}
+    {item.kind === "dungeon" && <p>The game's dungeon entrance icon at {tile(item.focus)} has no transport within 5 tiles, and no
+      world map link beside it. The connectors below are within 5 tiles of the icon.</p>}
     {item.kind === "link" && <p>The world map links these icons, but no transport starts within 15 tiles of an icon and lands
       in the walking area at the other end, for each direction marked unmodelled.</p>}
     <p className="wb-note">{item.kind === "link" ? "Map link ends are icon positions; the tiles shown are the walkable ones nearest each icon."

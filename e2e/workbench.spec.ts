@@ -208,7 +208,7 @@ test("transport candidates list unreached areas, draw their connectors and searc
   await page.getByRole("link", { name: /Transport candidates/ }).click();
   await expect(page).toHaveURL(new RegExp("/candidates#item=" + GUILD.id + "$"));
   await expect(page).toHaveTitle("Transport candidates · Workbench");
-  await expect(page.locator(".wb-summary")).toHaveText("2 unreached areas · 1 agility shortcuts · 0 unmodelled map links");
+  await expect(page.locator(".wb-summary")).toHaveText("2 unreached areas · 1 agility shortcuts · 0 unmodelled map links · 0 dungeon entrances");
   await page.waitForFunction(() => Boolean((window as unknown as { insetMap?: unknown }).insetMap));
   await expect.poll(() => findingMap(page, map => map.shows({ x: 2896, y: 3512, plane: 1 }))).toBe(true);
   await expect.poll(() => findingMap(page, map => map.featureSummary().filter(f => f.tone === "candidate").length)).toBeGreaterThan(0);

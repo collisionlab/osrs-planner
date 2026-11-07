@@ -57,7 +57,7 @@ function WorkbenchHome({ missing }: { missing?: boolean }) {
       {error && <p role="alert">{error}</p>}
       <nav className="wb-tools" aria-label="Tools">
         <Link to="/invariants"><b>Transport invariants</b><span>Rows that break a rule of the transport data: where they land, where they start, and which locations nothing reaches.</span></Link>
-        <Link to="/candidates"><b>Transport candidates</b><span>Ladders, stairs, cave entrances and world map links with no transport into areas nothing else reaches, agility shortcuts and dungeon map links with no transport.</span></Link>
+        <Link to="/candidates"><b>Transport candidates</b><span>Ladders, stairs, cave entrances and world map links with no transport into areas nothing else reaches, and agility shortcuts, dungeon map links and dungeon entrances with no transport.</span></Link>
         <Link to="/transports"><b>Transport explorer</b><span>Every transport on the map: where it goes, what it needs, and its row.</span></Link>
         <Link to="/benchmarks"><b>Benchmarks</b><span>Every benchmark case in shortest-path-tooling: where they start and end, and each one run on the engine.</span></Link>
         <Link to="/insets"><b>Inset investigation</b><span>Areas off the main map: their entrances, connections and names.</span></Link>
