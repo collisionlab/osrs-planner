@@ -31,6 +31,11 @@ final class LocationViolations {
         }
     }
 
+    /** The bundled walking graph behind {@link Components#bundled()}, shared with the transport candidates. */
+    static RoutingStaticBuilder.WalkingGraph bundledWalking() {
+        return Bundled.INSTANCE.walking;
+    }
+
     private static final class Bundled implements Components {
         static final Bundled INSTANCE = new Bundled();
         private final RoutingStaticBuilder.WalkingGraph walking;

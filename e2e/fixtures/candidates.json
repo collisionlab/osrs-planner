@@ -1,0 +1,304 @@
+{
+  "rule": "A cache connector (ladder, stairs, trapdoor, cave entrance, agility shortcut) with no transport row is listed only when it and its paired far end would join a walking area of at least 50 tiles that no chain of transports reaches from Lumbridge (ignoring requirements) to reached ground, or when the game marks it as an agility shortcut and that marker is reliable. One item per unreached area.",
+  "cache": "openrs2 2757, build 242",
+  "snapshotPlugin": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "extraction": {
+    "placements scanned": 5021872,
+    "door and gate walls left out": 566,
+    "connector placements": 8724,
+    "covered by a transport row": 2999,
+    "uncovered (kept)": 5725,
+    "uncovered with a partner": 2268
+  },
+  "funnel": {
+    "snapshot connectors": 5725,
+    "covered by a transport row": 0,
+    "out of scope": 0,
+    "no walkable tile beside it": 1828,
+    "both ends already reached": 512,
+    "both ends unreached": 474,
+    "unreached area under 50 tiles": 1342,
+    "unreached areas of 50+ tiles": 2753,
+    "unreached areas with a connector": 607,
+    "areas whose connectors all lead somewhere unknown": 532,
+    "listed areas": 2,
+    "listed agility shortcuts": 1
+  },
+  "shortcutMarker": {
+    "field": "mapAreaId=71",
+    "icons": 240,
+    "iconsNearRows": 156
+  },
+  "items": [
+    {
+      "id": "area-1cfada79e5d209cd9bbb0413",
+      "kind": "area",
+      "title": "Unreached area near 2896 3512 1",
+      "areaTiles": 89,
+      "bounds": [
+        2889,
+        3504,
+        2901,
+        3517,
+        1
+      ],
+      "focus": {
+        "x": 2896,
+        "y": 3512,
+        "plane": 1
+      },
+      "contains": {
+        "altar": 1
+      },
+      "paired": true,
+      "connectors": [
+        {
+          "role": "way-in",
+          "connector": {
+            "objectId": 16671,
+            "ids": [
+              16671
+            ],
+            "name": "Staircase",
+            "options": [
+              "Climb-up"
+            ],
+            "x": 2895,
+            "y": 3513,
+            "plane": 0,
+            "sizeX": 2,
+            "sizeY": 2,
+            "partner": {
+              "objectId": 16673,
+              "name": "Staircase",
+              "option": "Climb-down",
+              "x": 2896,
+              "y": 3513,
+              "plane": 1,
+              "sizeX": 2,
+              "sizeY": 2,
+              "rule": "vertical"
+            }
+          },
+          "stand": {
+            "x": 2894,
+            "y": 3513,
+            "plane": 0
+          },
+          "partnerStand": {
+            "x": 2896,
+            "y": 3512,
+            "plane": 1
+          }
+        },
+        {
+          "role": "way-out",
+          "connector": {
+            "objectId": 16673,
+            "ids": [
+              16673
+            ],
+            "name": "Staircase",
+            "options": [
+              "Climb-down"
+            ],
+            "x": 2896,
+            "y": 3513,
+            "plane": 1,
+            "sizeX": 2,
+            "sizeY": 2,
+            "partner": {
+              "objectId": 16671,
+              "name": "Staircase",
+              "option": "Climb-up",
+              "x": 2895,
+              "y": 3513,
+              "plane": 0,
+              "sizeX": 2,
+              "sizeY": 2,
+              "rule": "vertical"
+            }
+          },
+          "stand": {
+            "x": 2896,
+            "y": 3512,
+            "plane": 1
+          },
+          "partnerStand": {
+            "x": 2894,
+            "y": 3513,
+            "plane": 0
+          }
+        }
+      ],
+      "review": {
+        "status": "needs_evidence",
+        "explanation": "Fixture: check the guild stairs in game"
+      },
+      "shortcut": null
+    },
+    {
+      "id": "area-dbc0c3e51f7dd234e6fd8c94",
+      "kind": "area",
+      "title": "Unreached area near 2073 10089 0",
+      "areaTiles": 947,
+      "bounds": [
+        2051,
+        10051,
+        2108,
+        10107,
+        0
+      ],
+      "focus": {
+        "x": 2074,
+        "y": 10088,
+        "plane": 0
+      },
+      "contains": {},
+      "paired": true,
+      "connectors": [
+        {
+          "role": "way-in",
+          "connector": {
+            "objectId": 60093,
+            "ids": [
+              60093
+            ],
+            "name": "Ladder",
+            "options": [
+              "Climb-down"
+            ],
+            "x": 2075,
+            "y": 3688,
+            "plane": 0,
+            "sizeX": 1,
+            "sizeY": 1,
+            "partner": {
+              "objectId": 60094,
+              "name": "Ladder",
+              "option": "Climb-up",
+              "x": 2074,
+              "y": 10089,
+              "plane": 0,
+              "sizeX": 1,
+              "sizeY": 1,
+              "rule": "id+offset"
+            }
+          },
+          "stand": {
+            "x": 2076,
+            "y": 3688,
+            "plane": 0
+          },
+          "partnerStand": {
+            "x": 2074,
+            "y": 10088,
+            "plane": 0
+          }
+        },
+        {
+          "role": "way-out",
+          "connector": {
+            "objectId": -1,
+            "ids": [],
+            "name": "World map link",
+            "options": [
+              "Map link"
+            ],
+            "x": 2073,
+            "y": 10090,
+            "plane": 0,
+            "sizeX": 1,
+            "sizeY": 1,
+            "partner": {
+              "objectId": -1,
+              "name": "World map link",
+              "option": "Map link",
+              "x": 2075,
+              "y": 3690,
+              "plane": 0,
+              "sizeX": 1,
+              "sizeY": 1,
+              "rule": "map-link"
+            }
+          },
+          "stand": {
+            "x": 2073,
+            "y": 10089,
+            "plane": 0
+          },
+          "partnerStand": {
+            "x": 2075,
+            "y": 3689,
+            "plane": 0
+          }
+        }
+      ],
+      "review": {
+        "status": "unreviewed"
+      },
+      "shortcut": null
+    },
+    {
+      "id": "shortcut-c7477d46f2990cbbcbe9cbd1",
+      "kind": "shortcut",
+      "title": "Rock Climb near 3236 2388 0",
+      "areaTiles": null,
+      "bounds": null,
+      "focus": {
+        "x": 3236,
+        "y": 2388,
+        "plane": 0
+      },
+      "contains": null,
+      "paired": false,
+      "connectors": [
+        {
+          "role": "shortcut",
+          "connector": {
+            "objectId": 57932,
+            "ids": [
+              57932
+            ],
+            "name": "Rocks",
+            "options": [
+              "Climb"
+            ],
+            "x": 3235,
+            "y": 2387,
+            "plane": 0,
+            "sizeX": 1,
+            "sizeY": 1,
+            "partner": null
+          },
+          "stand": {
+            "x": 3235,
+            "y": 2386,
+            "plane": 0
+          },
+          "partnerStand": null
+        }
+      ],
+      "shortcut": {
+        "x": 3236,
+        "y": 2388,
+        "plane": 0,
+        "runelite": "FIXTURE_ROCK_CLIMB",
+        "description": "Rock Climb",
+        "level": 38,
+        "obstacles": []
+      },
+      "review": {
+        "status": "unreviewed"
+      }
+    }
+  ],
+  "plugin": {
+    "repository": "Skretzo/shortest-path",
+    "rev": "1111111111111111111111111111111111111111"
+  },
+  "tooling": {
+    "repository": "osrs-pathfinding/shortest-path-tooling",
+    "rev": "2222222222222222222222222222222222222222"
+  }
+}

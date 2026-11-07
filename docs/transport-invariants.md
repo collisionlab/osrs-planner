@@ -2,7 +2,7 @@
 
 Open **Transport invariants** from the workbench home page, or visit
 `http://workbench.localhost:5173/invariants` when Vite is running on its default port.
-Run the planner service alongside Vite. The old `/candidates` address redirects here.
+Run the planner service alongside Vite.
 The selected finding is in `#finding=<id>`; the invariant and search filters are in the
 query string. `j`/`k` move between findings.
 
@@ -15,7 +15,8 @@ changes transport data.
 
 The page used to hold a pinned import of BestPath's suggestion lists. That was removed:
 most of it was stale or noise, and static lists could not be kept up to date. New
-candidates should come from a reproducible, filtered process instead (see below).
+candidates now come from a reproducible, filtered process instead (see
+[Transport candidates](#transport-candidates)).
 
 ## The invariants
 
@@ -63,13 +64,26 @@ Statuses are `accepted`, `rejected`, `needs_evidence` or `deferred`; an explanat
 required. The service rejects unknown ids, so remove an entry when its row is fixed.
 **Copy review note** copies the finding as a Markdown template.
 
-## Adding candidates
+## Transport candidates
 
-New transport candidates (for example ladders and stairs from the game cache) belong in
-a reproducible pipeline in shortest-path-tooling that records its cache version and
-keeps only high-signal rows: ones that join walking areas no current transport joins
-nearby, or that reach an area these checks report as unreached. Its output can then be
-checked against these invariants like any other change.
+New transports are suggested on a separate page, **Transport candidates** (`/candidates`,
+`GET /api/workbench/v1/candidates`).
+
+- **Source:** a cache snapshot made by shortest-path-tooling (`./gradlew transportCandidates`;
+  see its `docs/transport-candidates.md`). It holds the ladders, stairs, trapdoors and cave
+  entrances in the game cache that no transport row covers, with their paired far ends,
+  plus the world map's dungeon links and agility shortcut icons.
+- **Live judgement:** the service judges the snapshot against its bundled plugin, so a row
+  added later removes its candidate.
+- **What it lists:**
+  - one item per walking area of 50+ tiles that no chain of transports reaches from
+    Lumbridge, with the cache connectors or world map links that would join it to reached
+    ground;
+  - one item per agility shortcut map icon with no transport within 5 tiles, with
+    RuneLite's description and level where it knows the shortcut.
+- **Funnel:** the page shows how many connectors each step set aside.
+- **Reviews:** decisions go in `service/src/main/resources/candidates/reviews.json`, keyed
+  by item id, with the same statuses and rules as the invariants ledger.
 
 ## Verification
 

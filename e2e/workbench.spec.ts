@@ -4,6 +4,7 @@ import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import tiles from "../tiles.json" with { type: "json" };
 import invariantFixture from "./fixtures/invariants.json" with { type: "json" };
+import candidateFixture from "./fixtures/candidates.json" with { type: "json" };
 
 // The workbench's transport review, on its own host, against a mocked review service: a pull
 // request that adds the Fractured Archive entrance and edits a row. The pinned insets' labels lose
@@ -184,7 +185,7 @@ test("a destination finding draws its row across floors and marks the landing", 
   await expect(page.locator(".wb-finding-detail")).toContainText("needs_evidence — Fixture: check the ladder in game");
 });
 
-test("filters findings by invariant and search, and the old candidates link lands here", async ({ page }) => {
+test("filters findings by invariant and search", async ({ page }) => {
   await mockInvariants(page);
   await page.goto("/");
   await page.getByRole("link", { name: /Transport invariants/ }).click();
@@ -197,8 +198,34 @@ test("filters findings by invariant and search, and the old candidates link land
   await page.getByLabel("Invariant", { exact: true }).selectOption("");
   await page.getByLabel("Search findings").fill("climb-down");
   await expect(page.locator(".wb-finding-detail")).toHaveAttribute("data-finding-id", ENTRY.id);
-  await page.goto("/candidates");
-  await expect(page).toHaveURL(/\/invariants/);
+});
+
+test("transport candidates list unreached areas, draw their connectors and search", async ({ page }) => {
+  const [GUILD, CAVE] = candidateFixture.items;
+  await mockInvariants(page);
+  await page.route("**/api/workbench/v1/candidates", route => route.fulfill({ json: candidateFixture }));
+  await page.goto("/");
+  await page.getByRole("link", { name: /Transport candidates/ }).click();
+  await expect(page).toHaveURL(new RegExp("/candidates#item=" + GUILD.id + "$"));
+  await expect(page).toHaveTitle("Transport candidates · Workbench");
+  await expect(page.locator(".wb-summary")).toHaveText("2 unreached areas · 1 agility shortcuts · 0 unmodelled map links");
+  await page.waitForFunction(() => Boolean((window as unknown as { insetMap?: unknown }).insetMap));
+  await expect.poll(() => findingMap(page, map => map.shows({ x: 2896, y: 3512, plane: 1 }))).toBe(true);
+  await expect.poll(() => findingMap(page, map => map.featureSummary().filter(f => f.tone === "candidate").length)).toBeGreaterThan(0);
+  const detail = page.locator(".wb-finding-detail");
+  await expect(detail).toContainText("89 tiles");
+  await expect(detail).toContainText("Climb-up Staircase 16671");
+  await expect(detail).toContainText("needs_evidence — Fixture: check the guild stairs in game");
+  await page.keyboard.press("j");
+  await expect(page).toHaveURL(new RegExp("#item=" + CAVE.id + "$"));
+  await expect(page.locator(".wb-finding-detail")).toContainText("id+offset pair");
+  await page.getByLabel("Kind", { exact: true }).selectOption("shortcut");
+  await expect(page.locator(".wb-finding-detail")).toContainText("RuneLite knows it as Rock Climb");
+  await expect(page.locator(".wb-finding-detail")).toContainText("38 Agility");
+  await page.getByLabel("Kind", { exact: true }).selectOption("");
+  await page.getByLabel("Search candidates").fill("altar");
+  await expect(page.getByRole("navigation", { name: "Candidates" })).toContainText("1 candidates shown");
+  await expect(page.locator(".wb-finding-detail")).toHaveAttribute("data-item-id", GUILD.id);
 });
 
 test("developer coordinate hover copies surface and inset tiles and freezes the context-menu tile", async ({ page }) => {
