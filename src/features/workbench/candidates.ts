@@ -27,7 +27,7 @@ export interface ShortcutIcon {
  * shortcut's obstacle, or one direction of a world map link and whether a transport models it.
  */
 export interface CandidateConnector {
-  role: "way-in" | "way-out" | "open-end" | "shortcut" | "modelled" | "unmodelled";
+  role: "way-in" | "way-out" | "open-end" | "shortcut" | "modelled" | "unmodelled" | "entrance";
   connector: Connector;
   /** Walkable tiles beside the connector and beside its partner. */
   stand: WorldPoint; partnerStand: WorldPoint | null;
@@ -56,17 +56,21 @@ export interface CandidateReport {
   funnel: Record<string, number>;
   /** The map icon that marks agility shortcuts, and how many of its placements have a shortcut row within 5 tiles. */
   shortcutMarker: { field: string | null; icons: number; iconsNearRows: number } | null;
+  /** The map icon that marks dungeon entrances, and how many of its placements have a row going down or in within 5 tiles. */
+  dungeonMarker: { field: string | null; icons: number; iconsNearRows: number } | null;
   items: CandidateItem[];
   plugin: Revision; tooling: Revision;
 }
 
-export const candidateKinds = ["area", "shortcut", "link"] as const;
+export const candidateKinds = ["area", "shortcut", "link", "dungeon"] as const;
 export type CandidateKind = typeof candidateKinds[number];
-export const kindNames: Record<CandidateKind, string> = { area: "Unreached areas", shortcut: "Agility shortcuts", link: "Unmodelled map links" };
+export const kindNames: Record<CandidateKind, string> = {
+  area: "Unreached areas", shortcut: "Agility shortcuts", link: "Unmodelled map links", dungeon: "Dungeon entrances",
+};
 
 export const roleNames: Record<CandidateConnector["role"], string> = {
   "way-in": "Way in", "way-out": "Way out", "open-end": "Unknown far end", shortcut: "Obstacle",
-  modelled: "Modelled direction", unmodelled: "Unmodelled direction",
+  modelled: "Modelled direction", unmodelled: "Unmodelled direction", entrance: "Beside the icon",
 };
 
 /** A world map link has no object: it is its icon. */
@@ -84,6 +88,9 @@ export function itemMeta(item: CandidateItem) {
   if (item.kind === "link") {
     const unmodelled = item.connectors.filter(c => c.role === "unmodelled").length;
     return item.connectors.length === 1 ? "one way, unmodelled" : `${unmodelled} of ${item.connectors.length} directions unmodelled`;
+  }
+  if (item.kind === "dungeon") {
+    return item.connectors.length ? [...new Set(item.connectors.map(c => connectorText(c.connector)))].join(", ") : "no connector beside the icon";
   }
   if (item.shortcut) {
     const level = item.shortcut.level > 0 ? `${item.shortcut.level} Agility` : "level unknown";
@@ -116,10 +123,10 @@ export function itemOverlay(item: CandidateItem): FeatureOverlay {
     features.push({ kind: "region", key: item.id, plane, bounds: [x1, y1, x2, y2], tone: "suspect", dashed: true,
       label: `Unreached · ${item.areaTiles?.toLocaleString()} tiles` });
   }
-  if (item.shortcut) {
-    const { x, y, plane } = item.shortcut;
+  if (item.shortcut || item.kind === "dungeon") {
+    const { x, y, plane } = item.shortcut ?? item.focus;
     features.push({ kind: "point", key: item.id, point: { x, y, plane }, tone: "suspect", role: "destination",
-      title: `Agility shortcut icon · ${pointText({ x, y, plane })}` });
+      title: `${item.shortcut ? "Agility shortcut" : "Dungeon entrance"} icon · ${pointText({ x, y, plane })}` });
   }
   for (const c of item.connectors) {
     const title = `${roleNames[c.role]}: ${connectorText(c.connector)}`;
