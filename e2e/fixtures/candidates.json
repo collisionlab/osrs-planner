@@ -34,6 +34,7 @@
       "id": "area-1cfada79e5d209cd9bbb0413",
       "kind": "area",
       "title": "Unreached area near 2896 3512 1",
+      "label": null,
       "areaTiles": 89,
       "bounds": [
         2889,
@@ -141,6 +142,7 @@
       "id": "area-dbc0c3e51f7dd234e6fd8c94",
       "kind": "area",
       "title": "Unreached area near 2073 10089 0",
+      "label": null,
       "areaTiles": 947,
       "bounds": [
         2051,
@@ -243,6 +245,7 @@
       "id": "shortcut-c7477d46f2990cbbcbe9cbd1",
       "kind": "shortcut",
       "title": "Rock Climb near 3236 2388 0",
+      "label": null,
       "areaTiles": null,
       "bounds": null,
       "focus": {

@@ -18,7 +18,8 @@ const ITEM_LAYERS = ["collision"];
 /**
  * Connections the game shows that the plugin has no transport for, judged live by the service against
  * the plugin it bundles: cache ladders, stairs, cave entrances and world map links that would join a
- * walking area nothing reaches, and agility shortcut icons with no transport nearby. Adding a row
+ * walking area nothing reaches (titled by the world map's name for it), and agility shortcut and
+ * dungeon entrance icons with no transport nearby. Adding a row
  * removes its item from the next release's list.
  */
 export function CandidatesPage() {
@@ -170,10 +171,8 @@ function CandidateDetail({ item, show, copy }: { item: CandidateItem; show(p: Wo
     </tbody></table>}
     {item.kind === "dungeon" && <p>The game's dungeon entrance icon at {tile(item.focus)} has no transport within 5 tiles, and no
       world map link beside it. The connectors below are within 5 tiles of the icon.</p>}
-    {item.kind === "link" && <p>The world map links these icons, but no transport starts within 15 tiles of an icon and lands
-      in the walking area at the other end, for each direction marked unmodelled.</p>}
-    <p className="wb-note">{item.kind === "link" ? "Map link ends are icon positions; the tiles shown are the walkable ones nearest each icon."
-      : item.shortcut ? "Obstacles are RuneLite's object ids for the shortcut within 10 tiles of the icon, or else the connectors within 5."
+    {item.label && <p className="wb-note">The world map names a place in this area: {item.label}.</p>}
+    <p className="wb-note">{item.shortcut ? "Obstacles are RuneLite's object ids for the shortcut within 10 tiles of the icon, or else the connectors within 5."
       : <>No transport row starts within 2 tiles of these connectors. A pair is one plane apart (vertical), a neighbouring object id
       about 6,400 tiles away (id+offset), or the world map's link from a dungeon entrance icon to the dungeon (map-link; icon positions,
       so its tiles are the walkable ones nearest each icon).</>}</p>
