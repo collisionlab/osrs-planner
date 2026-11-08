@@ -78,11 +78,9 @@ New transports are suggested on a separate page, **Transport candidates** (`/can
 - **What it lists:**
   - one item per walking area of 50+ tiles that no chain of transports reaches from
     Lumbridge, with the cache connectors or world map links that would join it to reached
-    ground;
+    ground, titled by the world map's name for a place in it when it has one;
   - one item per agility shortcut map icon with no transport within 5 tiles, with
     RuneLite's description and level where it knows the shortcut;
-  - one item per world map link between reached areas that no transport near its icon
-    models;
   - one item per dungeon entrance map icon with no transport within 5 tiles.
 - **Funnel:** the page shows how many connectors each step set aside.
 - **Reviews:** decisions go in `service/src/main/resources/candidates/reviews.json`, keyed

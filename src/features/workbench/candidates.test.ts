@@ -10,8 +10,6 @@ describe("transport candidates", () => {
     expect(itemMeta(guild)).toBe("89 tiles · 1 altar · 2 connectors");
     expect(itemMeta(cave)).toBe("947 tiles · 2 connectors");
     expect(itemMeta(rocks)).toBe("38 Agility · Climb Rocks 57932");
-    const link = { ...cave, kind: "link" as const, connectors: cave.connectors.map((c, i) => ({ ...c, role: i ? "modelled" as const : "unmodelled" as const })) };
-    expect(itemMeta(link)).toBe("1 of 2 directions unmodelled");
     const dungeon = { ...cave, kind: "dungeon" as const, connectors: cave.connectors.slice(0, 1).map(c => ({ ...c, role: "entrance" as const })) };
     expect(itemMeta(dungeon)).toBe("Climb-down Ladder 60093");
     expect(itemOverlay(dungeon).features.filter(f => f.kind === "point" && f.tone === "suspect")).toHaveLength(1);

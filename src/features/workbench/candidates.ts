@@ -24,10 +24,10 @@ export interface ShortcutIcon {
 
 /**
  * One connector of an item: inside the area (`way-out`) or on reached ground leading in (`way-in`), a
- * shortcut's obstacle, or one direction of a world map link and whether a transport models it.
+ * shortcut's obstacle, or a connector beside a dungeon entrance icon.
  */
 export interface CandidateConnector {
-  role: "way-in" | "way-out" | "open-end" | "shortcut" | "modelled" | "unmodelled" | "entrance";
+  role: "way-in" | "way-out" | "open-end" | "shortcut" | "entrance";
   connector: Connector;
   /** Walkable tiles beside the connector and beside its partner. */
   stand: WorldPoint; partnerStand: WorldPoint | null;
@@ -36,6 +36,8 @@ export interface CandidateConnector {
 /** An unreached walking area and the uncovered cache connectors that would join it to reached ground. */
 export interface CandidateItem {
   id: string; kind: CandidateKind; title: string;
+  /** Area only: the world map's name for a place in it, which also titles it. */
+  label: string | null;
   areaTiles: number | null;
   /** minX, minY, maxX, maxY, plane. */
   bounds: [number, number, number, number, number] | null;
@@ -62,15 +64,14 @@ export interface CandidateReport {
   plugin: Revision; tooling: Revision;
 }
 
-export const candidateKinds = ["area", "shortcut", "link", "dungeon"] as const;
+export const candidateKinds = ["area", "shortcut", "dungeon"] as const;
 export type CandidateKind = typeof candidateKinds[number];
 export const kindNames: Record<CandidateKind, string> = {
-  area: "Unreached areas", shortcut: "Agility shortcuts", link: "Unmodelled map links", dungeon: "Dungeon entrances",
+  area: "Unreached areas", shortcut: "Agility shortcuts", dungeon: "Dungeon entrances",
 };
 
 export const roleNames: Record<CandidateConnector["role"], string> = {
-  "way-in": "Way in", "way-out": "Way out", "open-end": "Unknown far end", shortcut: "Obstacle",
-  modelled: "Modelled direction", unmodelled: "Unmodelled direction", entrance: "Beside the icon",
+  "way-in": "Way in", "way-out": "Way out", "open-end": "Unknown far end", shortcut: "Obstacle", entrance: "Beside the icon",
 };
 
 /** A world map link has no object: it is its icon. */
@@ -85,10 +86,6 @@ export function containsText(item: CandidateItem) {
 }
 
 export function itemMeta(item: CandidateItem) {
-  if (item.kind === "link") {
-    const unmodelled = item.connectors.filter(c => c.role === "unmodelled").length;
-    return item.connectors.length === 1 ? "one way, unmodelled" : `${unmodelled} of ${item.connectors.length} directions unmodelled`;
-  }
   if (item.kind === "dungeon") {
     return item.connectors.length ? [...new Set(item.connectors.map(c => connectorText(c.connector)))].join(", ") : "no connector beside the icon";
   }
