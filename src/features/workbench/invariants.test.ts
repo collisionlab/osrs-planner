@@ -3,12 +3,13 @@ import fixture from "../../../e2e/fixtures/invariants.json";
 import { filterFindings, findingLabel, findingOverlay, reviewNote, sourceUrl, type InvariantReport } from "./invariants";
 
 const report = fixture as InvariantReport;
-const [destination, entry, location] = report.findings;
+const [destination, entry, location, clue] = report.findings;
 
 describe("invariant findings", () => {
   it("labels transports by their action and locations by kind and name", () => {
     expect(findingLabel(destination)).toBe("Climb-up Ladder 17384");
     expect(findingLabel(location)).toBe("Bank · Fixture bank");
+    expect(findingLabel(clue)).toBe("Clue step · cryptic-2671-10396-0");
   });
 
   it("filters by invariant and by words across the row, tile and failure", () => {
@@ -24,13 +25,15 @@ describe("invariant findings", () => {
     expect(suspect(destination)).toEqual(["destination"]);
     expect(suspect(entry)).toEqual(["origin"]);
     expect(suspect(location)).toEqual(["destination"]);
+    expect(suspect(clue)).toEqual(["destination"]);
     expect(findingOverlay(location).anchors).toHaveLength(1);
     expect(findingOverlay(destination).features.some(feature => feature.kind === "edge")).toBe(true);
   });
 
   it("links the exact row at the checked plugin revision and drafts a review note", () => {
-    expect(sourceUrl(entry, report.plugin)).toBe(`https://github.com/Skretzo/shortest-path/blob/${"1".repeat(40)}/src/main/resources/transports/transports.tsv#L1331`);
-    expect(reviewNote(entry, report.plugin)).toContain("### Entry invariant entry-");
-    expect(reviewNote(entry, report.plugin)).toContain("- Tile: 2862 2996 1");
+    expect(sourceUrl(entry, report)).toBe(`https://github.com/Skretzo/shortest-path/blob/${"1".repeat(40)}/src/main/resources/transports/transports.tsv#L1331`);
+    expect(sourceUrl(clue, report)).toBe(`https://github.com/osrs-pathfinding/shortest-path-tooling/blob/${"2".repeat(40)}/scenarios/src/main/resources/scenarios/clue-locations.json#L321`);
+    expect(reviewNote(entry, report)).toContain("### Entry invariant entry-");
+    expect(reviewNote(entry, report)).toContain("- Tile: 2862 2996 1");
   });
 });

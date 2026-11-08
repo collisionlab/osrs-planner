@@ -2,7 +2,8 @@
  "rules": {
   "destination": "A transport lands on a walkable tile or on the exact origin of another transport.",
   "entry": "A transport starts on a walkable tile, or on a blocked tile that a chain of transports reaches from open ground or a teleport. Fairy rings are not checked yet.",
-  "location": "A location (bank, altar, anvil, apothecary) is a walkable tile in a walking area that a chain of transports reaches from Lumbridge, ignoring requirements."
+  "location": "A location (bank, altar, anvil, apothecary) is a walkable tile in a walking area that a chain of transports reaches from Lumbridge, ignoring requirements.",
+  "clue": "A route can end at every clue step's tile."
  },
  "findings": [
   {
@@ -126,6 +127,45 @@
     "kind": "bank",
     "name": "Fixture bank",
     "areaTiles": 14
+   },
+   "review": {
+    "status": "unreviewed"
+   }
+  },
+  {
+   "id": "clue-dddddddddddddddddddddddd",
+   "invariant": "clue",
+   "file": "scenarios/src/main/resources/scenarios/clue-locations.json",
+   "line": 321,
+   "raw": "  {\"id\": \"cryptic-2671-10396-0\", \"name\": \"cryptic (2671 10396 0)\", \"category\": \"cryptic\", \"start\": [2662, 3305, 0], \"target\": [2671, 10396, 0], \"targetSource\": \"CrypticClue.java:1\"},",
+   "row": {
+    "file": "scenarios/src/main/resources/scenarios/clue-locations.json",
+    "line": 321,
+    "section": "cryptic",
+    "fields": {
+     "Destination": "2671 10396 0",
+     "Info": "cryptic-2671-10396-0",
+     "Source": "CrypticClue.java:1"
+    },
+    "origin": null,
+    "destination": {
+     "x": 2671,
+     "y": 10396,
+     "plane": 0
+    },
+    "label": "cryptic-2671-10396-0"
+   },
+   "focus": {
+    "x": 2671,
+    "y": 10396,
+    "plane": 0
+   },
+   "failure": "The clue step is in a walking area of 120 tiles that no chain of transports reaches from Lumbridge, with no reachable tile within 2 of it.",
+   "clue": {
+    "id": "cryptic-2671-10396-0",
+    "category": "cryptic",
+    "source": "CrypticClue.java:1",
+    "areaTiles": 120
    },
    "review": {
     "status": "unreviewed"

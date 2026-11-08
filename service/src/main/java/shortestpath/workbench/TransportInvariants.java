@@ -23,8 +23,8 @@ import shortestpath.transport.ResourceLoader;
 import shortestpath.transport.TransportType;
 
 /**
- * Checks of the bundled plugin data that every transport and location must pass, computed live from
- * the plugin on this service's classpath. Each failure is a finding to fix in the data; nothing here
+ * Checks of the bundled plugin data that every transport, location and clue step must pass, computed
+ * live from the plugin (and tooling's clue list) on this service's classpath. Each failure is a finding to fix in the data; nothing here
  * suggests a correction or changes transports.
  */
 public final class TransportInvariants {
@@ -143,6 +143,7 @@ public final class TransportInvariants {
         DestinationViolations.collect(transports, walkable, findings);
         EntryViolations.collect(transports, walkable, findings);
         LocationViolations.collect(locationRows(), LocationViolations.Components.bundled(), findings);
+        ClueViolations.collect(ClueViolations.bundledRows(), LocationViolations.Components.bundled(), findings);
         JsonNode ledger;
         try {
             ledger = JSON.readTree(resource("/invariants/reviews.json"));
@@ -160,6 +161,7 @@ public final class TransportInvariants {
         rules.put("destination", DestinationViolations.RULE);
         rules.put("entry", EntryViolations.RULE);
         rules.put("location", LocationViolations.RULE);
+        rules.put("clue", ClueViolations.RULE);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("rules", rules);
         result.put("findings", findings.list);
