@@ -137,7 +137,7 @@ export function InvariantsPage() {
             {layers.routing.panel && <div className="wb-detail">{layers.routing.panel}</div>}
             {finding && <FindingDetail finding={finding} report={report} show={point => setFocusTile({ point })}
               copy={async () => {
-                try { await navigator.clipboard.writeText(reviewNote(finding, report.plugin)); setCopyStatus("Review note copied"); }
+                try { await navigator.clipboard.writeText(reviewNote(finding, report)); setCopyStatus("Review note copied"); }
                 catch { setCopyStatus("Could not access clipboard"); }
               }} />}
             {copyStatus && <p role="status">{copyStatus}</p>}
@@ -154,16 +154,18 @@ export function InvariantsPage() {
 
 function FindingDetail({ finding: f, report, show, copy }: { finding: Finding; report: InvariantReport; show(p: WorldPoint): void; copy(): void }) {
   const ends = f.invariant === "location" ? [["location", f.focus] as const]
+    : f.invariant === "clue" ? [["clue step", f.focus] as const]
     : [["origin", f.row.origin] as const, ["destination", f.row.destination] as const];
   return <article className="wb-section wb-finding-detail" data-finding-id={f.id}>
     <h2>{findingLabel(f)}</h2>
-    <p><strong>{invariantNames[f.invariant]}</strong> · <a href={sourceUrl(f, report.plugin)}>{fileName(f)}:{f.line}</a>{f.row.section && <> · {f.row.section}</>}</p>
+    <p><strong>{invariantNames[f.invariant]}</strong> · <a href={sourceUrl(f, report)}>{fileName(f)}:{f.line}</a>{f.row.section && <> · {f.row.section}</>}</p>
     <p className="wb-warning">{f.failure}</p>
     <p className="wb-note">{report.rules[f.invariant]}</p>
     <table className="wb-rows"><tbody>{ends.map(([end, point]) => <tr key={end}><th>{end}</th><td>
       <button type="button" className={`wb-tile ${point && pointText(point) === pointText(f.focus) ? "suspect" : ""}`} disabled={!point}
         onClick={() => point && show(point)}>{pointText(point)}</button></td></tr>)}</tbody></table>
-    {f.invariant !== "location" && <details><summary>Transport fields</summary><table className="wb-rows"><tbody>
+    {f.clue && <p className="wb-note">Tile from {f.clue.source}.</p>}
+    {(f.invariant === "destination" || f.invariant === "entry") && <details><summary>Transport fields</summary><table className="wb-rows"><tbody>
       {Object.entries(f.row.fields).map(([name, value]) => <tr key={name}><th>{name}</th><td>{value || "—"}</td></tr>)}
     </tbody></table></details>}
     <details><summary>Exact row</summary><pre className="wb-draft-text">{f.raw}</pre></details>

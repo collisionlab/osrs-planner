@@ -6,8 +6,9 @@ Run the planner service alongside Vite.
 The selected finding is in `#finding=<id>`; the invariant and search filters are in the
 query string. `j`/`k` move between findings.
 
-Every finding is a row of the plugin data that breaks a rule. The service checks the
-transport and location resources and the collision map bundled with its plugin revision
+Every finding is a row of the plugin data (or of tooling's clue list) that breaks a rule.
+The service checks the transport and location resources and the collision map bundled with
+its plugin revision, and the clue list bundled with its tooling revision,
 on each request (`GET /api/workbench/v1/invariants`, service path
 `/workbench/v1/invariants`), so the list is always that release's data: fix rows in
 the plugin, bump the pin, and the findings go. Nothing here suggests a correction or
@@ -34,13 +35,26 @@ movement into or out of the tile.
   lands on it from a walkable origin or a teleport, or from another blocked origin that
   passes (chopping through jungle, stepping stones). Fairy rings are not checked yet;
   their rows still start chains.
-- **Location** (`LocationViolations`): every bank, altar, anvil and apothecary in the
-  plugin's `destinations/` files is a walkable tile in a walking area that transports
-  reach from Lumbridge. Reachability is the plugin's own structural reachability
-  (`RoutingStaticBuilder.walkingGraph`): natural walking components joined by every
-  transport and teleport, ignoring requirements. A finding gives the size of the area
-  the location is in. Instances and raids (Tutorial Island, Chambers of Xeric) are
-  expected findings to decide in the ledger.
+- **Location** (`LocationViolations`): a route can end at every bank, altar, anvil and
+  apothecary in the plugin's `destinations/` files. The target is snapped as the plugin
+  snaps one (tooling's `TargetReachability`, applying the A* backend's
+  `ReachableGoalRule`):
+  - a reachable walkable tile ends routes itself;
+  - a blocked one (a bank booth, an altar, an anvil) ends them on the reachable tiles of
+    the nearest ring within the default unreachable distance, 2. On the touching ring the
+    rule prefers tiles that share no wall with it, then cardinal tiles before diagonal
+    ones. Landings of transports a player can get to also count.
+
+  Only targets with nothing reachable within that distance are findings. Reachability
+  is the plugin's own structural reachability (`RoutingStaticBuilder.walkingGraph`):
+  natural walking components joined by every transport and teleport, ignoring
+  requirements. A finding gives the size of the area the location is in. Instances and
+  raids (Tutorial Island, Chambers of Xeric) are expected findings to decide in the
+  ledger.
+- **Clue step** (`ClueViolations`): the same rule for every step of tooling's clue list
+  (`scenarios/src/main/resources/scenarios/clue-locations.json`, 866 steps). Its link
+  goes to the line in tooling at the checked tooling revision, and the detail says where
+  the step's tile came from (RuneLite's clue classes, the wiki, Discord).
 
 ## Finding identity and the review ledger
 
