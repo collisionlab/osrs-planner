@@ -9,7 +9,7 @@ describe("invariant findings", () => {
   it("labels transports by their action and locations by kind and name", () => {
     expect(findingLabel(destination)).toBe("Climb-up Ladder 17384");
     expect(findingLabel(location)).toBe("Bank · Fixture bank");
-    expect(findingLabel(clue)).toBe("Clue step · cryptic-2671-10396-0");
+    expect(findingLabel(clue)).toBe("Clue step · cryptic (2671 10396 0)");
   });
 
   it("filters by invariant and by words across the row, tile and failure", () => {

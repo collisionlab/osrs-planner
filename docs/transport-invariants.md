@@ -6,9 +6,9 @@ Run the planner service alongside Vite.
 The selected finding is in `#finding=<id>`; the invariant and search filters are in the
 query string. `j`/`k` move between findings.
 
-Every finding is a row of the plugin data (or of tooling's clue list) that breaks a rule.
+Every finding is a row of the plugin data (or of one of tooling's site lists) that breaks a rule.
 The service checks the transport and location resources and the collision map bundled with
-its plugin revision, and the clue list bundled with its tooling revision,
+its plugin revision, and the site lists bundled with its tooling revision,
 on each request (`GET /api/workbench/v1/invariants`, service path
 `/workbench/v1/invariants`), so the list is always that release's data: fix rows in
 the plugin, bump the pin, and the findings go. Nothing here suggests a correction or
@@ -51,10 +51,17 @@ movement into or out of the tile.
   requirements. A finding gives the size of the area the location is in. Instances and
   raids (Tutorial Island, Chambers of Xeric) are expected findings to decide in the
   ledger.
-- **Clue step** (`ClueViolations`): the same rule for every step of tooling's clue list
-  (`scenarios/src/main/resources/scenarios/clue-locations.json`, 866 steps). Its link
-  goes to the line in tooling at the checked tooling revision, and the detail says where
-  the step's tile came from (RuneLite's clue classes, the wiki, Discord).
+- **Clue step, Forestry call, Shooting star** (`SiteViolations`): the same rule for every
+  site in tooling's site lists, one invariant per list:
+  - `scenarios/clue-locations.json`: the clue list, 866 steps;
+  - `locations/forestry-call-locations.json`: Forestry call centres, 121, from the scouting
+    plugin, which is synced from the loghunters bot. An ent can be anywhere within 40
+    tiles of a call, but it's an NPC, so it always stands on a walkable tile;
+  - `locations/shooting-star-sites.json`: shooting star sites, 81, from star-calling-assist.
+
+  tooling's `scripts/site_lists.py` regenerates the last two. A finding links to its line in
+  tooling at the checked tooling revision, and the detail says where the site's tile came
+  from.
 
 ## Finding identity and the review ledger
 

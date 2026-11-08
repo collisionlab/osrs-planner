@@ -38,27 +38,35 @@ class LocationViolationsTest {
         assertNull(((Map<?, ?>) wall.get("location")).get("areaTiles"));
     }
 
-    @Test void reportsClueStepsNoRouteEndsAt() {
+    @Test void reportsSitesNoRouteEndsAt() {
         String text = "[\n"
-            + "  {\"id\": \"emote-100-100-0\", \"category\": \"emote\", \"start\": [1, 1, 0], \"target\": [100, 100, 0], \"targetSource\": \"a\"},\n"
-            + "  {\"id\": \"cryptic-250-100-0\", \"category\": \"cryptic\", \"start\": [1, 1, 0], \"target\": [250, 100, 0], \"targetSource\": \"b\"}\n"
+            + "  {\"id\": \"emote-100-100-0\", \"name\": \"emote\", \"category\": \"emote\", \"start\": [1, 1, 0], \"target\": [100, 100, 0], \"targetSource\": \"a\"},\n"
+            + "  {\"id\": \"cryptic-250-100-0\", \"name\": \"cryptic (250 100 0)\", \"category\": \"cryptic\", \"start\": [1, 1, 0], \"target\": [250, 100, 0], \"targetSource\": \"b\"}\n"
             + "]\n";
-        var rows = ClueViolations.rows(text);
+        var list = SiteViolations.SiteList.CLUE;
+        var rows = SiteViolations.rows(list, text);
         assertEquals(2, rows.size());
         assertEquals(3, rows.get(1).row.line);
         var findings = new TransportInvariants.Findings();
-        ClueViolations.collect(rows, COMPONENTS, findings);
+        SiteViolations.collect(list, rows, COMPONENTS, findings);
         assertEquals(1, findings.list.size());
         var island = findings.list.get(0);
         assertEquals("clue", island.get("invariant"));
-        assertEquals(ClueViolations.FILE, island.get("file"));
-        assertEquals(Map.of("id", "cryptic-250-100-0", "category", "cryptic", "source", "b", "areaTiles", 40), island.get("clue"));
+        assertEquals("scenarios/src/main/resources/scenarios/clue-locations.json", island.get("file"));
+        assertEquals(Map.of("id", "cryptic-250-100-0", "name", "cryptic (250 100 0)", "category", "cryptic", "source", "b", "areaTiles", 40),
+            island.get("site"));
+        assertTrue(((String) island.get("failure")).startsWith("The clue step is in a walking area of 40 tiles"));
     }
 
-    @Test void readsTheWholeClueList() {
-        var rows = ClueViolations.bundledRows();
-        assertTrue(rows.size() > 800, "clue steps: " + rows.size());
-        assertEquals(List.of(), rows.stream().filter(row -> row.row.destination == null).map(row -> row.raw).collect(java.util.stream.Collectors.toList()));
+    @Test void readsEverySiteList() {
+        var sizes = new java.util.EnumMap<SiteViolations.SiteList, Integer>(SiteViolations.SiteList.class);
+        for (var list : SiteViolations.SiteList.values()) {
+            var rows = SiteViolations.bundledRows(list);
+            sizes.put(list, rows.size());
+            assertEquals(List.of(), rows.stream().filter(row -> row.row.destination == null).map(row -> row.raw).collect(java.util.stream.Collectors.toList()));
+        }
+        assertTrue(sizes.get(SiteViolations.SiteList.CLUE) > 800 && sizes.get(SiteViolations.SiteList.FORESTRY) > 100
+            && sizes.get(SiteViolations.SiteList.STAR) > 70, sizes.toString());
     }
 
     @Test void readsEveryPluginLocationFile() {

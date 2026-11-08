@@ -145,6 +145,7 @@
     "fields": {
      "Destination": "2671 10396 0",
      "Info": "cryptic-2671-10396-0",
+    "Name": "cryptic (2671 10396 0)",
      "Source": "CrypticClue.java:1"
     },
     "origin": null,
@@ -161,8 +162,9 @@
     "plane": 0
    },
    "failure": "The clue step is in a walking area of 120 tiles that no chain of transports reaches from Lumbridge, with no reachable tile within 2 of it.",
-   "clue": {
+   "site": {
     "id": "cryptic-2671-10396-0",
+    "name": "cryptic (2671 10396 0)",
     "category": "cryptic",
     "source": "CrypticClue.java:1",
     "areaTiles": 120
