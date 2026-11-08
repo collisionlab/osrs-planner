@@ -172,7 +172,7 @@ test("a destination finding draws its row across floors and marks the landing", 
   await mockInvariants(page);
   await openFinding(page, DESTINATION.id);
   await expect(page).toHaveTitle("Transport invariants · Workbench");
-  await expect(page.locator(".wb-summary")).toHaveText("1 destination · 1 entry · 1 location · 1 clue step");
+  await expect(page.locator(".wb-summary")).toHaveText("1 destination · 1 entry · 1 location · 1 clue step · 0 forestry call · 0 shooting star");
   await expect.poll(() => findingMap(page, map => map.shows({ x: 2862, y: 2997, plane: 0 }))).toBe(true);
   await expect.poll(() => findingMap(page, map => map.shows({ x: 2862, y: 2996, plane: 1 }))).toBe(true);
   await expect.poll(() => findingMap(page, map => map.featureSummary().filter(f => f.tone === "suspect").length)).toBe(1);

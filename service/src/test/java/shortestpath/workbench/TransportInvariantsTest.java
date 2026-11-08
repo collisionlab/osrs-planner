@@ -42,7 +42,7 @@ class TransportInvariantsTest {
                 JsonNode body = JSON.readTree(response.body().string());
                 assertEquals(200, response.code());
                 assertTrue(body.path("findings").isArray());
-                assertEquals(4, body.path("rules").size());
+                assertEquals(6, body.path("rules").size());
                 assertEquals(Provenance.bundled().plugin.rev, body.path("plugin").path("rev").asText());
             }
         });
