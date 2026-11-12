@@ -7,22 +7,11 @@ import io.javalin.Javalin;
 import io.javalin.testtools.JavalinTest;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 import org.junit.jupiter.api.Test;
 
 class TransportInvariantsTest {
     static final ObjectMapper JSON = new ObjectMapper();
-
-    @Test void ledgerRequiresKnownIdsAndExplainedDecisions() throws Exception {
-        TransportInvariants.validateLedger(JSON.readTree("{}"), Set.of("known"));
-        TransportInvariants.validateLedger(JSON.readTree("{\"known\":{\"status\":\"accepted\",\"explanation\":\"Verified in game\",\"reference\":\"commit abc\"}}"), Set.of("known"));
-        for (String invalid : List.of("{\"unknown\":{\"status\":\"deferred\",\"explanation\":\"Later\"}}",
-            "{\"known\":{\"status\":\"accepted\"}}", "{\"known\":{\"status\":\"guess\",\"explanation\":\"?\"}}",
-            "{\"known\":{\"status\":\"deferred\",\"explanation\":\"Later\",\"extra\":true}}")) {
-            assertThrows(IllegalArgumentException.class, () -> TransportInvariants.validateLedger(JSON.readTree(invalid), Set.of("known")));
-        }
-    }
 
     @Test void findingIdsAreUniqueAndEachInvariantHasARule() {
         Map<String, Object> bundled = TransportInvariants.bundled(Provenance.bundled());

@@ -49,8 +49,7 @@ movement into or out of the tile.
   is the plugin's own structural reachability (`RoutingStaticBuilder.walkingGraph`):
   natural walking components joined by every transport and teleport, ignoring
   requirements. A finding gives the size of the area the location is in. Instances and
-  raids (Tutorial Island, Chambers of Xeric) are expected findings to decide in the
-  ledger.
+  raids (Tutorial Island, Chambers of Xeric) are expected findings.
 - **Clue step, Forestry call, Shooting star** (`SiteViolations`): the same rule for every
   site in tooling's site lists, one invariant per list:
   - `scenarios/clue-locations.json`: the clue list, 866 steps;
@@ -63,27 +62,10 @@ movement into or out of the tile.
   tooling at the checked tooling revision, and the detail says where the site's tile came
   from.
 
-## Finding identity and the review ledger
+## Finding identity
 
 A finding's id is the invariant, a hash of the file and the exact row, and a `-2`, `-3`
 suffix for identical rows in file order, so unrelated line insertions do not change it.
-
-Record decisions in `service/src/main/resources/invariants/reviews.json`, keyed by
-finding id, in a normal repository change. Absent entries are `unreviewed`.
-
-```json
-{
-  "location-0123456789abcdef01234567": {
-    "status": "deferred",
-    "explanation": "Raid instance: reached through the raid lobby, not a transport.",
-    "reference": "Optional issue, commit, or evidence citation"
-  }
-}
-```
-
-Statuses are `accepted`, `rejected`, `needs_evidence` or `deferred`; an explanation is
-required. The service rejects unknown ids, so remove an entry when its row is fixed.
-**Copy review note** copies the finding as a Markdown template.
 
 ## Transport candidates
 
@@ -104,8 +86,6 @@ New transports are suggested on a separate page, **Transport candidates** (`/can
     RuneLite's description and level where it knows the shortcut;
   - one item per dungeon entrance map icon with no transport within 5 tiles.
 - **Funnel:** the page shows how many connectors each step set aside.
-- **Reviews:** decisions go in `service/src/main/resources/candidates/reviews.json`, keyed
-  by item id, with the same statuses and rules as the invariants ledger.
 
 ## Verification
 

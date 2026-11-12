@@ -25,7 +25,6 @@ export interface Finding {
   location?: { kind: string; name: string; areaTiles: number | null };
   /** A site from one of tooling's lists: its id and name there, category, and where its tile came from. */
   site?: { id: string; name: string; category: string; source: string; areaTiles: number | null };
-  review: { status: "unreviewed" | "accepted" | "rejected" | "needs_evidence" | "deferred"; explanation?: string; reference?: string };
 }
 export interface InvariantReport { rules: Record<Invariant, string>; findings: Finding[]; plugin: Revision; tooling: Revision }
 
@@ -63,18 +62,6 @@ export function findingOverlay(f: Finding): FeatureOverlay {
 export function sourceUrl(f: Finding, revisions: { plugin: Revision; tooling: Revision }) {
   const { repository, rev } = f.site ? revisions.tooling : revisions.plugin;
   return `https://github.com/${repository}/blob/${rev}/${f.file}#L${f.line}`;
-}
-
-export function reviewNote(f: Finding, revisions: { plugin: Revision; tooling: Revision }) {
-  return `### ${invariantNames[f.invariant]} invariant ${f.id}
-
-- Row: ${sourceUrl(f, revisions)}
-- Tile: ${pointText(f.focus)}
-- Failure: ${f.failure}
-- Current line: ${f.raw}
-- Decision: needs_evidence
-- Explanation / verification evidence:
-`;
 }
 
 export async function loadInvariants(signal: AbortSignal): Promise<InvariantReport> {

@@ -182,7 +182,7 @@ test("a destination finding draws its row across floors and marks the landing", 
     .toHaveAttribute("href", `https://github.com/Skretzo/shortest-path/blob/${"1".repeat(40)}/src/main/resources/transports/transports.tsv#L1330`);
   await page.keyboard.press("j");
   await expect(page).toHaveURL(new RegExp("#finding=" + ENTRY.id + "$"));
-  await expect(page.locator(".wb-finding-detail")).toContainText("needs_evidence — Fixture: check the ladder in game");
+  await expect(page.locator(".wb-finding-detail")).toContainText("Starts on a blocked tile that no transport reaches");
 });
 
 test("filters findings by invariant and search", async ({ page }) => {
@@ -215,7 +215,6 @@ test("transport candidates list unreached areas, draw their connectors and searc
   const detail = page.locator(".wb-finding-detail");
   await expect(detail).toContainText("89 tiles");
   await expect(detail).toContainText("Climb-up Staircase 16671");
-  await expect(detail).toContainText("needs_evidence — Fixture: check the guild stairs in game");
   await page.keyboard.press("j");
   await expect(page).toHaveURL(new RegExp("#item=" + CAVE.id + "$"));
   await expect(page.locator(".wb-finding-detail")).toContainText("id+offset pair");

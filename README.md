@@ -20,7 +20,7 @@ Tests: `gradle :service:test` and `npm test`.
 
 The workbench's [Transport invariants](docs/transport-invariants.md) page at
 `/invariants` lists the rows of the bundled plugin data that break a rule of the
-transport data, checked live by the service, and the checked-in review ledger. Its
+transport data, checked live by the service. Its
 [Transport candidates](docs/transport-invariants.md#transport-candidates) page at
 `/candidates` lists cache ladders, stairs and cave entrances with no transport that would
 reach an area nothing else reaches.

@@ -5,35 +5,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.javalin.Javalin;
 import io.javalin.testtools.JavalinTest;
-import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-import shortestpath.candidates.Report;
 
 class CandidatesViewTest {
     static final ObjectMapper JSON = new ObjectMapper();
 
-    static Report report(String... ids) {
-        var report = new Report();
-        for (String id : ids) {
-            var item = new Report.Item();
-            item.id = id;
-            item.kind = "area";
-            report.items.add(item);
-        }
-        return report;
-    }
-
-    @Test void mergesReviewDecisionsAndRejectsUnknownIds() throws Exception {
-        var ledger = JSON.readTree("{\"area-1\":{\"status\":\"deferred\",\"explanation\":\"Upper floor only\"}}");
-        Map<String, Object> view = CandidatesView.withReviews(report("area-1", "area-2"), ledger, Provenance.bundled());
-        @SuppressWarnings("unchecked") var items = (List<JsonNode>) view.get("items");
-        assertEquals("deferred", items.get(0).path("review").path("status").asText());
-        assertEquals("unreviewed", items.get(1).path("review").path("status").asText());
-        assertThrows(IllegalArgumentException.class, () -> CandidatesView.withReviews(report("area-2"), ledger, Provenance.bundled()));
-    }
-
-    @Test void servesTheBundledCandidatesWithAValidLedger() {
+    @Test void servesTheBundledCandidates() {
         Javalin app = Javalin.create();
         Workbench.transportRoutes(app, () -> null, Provenance.bundled());
         JavalinTest.test(app, (server, client) -> {

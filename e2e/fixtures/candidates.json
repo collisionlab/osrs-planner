@@ -132,10 +132,6 @@
           }
         }
       ],
-      "review": {
-        "status": "needs_evidence",
-        "explanation": "Fixture: check the guild stairs in game"
-      },
       "shortcut": null
     },
     {
@@ -236,9 +232,6 @@
           }
         }
       ],
-      "review": {
-        "status": "unreviewed"
-      },
       "shortcut": null
     },
     {
@@ -290,9 +283,6 @@
         "description": "Rock Climb",
         "level": 38,
         "obstacles": []
-      },
-      "review": {
-        "status": "unreviewed"
       }
     }
   ],
