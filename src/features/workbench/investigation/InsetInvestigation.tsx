@@ -13,12 +13,11 @@ import { loadMeta, loadView, type TransportMeta, type TransportView } from "../t
 import "../workbench.css";
 import { useWorkbenchLayers } from "../WorkbenchLayers";
 import { AreaBrowser } from "./AreaBrowser";
-import { loadInvestigation, tilePoint, type Area, type AreaFilter, type InvestigationData } from "./data";
+import { loadInvestigation, type Area, type AreaFilter, type InvestigationData } from "./data";
 import type { CorrectionInput } from "./drafts";
 import { emptyCorrection, LabellingPanel, type PickTarget } from "./LabellingPanel";
 import { investigationOverlay, keyId, keyKind } from "./overlay";
 import { readState, releaseId, writeState, type InvestigationState } from "./state";
-import { areaTopology, gapAreas, loadTopology, reportChecks, type TopologyState } from "./topology";
 import { nearbyBox, TopologyPanel } from "./TopologyPanel";
 
 const InsetMap = lazy(() => import("../../../map/insets/InsetMap").then(module => ({ default: module.InsetMap })));
@@ -27,7 +26,7 @@ const LUMBRIDGE = { point: { x: 3222, y: 3218, plane: 0 }, zoom: 7 };
 /** The layers the page opens with: its own features over the release's collision. */
 const INVESTIGATION_LAYERS = ["collision"];
 /** The kinds of key the page's own features carry (overlay.ts); others are the layers'. */
-const OWN_KINDS = new Set(["cand", "sus", "comp", "ev", "t", "region", "anchor"]);
+const OWN_KINDS = new Set(["ev", "t", "region", "anchor"]);
 /** The service takes at most this many boxes a view. */
 const MAX_BOXES = 24;
 const box = (id: string, data: InvestigationData): WorldBox | undefined => {
@@ -40,7 +39,7 @@ type MapHandle = { centreTile(): { point: WorldPoint; zoom: number }; shows(poin
 /**
  * The workbench's inset investigation: pick a geographical area, see its inset regions on the
  * shared inset map, and investigate it in two modes over the same selection and view: Topology
- * (connections, the tooling's walking components and candidate links, a link drafted by hand) and
+ * (connections, the transports on its terrain, a link drafted by hand) and
  * Labelling (names, evidence, anchors, a correction drafted by hand).
  */
 export function InsetInvestigation() {
@@ -65,27 +64,19 @@ export function InsetInvestigation() {
       .catch(reason => { if (!abort.signal.aborted) setError(String(reason instanceof Error ? reason.message : reason)); });
     return () => abort.abort();
   }, []);
-  const [topologyState, setTopology] = useState<TopologyState>({ state: "loading" });
   const [meta, setMeta] = useState<TransportMeta>();
   const [collisionManifest, setCollisionManifest] = useState<CollisionManifest>();
   useEffect(() => {
     const abort = new AbortController();
-    loadTopology(abort.signal).then(setTopology, () => {});
     loadMeta(abort.signal).then(setMeta, () => {});
     loadCollisionManifest(abort.signal).then(setCollisionManifest, () => {});
     return () => abort.abort();
   }, []);
 
   const classify = useMemo(() => assets ? catalogueClassifier(assets.catalogue, { detachUpperFloors: true }) : () => "unmapped", [assets]);
-  const report = topologyState.state === "loaded" ? topologyState.report : undefined;
-  const checks = useMemo(() => report && reportChecks(report, { cacheId: Number(tiles.version.split("-")[0]), plugin: meta?.plugin,
-    collisionDumperRev: collisionManifest?.dumperSource?.rev }), [report, meta, collisionManifest]);
-  const gaps = useMemo(() => report && data ? gapAreas(report, data.areasOfRegion, classify) : undefined, [report, data, classify]);
 
   const area = data && state.area ? data.byId.get(state.area) : undefined;
   const plane: number = state.plane ?? (state.region ? data?.regions.get(state.region)?.plane : undefined) ?? area?.planes[0] ?? 0;
-  const topology = useMemo(() => report && area && data ? areaTopology(report, area, data.regions) : undefined, [report, area, data]);
-  const candidate = keyKind(state.item) === "cand" ? report?.candidates.find(other => other.id === keyId(state.item!)) : undefined;
 
   // The map follows the page: an area's regions fitted when chosen, a tile or box when shown.
   const [focusRegions, setFocusRegions] = useState<{ ids: string[] }>();
@@ -141,8 +132,7 @@ export function InsetInvestigation() {
     loadView(areaBoxes, undefined, abort.signal).then(view => setTransports({ view, boxes: areaBoxes }), () => {});
     return () => abort.abort();
   }, [areaBoxes, state.mode]);
-  const ends = useMemo(() => [draft.origin, draft.destination, ...candidate ? [tilePoint(candidate.from.point), tilePoint(candidate.to.point)] : []]
-    .filter((point): point is WorldPoint => !!point), [draft, candidate]);
+  const ends = useMemo(() => [draft.origin, draft.destination].filter((point): point is WorldPoint => !!point), [draft]);
   const endsKey = JSON.stringify(ends);
   const [nearby, setNearby] = useState<TransportView>();
   useEffect(() => {
@@ -166,8 +156,8 @@ export function InsetInvestigation() {
   const collisionReady = collisionFor === JSON.stringify(looked);
 
   const baseOverlay = useMemo(() => data && investigationOverlay({ data, area, plane, mode: state.mode, region: state.region, item: state.item,
-    beside: !!state.beside, topology, candidate, transports, draft, inspected, classify }),
-    [data, area, plane, state.mode, state.region, state.item, state.beside, topology, checks, candidate, transports, draft, inspected, classify]);
+    beside: !!state.beside, transports, draft, inspected, classify }),
+    [data, area, plane, state.mode, state.region, state.item, state.beside, transports, draft, inspected, classify]);
   // The workbench's layers under the investigation's own features: the release's collision unless the URL says otherwise.
   const settings = useMemo(() => ({ layers: state.layers, types: state.types }), [state.layers, state.types]);
   const layers = useWorkbenchLayers({ settings, update: next => update({ layers: next.layers, types: next.types }), defaults: INVESTIGATION_LAYERS,
@@ -223,7 +213,7 @@ export function InsetInvestigation() {
     {missingArea && <p className="wb-warning" role="alert">No area {state.area} in inset release {release}.</p>}
     {data && data.investigations.state === "invalid" && <p className="wb-warning" role="alert">investigations.json was not used: {data.investigations.reason}. Areas come from the release's labels instead.</p>}
     <div className="wb-body wb-insets-body">
-      {data ? <AreaBrowser areas={data.areas} filter={filter} onFilter={setFilter} selected={area?.id} onSelect={next => chooseArea(next)} gaps={checks?.verified ? gaps : undefined}
+      {data ? <AreaBrowser areas={data.areas} filter={filter} onFilter={setFilter} selected={area?.id} onSelect={next => chooseArea(next)}
         ordered={data.investigations.state === "loaded" ? "worklist priority" : "issues first, then reachable unnamed areas, then size"} />
         : <nav className="wb-units" aria-label="Areas"><p className="wb-list-heading" role="status">{error ? "Unavailable" : "Loading areas…"}</p></nav>}
       <section className="wb-map wb-insets-map" aria-label="Map">
@@ -268,10 +258,8 @@ export function InsetInvestigation() {
           {layers.panel}
           {routing.panel}
           {state.mode === "topology"
-            ? <TopologyPanel data={data} area={area} state={topologyState} checks={checks} topology={topology} candidate={candidate} item={state.item}
-              plugin={meta?.plugin} releasePlugin={data.plugin} transports={transports} nearby={nearby?.transports} classify={classify} collision={collisionReady ? collision : undefined}
-              draft={draft} onDraft={setDraft} picking={picking} onPicking={setPicking} onItem={item => update({ item })} onShow={showPoint}
-              onBox={target => setFocusBox({ ...target })} />
+            ? <TopologyPanel data={data} area={area} plugin={meta?.plugin} releasePlugin={data.plugin} nearby={nearby?.transports} classify={classify}
+              collision={collisionReady ? collision : undefined} draft={draft} onDraft={setDraft} picking={picking} onPicking={setPicking} onShow={showPoint} />
             : <LabellingPanel data={data} area={area} region={state.region} item={state.item} plugin={data.plugin ?? meta?.plugin} onItem={item => update({ item })}
               onShow={showPoint} onRegion={chooseRegion} onArea={id => { const next = data.byId.get(id); if (next) chooseArea(next); }}
               correction={correction} onCorrection={setCorrection} picking={picking} onPicking={setPicking} shows={point => !!mapRef.current?.shows(point)} />}
@@ -280,10 +268,6 @@ export function InsetInvestigation() {
     </div>
     <footer className="wb-footer wb-provenance">
       {lines.map(line => <span key={line.subject} className={`wb-prov ${line.status}`} title={line.text}><b>{line.subject}</b> {line.label}</span>)}
-      {topologyState.state === "loaded" ? <span className={`wb-prov ${checks?.verified ? "ok" : "differs"}`}
-        title={`${topologyState.report.generator.repository}@${topologyState.report.generator.rev.slice(0, 7)}, cache ${topologyState.report.collision.cacheId}${checks?.verified ? "" : " — unverified against this page"}`}>
-        <b>Topology</b> {topologyState.report.generator.rev.slice(0, 7)}{checks?.verified ? "" : " (unverified against this page)"}</span>
-        : <span className="wb-prov unknown" title={topologyState.state === "loading" ? undefined : topologyState.reason}><b>Topology</b> {topologyState.state === "loading" ? "loading" : "unavailable"}</span>}
       {routing.provenance && <span className="wb-prov ok" title="Verified against these tiles"><b>Routing</b> {routing.provenance}</span>}
     </footer>
   </div>;

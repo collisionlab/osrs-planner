@@ -342,10 +342,10 @@ export interface AreaFilter {
   flag?: "issues" | "no-entrance" | "multi-floor" | "topology" | "evidence";
 }
 
-export const hasTopologyGap = (area: Area, gaps?: Set<string>) => area.issues.some(issue => issue.code === "possible-topology-gap") || !!gaps?.has(area.id);
+export const hasTopologyGap = (area: Area) => area.issues.some(issue => issue.code === "possible-topology-gap");
 export const hasEvidenceIssue = (area: Area) => area.candidates.length > 0 || area.issues.some(issue => /evidence|name/.test(issue.code));
 
-export function filterAreas(areas: Area[], filter: AreaFilter, gaps?: Set<string>): Area[] {
+export function filterAreas(areas: Area[], filter: AreaFilter): Area[] {
   const text = filter.text?.trim().toLowerCase();
   return areas.filter(area => (!text || area.name.toLowerCase().includes(text) || area.id.toLowerCase().includes(text)
       || area.aliases.some(alias => alias.toLowerCase().includes(text)) || area.regionIds.some(id => id.includes(text)))
@@ -353,5 +353,5 @@ export function filterAreas(areas: Area[], filter: AreaFilter, gaps?: Set<string
     && (filter.plane === undefined || area.planes.includes(filter.plane))
     && (!filter.minTiles || area.tileCount >= filter.minTiles)
     && (!filter.flag || (filter.flag === "issues" ? area.issues.length > 0 : filter.flag === "no-entrance" ? !area.entrance
-      : filter.flag === "multi-floor" ? area.planes.length > 1 : filter.flag === "topology" ? hasTopologyGap(area, gaps) : hasEvidenceIssue(area))));
+      : filter.flag === "multi-floor" ? area.planes.length > 1 : filter.flag === "topology" ? hasTopologyGap(area) : hasEvidenceIssue(area))));
 }

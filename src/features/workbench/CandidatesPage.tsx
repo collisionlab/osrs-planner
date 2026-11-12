@@ -9,7 +9,7 @@ import type { WorldBox } from "../../map/insets/projection";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "./provenance";
 import { pointText } from "./invariants";
 import { candidateKinds, connectorText, containsText, filterItems, itemMeta, itemOverlay, kindNames, loadCandidates, partnerText,
-  reviewNote, roleNames, type CandidateItem, type CandidateReport } from "./candidates";
+  roleNames, type CandidateItem, type CandidateReport } from "./candidates";
 import { useUrlLayerSettings, useWorkbenchLayers } from "./WorkbenchLayers";
 
 const InsetMap = lazy(() => import("../../map/insets/InsetMap").then(module => ({ default: module.InsetMap })));
@@ -32,7 +32,6 @@ export function CandidatesPage() {
   const [manifest, setManifest] = useState<CollisionManifest>();
   const [style, setStyle] = useState(savedStyle);
   const [focusTile, setFocusTile] = useState<{ point: WorldPoint }>();
-  const [copyStatus, setCopyStatus] = useState("");
   useEffect(() => {
     document.title = "Transport candidates · Workbench";
     const abort = new AbortController();
@@ -65,7 +64,6 @@ export function CandidatesPage() {
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
   }, [index, items, location.search]);
-  useEffect(() => setCopyStatus(""), [item]);
   const geometry = useMemo(() => item && itemOverlay(item), [item]);
   const [settings, updateSettings] = useUrlLayerSettings();
   const [inspected, setInspected] = useState<WorldPoint>();
@@ -111,7 +109,6 @@ export function CandidatesPage() {
           <ol>{items.map((candidate, i) => <li key={candidate.id}><button type="button" aria-current={index === i} onClick={() => select(i)}>
             <span className="wb-unit-title">{candidate.title}</span>
             <span className="wb-unit-meta">{itemMeta(candidate)}</span>
-            {candidate.review.status !== "unreviewed" && <span className="wb-unit-meta">{candidate.review.status.replaceAll("_", " ")}</span>}
           </button></li>)}</ol>
         </nav>
         <section className="wb-map wb-insets-map" aria-label="Candidate map">
@@ -135,12 +132,7 @@ export function CandidatesPage() {
           <div className="wb-panel-body">
             {layers.panel}
             {layers.routing.panel && <div className="wb-detail">{layers.routing.panel}</div>}
-            {item && <CandidateDetail item={item} show={point => setFocusTile({ point })}
-              copy={async () => {
-                try { await navigator.clipboard.writeText(reviewNote(item, report)); setCopyStatus("Review note copied"); }
-                catch { setCopyStatus("Could not access clipboard"); }
-              }} />}
-            {copyStatus && <p role="status">{copyStatus}</p>}
+            {item && <CandidateDetail item={item} show={point => setFocusTile({ point })} />}
             <p className="wb-note">Judged against the service's bundled plugin collision and data; connectors from cache {report.cache}.
               Displayed map collision: tiles {tiles.version}, cache {manifest?.cacheId ?? "unknown"}; its revision may differ.</p>
           </div>
@@ -152,7 +144,7 @@ export function CandidatesPage() {
   </div>;
 }
 
-function CandidateDetail({ item, show, copy }: { item: CandidateItem; show(p: WorldPoint): void; copy(): void }) {
+function CandidateDetail({ item, show }: { item: CandidateItem; show(p: WorldPoint): void }) {
   const tile = (point: WorldPoint | null) => <button type="button" className="wb-tile" disabled={!point} onClick={() => point && show(point)}>{pointText(point)}</button>;
   return <article className="wb-section wb-finding-detail" data-item-id={item.id}>
     <h2>{item.title}</h2>
@@ -177,8 +169,5 @@ function CandidateDetail({ item, show, copy }: { item: CandidateItem; show(p: Wo
       about 6,400 tiles away (id+offset), or the world map's link from a dungeon entrance icon to the dungeon (map-link; icon positions,
       so its tiles are the walkable ones nearest each icon).</>}</p>
     <p className="wb-mono">{item.id}</p>
-    <p><b>Review ledger:</b> {item.review.status}{item.review.explanation ? " — " + item.review.explanation : ""}</p>
-    {item.review.reference && <p>Decision reference: {item.review.reference}</p>}
-    <button type="button" onClick={copy}>Copy review note</button>
   </article>;
 }

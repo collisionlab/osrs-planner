@@ -45,10 +45,7 @@
     "y": 2996,
     "plane": 1
    },
-   "failure": "Lands on a blocked tile where no transport starts.",
-   "review": {
-    "status": "unreviewed"
-   }
+   "failure": "Lands on a blocked tile where no transport starts."
   },
   {
    "id": "entry-bbbbbbbbbbbbbbbbbbbbbbbb",
@@ -89,11 +86,7 @@
     "y": 2996,
     "plane": 1
    },
-   "failure": "Starts on a blocked tile that no transport reaches, so a route can only walk onto it.",
-   "review": {
-    "status": "needs_evidence",
-    "explanation": "Fixture: check the ladder in game"
-   }
+   "failure": "Starts on a blocked tile that no transport reaches, so a route can only walk onto it."
   },
   {
    "id": "location-cccccccccccccccccccccccc",
@@ -127,9 +120,6 @@
     "kind": "bank",
     "name": "Fixture bank",
     "areaTiles": 14
-   },
-   "review": {
-    "status": "unreviewed"
    }
   },
   {
@@ -145,7 +135,7 @@
     "fields": {
      "Destination": "2671 10396 0",
      "Info": "cryptic-2671-10396-0",
-    "Name": "cryptic (2671 10396 0)",
+     "Name": "cryptic (2671 10396 0)",
      "Source": "CrypticClue.java:1"
     },
     "origin": null,
@@ -168,9 +158,6 @@
     "category": "cryptic",
     "source": "CrypticClue.java:1",
     "areaTiles": 120
-   },
-   "review": {
-    "status": "unreviewed"
    }
   }
  ],

@@ -2,13 +2,11 @@ import { useState } from "react";
 import type { WorldPoint } from "../../../domain/contracts";
 import type { CollisionMap } from "../../../map/insets/collision";
 import type { WorldBox } from "../../../map/insets/projection";
-import { parseTile, typeName, type Revision, type TransportSummary, type TransportView } from "../transports";
-import { tilePoint, tileText, type Area, type InvestigationData, type Triple } from "./data";
+import { parseTile, typeName, type Revision, type TransportSummary } from "../transports";
+import { tileText, type Area, type InvestigationData } from "./data";
 import { transportDraft } from "./drafts";
 import type { PickTarget } from "./LabellingPanel";
-import { key, keyId, keyKind } from "./overlay";
 import { copy, download, ExplorerLink, RowLink, Section, TileButton } from "./parts";
-import { componentHolds, reasonText, type AreaTopology, type Check, type LinkCandidate, type TopologyReport, type TopologyState } from "./topology";
 
 /** Transports this close to a drafted end, in tiles, are listed as nearby. */
 export const NEARBY = 8;
@@ -19,82 +17,39 @@ const near = (a: WorldPoint | null, b: WorldPoint, distance: number) => !!a && a
 export const nearbyBox = (point: WorldPoint): WorldBox => ({ plane: point.plane, x1: point.x - NEARBY, y1: point.y - NEARBY, x2: point.x + NEARBY, y2: point.y + NEARBY });
 
 /** What is known about a tile, from every source the page has, each said separately. */
-export function TileFacts({ point, data, classify, collision, report, verified, nearby }: {
-  point: WorldPoint; data: InvestigationData; classify(point: WorldPoint): string; collision?: CollisionMap;
-  report?: TopologyReport; verified: boolean; nearby?: TransportSummary[];
+export function TileFacts({ point, data, classify, collision, nearby }: {
+  point: WorldPoint; data: InvestigationData; classify(point: WorldPoint): string; collision?: CollisionMap; nearby?: TransportSummary[];
 }) {
   const regionId = classify(point);
   const region = data.regions.get(regionId);
   const areas = (data.areasOfRegion.get(regionId) || []).map(id => data.byId.get(id)?.name || id);
   const tile = collision?.tile(point);
-  const components = report?.components.flatMap(component => { const holds = componentHolds(component, point); return holds ? [{ component, holds }] : []; }) || [];
   const around = nearby?.filter(summary => near(summary.origin, point, NEARBY) || near(summary.destination, point, NEARBY)) || [];
   return <dl className="wb-facts">
     <dt>Tile</dt><dd className="wb-mono">{tileText(point)} (plane {point.plane})</dd>
     <dt>Inset region</dt><dd>{regionId === "main-world" ? "the main map" : region ? <><span className="wb-mono">{regionId}</span> · {region.classification}{areas.length ? ` · ${areas.join(", ")}` : " · in no area"}</> : "no region: no visible terrain here"}</dd>
     <dt>Collision</dt><dd>{!collision ? "not loaded" : !tile ? "no walkable tile in this map square" : tile.blocked ? "blocked: no way in or out"
       : `open ${["north", "east", "south", "west"].filter(side => tile[side as "north"]).join(", ") || "nowhere"}${tile.wallNorth || tile.wallEast ? `; wall on the ${[tile.wallNorth && "north", tile.wallEast && "east"].filter(Boolean).join(" and ")}` : ""}`}</dd>
-    <dt>Component</dt><dd>{!report ? "no topology report" : components.length ? components.map(({ component, holds }) =>
-      <span key={component.id} className="wb-mono">{component.id}{holds === "bounds" ? " (by its bounds only)" : ""}{component.reachable ? "" : " · unreached"} </span>)
-      : "in none the report lists"}{report && !verified && components.length > 0 ? " — unverified" : ""}</dd>
     <dt>Nearby</dt><dd>{nearby === undefined ? "loading…" : around.length ? `${around.length} transport${around.length === 1 ? "" : "s"} within ${NEARBY} tiles` : `no transports within ${NEARBY} tiles`}</dd>
   </dl>;
 }
 
 export function TopologyPanel(props: {
-  data: InvestigationData; area: Area; state: TopologyState; checks?: { checks: Check[]; verified: boolean };
-  topology?: AreaTopology; candidate?: LinkCandidate; item?: string; plugin?: Revision; releasePlugin?: Revision;
-  transports?: { view: TransportView; boxes: WorldBox[] }; nearby?: TransportSummary[];
+  data: InvestigationData; area: Area; plugin?: Revision; releasePlugin?: Revision;
+  nearby?: TransportSummary[];
   classify(point: WorldPoint): string; collision?: CollisionMap;
   draft: { origin?: WorldPoint; destination?: WorldPoint }; onDraft(next: { origin?: WorldPoint; destination?: WorldPoint }): void;
   picking?: PickTarget; onPicking(target?: PickTarget): void;
-  onItem(key?: string): void; onShow(point: WorldPoint): void; onBox(box: WorldBox): void;
+  onShow(point: WorldPoint): void;
 }) {
-  const { data, area, state, checks, topology, item } = props;
-  const report = state.state === "loaded" ? state.report : undefined;
-  const verified = !!checks?.verified;
-  const select = (k: string, point?: Triple) => { props.onItem(k); if (point) props.onShow(tilePoint(point)); };
+  const { data, area } = props;
   const regionIds = new Set(area.regionIds);
   const connections = [...new Set(area.regionIds.flatMap(id => data.anchors.regions[id]?.connectionIds || []))]
     .map(id => data.anchors.connections[id]).filter(Boolean);
   const incoming = connections.filter(connection => !regionIds.has(connection.source?.regionId || "") && regionIds.has(connection.target?.regionId || ""));
   const outgoing = connections.filter(connection => regionIds.has(connection.source?.regionId || "") && !regionIds.has(connection.target?.regionId || ""));
-  const internal = connections.length - incoming.length - outgoing.length;
   const entrances = area.regionIds.flatMap(id => (data.anchors.regions[id]?.anchors || []).filter(anchor => anchor.entrance && anchor.hops === 1));
   return <div className="wb-panel-body">
-    {state.state === "invalid" && <p className="wb-warning" role="alert">Topology report rejected: {state.reason}</p>}
-    {report && <Section title="Topology report" label="Topology report">
-      {!verified && <p className="wb-warning" role="alert">Unverified: the report was not made from the same data as this page shows, so its conclusions below are leads, not findings.</p>}
-      <details className="wb-more-detail">
-        <summary>Checks and what “reached” means</summary>
-        <ul className="wb-checks">{checks?.checks.map(check => <li key={check.subject} className={check.ok === true ? "ok" : check.ok === false ? "differs" : "unknown"}><b>{check.subject}</b> {check.text}</li>)}</ul>
-        <p className="wb-note"><b>Reachable</b> means: {report.reachability} It says nothing about requirements, and a reachable component can still have a missing link.</p>
-      </details>
-    </Section>}
-    {report && <Section title="Walking components" note={`${topology?.components.length ?? 0} significant${topology?.fragments ? `, ${topology.fragments} small fragment${topology.fragments === 1 ? "" : "s"} not shown` : ""}`}>
-      {topology?.components.length ? <table className="wb-rows"><thead><tr><th>Component</th><th>Plane</th><th>Tiles</th><th>Reached</th><th>In / out</th></tr></thead>
-        <tbody>{topology.components.map(({ component, overlap }) => <tr key={component.id} className={item === key.component(component.id) ? "selected" : undefined}
-          onClick={() => { props.onItem(key.component(component.id)); const [x1, y1, x2, y2] = component.bounds; props.onBox({ plane: component.plane, x1, y1, x2, y2 }); }}>
-          <td className="wb-mono">{component.id}{overlap === "bounds" && <div className="wb-note">bounds overlap only</div>}{!component.mask && <div className="wb-note">no outline: bounds and samples</div>}</td>
-          <td>{component.plane}</td><td>{component.tileCount.toLocaleString()}</td>
-          <td>{component.reachable ? "yes" : <b className="wb-bad">no</b>}</td><td>{component.transports.incoming} / {component.transports.outgoing}</td>
-        </tr>)}</tbody></table> : <p className="wb-note">None on this area's terrain.</p>}
-    </Section>}
-    {report && <Section title="Candidate links" note={`${topology?.candidates.length ?? 0} in this area`}>
-      {topology?.candidates.length ? <ul className="wb-list">{topology.candidates.map(candidate => <li key={candidate.id}>
-        <button type="button" className="wb-item" aria-current={item === key.candidate(candidate.id)} onClick={() => select(key.candidate(candidate.id), candidate.from.point)}>
-          <span className="wb-mono">{tileText(candidate.from.point)} → {tileText(candidate.to.point)}</span>
-          <span className={`wb-support ${candidate.support}`}>{candidate.support === "supported" ? "supported" : "insufficient evidence"}</span>
-        </button></li>)}</ul> : <p className="wb-note">None.</p>}
-      {props.candidate && <CandidateDetail {...props} candidate={props.candidate} verified={verified} />}
-    </Section>}
-    {report && <Section title="Suspicious transport ends" note={`${topology?.suspects.length ?? 0}`}>
-      {topology?.suspects.length ? <ul className="wb-list">{topology.suspects.map(suspect => <li key={suspect.id} className={item === key.suspect(suspect.id) ? "selected" : undefined}>
-        <button type="button" className="wb-link" onClick={() => select(key.suspect(suspect.id), suspect.point)}>{suspect.label}</button> <span className="wb-note">{suspect.role} {tileText(suspect.point)}</span>
-        <div className="wb-note">{suspect.reasons.map(reasonText).join(" ")}</div>
-        <div>{suspect.sources.map(source => <span key={source.line}><RowLink plugin={report.plugin} file={source.file} line={source.line} /> </span>)} <ExplorerLink point={suspect.point} /></div>
-      </li>)}</ul> : <p className="wb-note">None.</p>}
-    </Section>}
     <Section title="Connections" note={`${entrances.length} surface entrance${entrances.length === 1 ? "" : "s"}`}>
       <ConnectionList title="Ways in" rows={incoming} plugin={props.releasePlugin ?? props.plugin} onShow={props.onShow} />
       <ConnectionList title="Ways out" rows={outgoing} plugin={props.releasePlugin ?? props.plugin} onShow={props.onShow} />
@@ -103,11 +58,10 @@ export function TopologyPanel(props: {
     </Section>
     <details className="wb-more-detail wb-investigate">
       <summary>Investigate a new link</summary>
-      <LinkInvestigator {...props} verified={verified} report={report} />
+      <LinkInvestigator {...props} />
     </details>
   </div>;
 }
-
 function ConnectionList({ title, rows, plugin, onShow }: { title: string; rows: InvestigationData["anchors"]["connections"][string][]; plugin?: Revision; onShow(point: WorldPoint): void }) {
   if (!rows.length) return null;
   return <section aria-label={title}>
@@ -120,32 +74,7 @@ function ConnectionList({ title, rows, plugin, onShow }: { title: string; rows: 
   </section>;
 }
 
-function CandidateDetail(props: Parameters<typeof TopologyPanel>[0] & { candidate: LinkCandidate; verified: boolean }) {
-  const { candidate, data, classify, nearby } = props;
-  const report = props.state.state === "loaded" ? props.state.report : undefined;
-  const from = tilePoint(candidate.from.point), to = tilePoint(candidate.to.point);
-  const known = (nearby || []).filter(summary => near(summary.origin, from, NEARBY) || near(summary.destination, from, NEARBY) || near(summary.origin, to, NEARBY) || near(summary.destination, to, NEARBY));
-  const regionName = (point: WorldPoint) => { const id = classify(point); return id === "main-world" ? "main map" : (data.areasOfRegion.get(id) || []).map(area => data.byId.get(area)?.name).join(", ") || id; };
-  return <div className="wb-callout" role="region" aria-label="Selected candidate">
-    <h4>Candidate {candidate.id} <span className={`wb-support ${candidate.support}`}>{candidate.support === "supported" ? "supported" : "insufficient evidence"}</span>{!props.verified && <span className="wb-support insufficient">unverified report</span>}</h4>
-    <dl className="wb-facts">
-      <dt>From</dt><dd><TileButton point={from} onShow={props.onShow} /> plane {from.plane} · {regionName(from)}{candidate.from.componentId && <span className="wb-mono"> · {candidate.from.componentId}</span>}</dd>
-      <dt>To</dt><dd><TileButton point={to} onShow={props.onShow} /> plane {to.plane} · {regionName(to)}{candidate.to.componentId && <span className="wb-mono"> · {candidate.to.componentId}</span>}</dd>
-      <dt>Reasons</dt><dd>{candidate.reasons.length ? candidate.reasons.map(code => <div key={code}><span className="wb-mono">{code}</span> {reasonText(code) !== code && `— ${reasonText(code)}`}</div>) : <i>none given</i>}</dd>
-      <dt>Evidence</dt><dd>{candidate.evidence.length ? candidate.evidence.map((evidence, index) => <div key={index}>
-        <b>{evidence.kind}</b> {evidence.text}{evidence.point && <> · <TileButton point={evidence.point} onShow={props.onShow} /></>}
-        {evidence.source && report && <> · <RowLink plugin={report.plugin} file={evidence.source.file} line={evidence.source.line} /></>}</div>)
-        : <i>none: this is a lead to check in game, not a finding</i>}</dd>
-      <dt>Rows</dt><dd>{candidate.sources.length ? candidate.sources.map(source => <span key={source.file + source.line}><RowLink plugin={report?.plugin} file={source.file} line={source.line} /> </span>) : "none"}</dd>
-      <dt>Known nearby</dt><dd>{nearby === undefined ? "loading…" : known.length ? known.slice(0, 12).map(summary => <div key={summary.id}>
-        <ExplorerLink id={summary.id}>{summary.label || typeName(summary.type)}</ExplorerLink> <span className="wb-note wb-mono">{summary.origin ? tileText(summary.origin) : "anywhere"} → {tileText(summary.destination)}</span></div>)
-        : `no transports within ${NEARBY} tiles of either end`}</dd>
-    </dl>
-    <button type="button" className="wb-small" onClick={() => props.onDraft({ origin: from, destination: to })}>Investigate as a new link</button>
-  </div>;
-}
-
-function LinkInvestigator(props: Parameters<typeof TopologyPanel>[0] & { verified: boolean; report?: TopologyReport }) {
+function LinkInvestigator(props: Parameters<typeof TopologyPanel>[0]) {
   const { draft, onDraft, picking, onPicking, nearby } = props;
   const [text, setText] = useState<{ origin: string; destination: string }>({ origin: "", destination: "" });
   const [notes, setNotes] = useState({ action: "", objectId: "" });
@@ -164,7 +93,7 @@ function LinkInvestigator(props: Parameters<typeof TopologyPanel>[0] & { verifie
       <button type="button" className="wb-small" aria-pressed={picking === which} aria-label={`Pick the ${which} on the map`} onClick={() => onPicking(picking === which ? undefined : which)}>{picking === which ? "Click the map…" : "Pick on map"}</button>
       {draft[which] && <TileButton point={draft[which]!} onShow={props.onShow} label="show" />}
     </div>
-    {draft[which] && <TileFacts point={draft[which]!} data={props.data} classify={props.classify} collision={props.collision} report={props.report} verified={props.verified} nearby={nearby} />}
+    {draft[which] && <TileFacts point={draft[which]!} data={props.data} classify={props.classify} collision={props.collision} nearby={nearby} />}
   </div>;
   return <section className="wb-section" aria-label="Investigate a new link">
     <p className="wb-note">Gather evidence for a missing link; nothing is written anywhere.</p>

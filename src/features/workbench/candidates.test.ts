@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fixture from "../../../e2e/fixtures/candidates.json";
-import { filterItems, itemMeta, itemOverlay, reviewNote, type CandidateReport } from "./candidates";
+import { filterItems, itemMeta, itemOverlay, type CandidateReport } from "./candidates";
 
 const report = fixture as CandidateReport;
 const [guild, cave, rocks] = report.items;
@@ -30,14 +30,5 @@ describe("transport candidates", () => {
     expect(overlay.anchors).toHaveLength(7);
     expect(itemOverlay(rocks).features.filter(f => f.kind === "point" && f.tone === "suspect")).toHaveLength(1);
     expect(overlay.features.every(f => f.key === cave.id)).toBe(true);
-  });
-
-  it("drafts a review note with the cache and each pair", () => {
-    const note = reviewNote(cave, report);
-    expect(note).toContain("### Transport candidate area-dbc0c3e51f7dd234e6fd8c94");
-    expect(note).toContain("Way in: Climb-down Ladder 60093 at 2076 3688 0 → Climb-up Ladder 60094 at 2074 10088 0 (id+offset)");
-    expect(note).toContain("cache openrs2 2757, build 242");
-    expect(note).toContain("Way out: World map link at 2073 10089 0 → World map link at 2075 3689 0 (map-link)");
-    expect(reviewNote(rocks, report)).toContain("Shortcut icon at 3236 2388 0; RuneLite FIXTURE_ROCK_CLIMB, 38 Agility");
   });
 });

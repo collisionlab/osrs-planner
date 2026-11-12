@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fixture from "../../../e2e/fixtures/invariants.json";
-import { filterFindings, findingLabel, findingOverlay, reviewNote, sourceUrl, type InvariantReport } from "./invariants";
+import { filterFindings, findingLabel, findingOverlay, sourceUrl, type InvariantReport } from "./invariants";
 
 const report = fixture as InvariantReport;
 const [destination, entry, location, clue] = report.findings;
@@ -30,10 +30,8 @@ describe("invariant findings", () => {
     expect(findingOverlay(destination).features.some(feature => feature.kind === "edge")).toBe(true);
   });
 
-  it("links the exact row at the checked plugin revision and drafts a review note", () => {
+  it("links the exact row at the checked plugin revision", () => {
     expect(sourceUrl(entry, report)).toBe(`https://github.com/Skretzo/shortest-path/blob/${"1".repeat(40)}/src/main/resources/transports/transports.tsv#L1331`);
     expect(sourceUrl(clue, report)).toBe(`https://github.com/osrs-pathfinding/shortest-path-tooling/blob/${"2".repeat(40)}/scenarios/src/main/resources/scenarios/clue-locations.json#L321`);
-    expect(reviewNote(entry, report)).toContain("### Entry invariant entry-");
-    expect(reviewNote(entry, report)).toContain("- Tile: 2862 2996 1");
   });
 });

@@ -20,7 +20,7 @@ Tests: `gradle :service:test` and `npm test`.
 
 The workbench's [Transport invariants](docs/transport-invariants.md) page at
 `/invariants` lists the rows of the bundled plugin data that break a rule of the
-transport data, checked live by the service, and the checked-in review ledger. Its
+transport data, checked live by the service. Its
 [Transport candidates](docs/transport-invariants.md#transport-candidates) page at
 `/candidates` lists cache ladders, stairs and cave entrances with no transport that would
 reach an area nothing else reaches.
@@ -154,11 +154,21 @@ tiles release's `collision/<version>/manifest.json`, which names the tooling com
 When the two tooling commits differ the footer says so rather than implying the walls drawn are the
 plugin's; a review's collision is never from the pull request, and its footer says that too.
 
+**Underground areas** (`/underground`, `/underground/<map>`) go through every world map besides the
+main one, one at a time, to check its topology is complete. The list is the inset release's
+`world-maps.json` (each map's real tiles, from the cache's world map composites); each map's
+unreached areas are the routing release's `unreachable.json` (walking areas nothing reaches in the
+pinned plugin's own graph), put in the map that draws their representative tile and listed largest
+first from 20 tiles up. The map shows the map's inset regions on the plane chosen, where they really
+are, with the structurally unreachable layer on. `j`/`k` move between maps and `n`/`p` between
+areas; the URL keeps the map, plane (`?plane=`) and area (`#area=x_y_plane`). Releases from before
+those files existed say so instead.
+
 The **inset investigation** (`/insets`) is for areas off the main map: an area browser (curated area
 keys and provisional, unnamed regions, ordered by outstanding issues), the shared inset map, and a
 details panel in two modes over the same selection and view. *Topology* lists the release's
-entrances and connections, the transports on the area's terrain, the tooling's walking components,
-candidate links and suspect ends, and drafts a candidate `transports.tsv` row from two tiles, with
+entrances and connections and the transports on the area's terrain, and drafts a candidate
+`transports.tsv` row from two tiles, with
 every field it can't know marked `INVESTIGATE(…)`. *Labelling* lists names, regions, accepted
 evidence, suggested names, anchor chains and issues, and drafts an `annotations.json` area entry
 from what the developer chose. Nothing is written anywhere. The overlay's `regions` show inset
@@ -173,17 +183,11 @@ Its data (`src/features/workbench/investigation/`):
 - `investigations.json` from the same release, when osrs-tiles publishes it (schema 1, in `data.ts`):
   areas, name candidates, suggested evidence and issues. Its `catalogueSha256`, `labelsSha256` and
   `anchorsSha256` must be this release's, and every region and evidence id must resolve; otherwise
-  it is refused and areas come from the labels;
-- shortest-path-tooling's topology report (schema 1, in `topology.ts`), served by
-  `GET /api/workbench/v1/topology` from the file `WORKBENCH_TOPOLOGY` names or
-  `workbench-topology.json` on the classpath, 404 without one. It is joined to regions only by
-  tiles, and its conclusions are marked unverified unless its cache, plugin commit and collision
-  dumper match the insets', the explorer's and the map's. Without it the page says diagnostics are
-  unavailable; it never floods anything itself.
+  it is refused and areas come from the labels.
 
 URLs keep the area, region, mode, selected item, plane, view and release
 (`?area=…&region=…&mode=labelling&sel=…&plane=…&at=…&z=…&v=…`). The fixtures in
-`e2e/fixtures/insets/` follow both contracts and name real regions of the pinned release.
+`e2e/fixtures/insets/` follow that contract and name real regions of the pinned release.
 
 ## Route insets
 

@@ -81,6 +81,7 @@ describe("production routing sidecar", () => {
 
   it("rejects another schema, plugin revision or an untrusted path", () => {
     expect(() => validateRoutingManifest(manifest(), pin, pin.tileVersion)).not.toThrow();
+    expect(() => validateRoutingManifest({ ...manifest(), files: { ...manifest().files, "unreachable.json": hash } }, pin, pin.tileVersion)).not.toThrow();
     expect(() => validateRoutingManifest({ ...manifest(), schemaVersion: 2 as 3 }, pin, pin.tileVersion)).toThrow(/do not match/);
     expect(() => validateRoutingManifest({ ...manifest(), files: { "components.json": hash, "components/9/1/1.png": hash } }, pin, pin.tileVersion)).toThrow(/file index/);
     expect(() => validateRoutingManifest({ ...manifest(), plugin: { repository: "Skretzo/shortest-path", revision: "other" } }, pin, pin.tileVersion)).toThrow();

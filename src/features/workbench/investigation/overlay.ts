@@ -4,11 +4,9 @@ import type { FeatureOverlay, MapFeature, OverlayRegion } from "../../../map/ins
 import type { WorldBox } from "../../../map/insets/projection";
 import { transportFeatures, type TransportView } from "../transports";
 import { evidenceOf, tilePoint, type AnchorsFile, type Area, type InvestigationData } from "./data";
-import type { AreaTopology, LinkCandidate } from "./topology";
 
 /** Item keys on the map and in the URL: what kind of thing, then its own id. */
 export const key = {
-  candidate: (id: string) => `cand:${id}`, suspect: (id: string) => `sus:${id}`, component: (id: string) => `comp:${id}`,
   evidence: (id: string) => `ev:${id}`, transport: (id: string) => `t:${id}`, region: (id: string) => `region:${id}`,
   anchor: (regionId: string, index: number) => `anchor:${regionId}:${index}`,
 };
@@ -34,9 +32,6 @@ export interface OverlayInput {
   /** The selected item's key. */
   item?: string;
   beside: boolean;
-  topology?: AreaTopology;
-  /** A candidate from elsewhere in the report, when selected by link. */
-  candidate?: LinkCandidate;
   transports?: { view: TransportView; boxes: WorldBox[] };
   draft?: { origin?: WorldPoint; destination?: WorldPoint };
   inspected?: WorldPoint;
@@ -60,12 +55,11 @@ export function overlayRegions(input: Pick<OverlayInput, "data" | "area" | "plan
 
 /**
  * The map for an investigation: the area's regions by their exact terrain, and what the mode is
- * about: evidence and anchors for labelling; components, candidates, suspects and transports for
- * topology; and a link being drafted. The selected candidate, the draft's ends and the inspected
- * tile are the anchors, so the map lays out and fits them.
+ * about: evidence and anchors for labelling; transports for topology; and a link being drafted. The
+ * draft's ends and the inspected tile are the anchors, so the map lays out and fits them.
  */
 export function investigationOverlay(input: OverlayInput): FeatureOverlay {
-  const { data, area, plane, mode, topology } = input;
+  const { data, area, plane, mode } = input;
   const features: MapFeature[] = [];
   const anchors: MapFeature[] = [];
   for (const regionId of area?.regionIds || []) {
@@ -95,30 +89,13 @@ export function investigationOverlay(input: OverlayInput): FeatureOverlay {
     for (const summary of input.transports?.view.transports || []) {
       features.push(...transportFeatures(summary, input.transports!.boxes).map(feature => ({ ...feature, key: key.transport(summary.id) })));
     }
-    for (const { component, overlap } of topology?.components || []) {
-      features.push({ kind: "region", key: key.component(component.id), plane: component.plane, bounds: component.bounds,
-        tone: component.reachable ? "component" : "suspect", dashed: overlap === "bounds", label: `${component.tileCount.toLocaleString()} tiles${component.reachable ? "" : " · unreached"}` });
-      for (const sample of component.samples.slice(0, 40)) features.push({ kind: "point", key: key.component(component.id), point: tilePoint(sample), tone: "component", role: "origin" });
-    }
-    const candidates = [...topology?.candidates || []];
-    if (input.candidate && !candidates.some(candidate => candidate.id === input.candidate!.id)) candidates.push(input.candidate);
-    for (const candidate of candidates) {
-      const from = tilePoint(candidate.from.point), to = tilePoint(candidate.to.point), k = key.candidate(candidate.id);
-      const own: MapFeature[] = [{ kind: "edge", key: k, from, to, tone: "candidate", dashed: candidate.support === "insufficient" },
-        { kind: "point", key: k, point: from, tone: "candidate", role: "origin" }, { kind: "point", key: k, point: to, tone: "candidate", role: "destination" }];
-      features.push(...own);
-      if (input.item === k) anchors.push(...own.filter(feature => feature.kind === "point"));
-    }
-    for (const suspect of topology?.suspects || []) features.push({ kind: "point", key: key.suspect(suspect.id), point: tilePoint(suspect.point), tone: "suspect", role: suspect.role });
   }
   const { origin, destination } = input.draft || {};
   if (origin) anchors.push({ kind: "point", key: "draft", point: origin, tone: "draft", role: "origin" });
   if (destination) anchors.push({ kind: "point", key: "draft", point: destination, tone: "draft", role: "destination" });
   if (origin && destination) features.push({ kind: "edge", key: "draft", from: origin, to: destination, tone: "draft", dashed: true });
   if (input.inspected) anchors.push({ kind: "point", key: "tile", point: input.inspected, tone: "entrance", role: "origin" });
-  // The selected candidate's regions stay laid out in either mode, so switching keeps what is shown.
-  const chosen = input.candidate && input.item === key.candidate(input.candidate.id) ? [tilePoint(input.candidate.from.point), tilePoint(input.candidate.to.point)] : [];
-  const focus = [...chosen, ...anchors.flatMap(feature => feature.kind === "point" ? [feature.point] : [])];
+  const focus = anchors.flatMap(feature => feature.kind === "point" ? [feature.point] : []);
   return { features: [...features, ...anchors], anchors, selected: input.item,
     regions: overlayRegions(input, focus) };
 }

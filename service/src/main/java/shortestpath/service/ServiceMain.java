@@ -199,8 +199,6 @@ public final class ServiceMain {
         Workbench.bankRoutes(app, banks, Provenance.bundled());
         Supplier<Benchmarks> benchmarks = memoize(() -> new Benchmarks(engine.routingStatic(), Provenance.bundled(), ItemCatalog::name));
         Workbench.benchmarkRoutes(app, benchmarks);
-        byte[] topology = Workbench.topologyReport(System.getenv("WORKBENCH_TOPOLOGY"));
-        Workbench.topologyRoutes(app, () -> topology);
         app.exception(Reviews.NotServed.class, (error, ctx) -> error(ctx, 404, error.getMessage()));
         app.exception(Reviews.NotFound.class, (error, ctx) -> error(ctx, 404, error.getMessage()));
         app.exception(Benchmarks.Busy.class, (error, ctx) -> error(ctx, 503, error.getMessage()));

@@ -46,7 +46,6 @@ export interface CandidateItem {
   paired: boolean;
   connectors: CandidateConnector[];
   shortcut: ShortcutIcon | null;
-  review: { status: "unreviewed" | "accepted" | "rejected" | "needs_evidence" | "deferred"; explanation?: string; reference?: string };
 }
 
 export interface CandidateReport {
@@ -134,22 +133,6 @@ export function itemOverlay(item: CandidateItem): FeatureOverlay {
       title: `${partnerText(c.connector)} · ${pointText(c.partnerStand)}` });
   }
   return { features, anchors: features, selected: item.id };
-}
-
-export function reviewNote(item: CandidateItem, report: CandidateReport) {
-  const lines = item.connectors.map(c => `  - ${roleNames[c.role]}: ${connectorText(c.connector)} at ${pointText(c.stand)}`
-    + (c.connector.partner ? ` → ${partnerText(c.connector)} at ${pointText(c.partnerStand)} (${c.connector.partner.rule})` : ""));
-  const shortcut = item.shortcut ? `\n- Shortcut icon at ${pointText(item.shortcut)}${item.shortcut.runelite
-    ? `; RuneLite ${item.shortcut.runelite}, ${item.shortcut.level} Agility` : ""}` : "";
-  return `### Transport candidate ${item.id}
-
-- ${item.title}${item.areaTiles === null ? "" : `, ${item.areaTiles} tiles`}${containsText(item) ? `, ${containsText(item)}` : ""}${shortcut}
-- Connectors (cache ${report.cache}):
-${lines.join("\n")}
-- Plugin: ${report.plugin.repository}@${report.plugin.rev}
-- Decision: needs_evidence
-- Explanation / verification evidence:
-`;
 }
 
 export async function loadCandidates(signal: AbortSignal): Promise<CandidateReport> {

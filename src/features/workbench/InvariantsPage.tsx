@@ -7,7 +7,7 @@ import { featurePoints } from "../../map/insets/features";
 import { LayerControl } from "../../map/insets/LayerControl";
 import type { WorldBox } from "../../map/insets/projection";
 import { loadCollisionManifest, provenance, type CollisionManifest } from "./provenance";
-import { fileName, filterFindings, findingLabel, findingOverlay, invariantNames, invariants, loadInvariants, pointText, reviewNote,
+import { fileName, filterFindings, findingLabel, findingOverlay, invariantNames, invariants, loadInvariants, pointText,
   sourceUrl, type Finding, type InvariantReport } from "./invariants";
 import { useUrlLayerSettings, useWorkbenchLayers } from "./WorkbenchLayers";
 
@@ -30,7 +30,6 @@ export function InvariantsPage() {
   const [manifest, setManifest] = useState<CollisionManifest>();
   const [style, setStyle] = useState(savedStyle);
   const [focusTile, setFocusTile] = useState<{ point: WorldPoint }>();
-  const [copyStatus, setCopyStatus] = useState("");
   useEffect(() => {
     document.title = "Transport invariants · Workbench";
     const abort = new AbortController();
@@ -65,7 +64,6 @@ export function InvariantsPage() {
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
   }, [index, findings, location.search]);
-  useEffect(() => setCopyStatus(""), [finding]);
   const geometry = useMemo(() => finding && findingOverlay(finding), [finding]);
   const [settings, updateSettings] = useUrlLayerSettings();
   const [inspected, setInspected] = useState<WorldPoint>();
@@ -111,7 +109,6 @@ export function InvariantsPage() {
           <ol>{findings.slice(pageStart, pageStart + PAGE).map((f, i) => <li key={f.id}><button type="button" aria-current={index === pageStart + i} onClick={() => select(pageStart + i)}>
             <span className="wb-unit-title">{findingLabel(f)}</span>
             <span className="wb-unit-meta">{invariantNames[f.invariant]} · {fileName(f)}:{f.line}</span>
-            {f.review.status !== "unreviewed" && <span className="wb-unit-meta">{f.review.status.replaceAll("_", " ")}</span>}
           </button></li>)}</ol>
         </nav>
         <section className="wb-map wb-insets-map" aria-label="Finding map">
@@ -135,12 +132,7 @@ export function InvariantsPage() {
           <div className="wb-panel-body">
             {layers.panel}
             {layers.routing.panel && <div className="wb-detail">{layers.routing.panel}</div>}
-            {finding && <FindingDetail finding={finding} report={report} show={point => setFocusTile({ point })}
-              copy={async () => {
-                try { await navigator.clipboard.writeText(reviewNote(finding, report)); setCopyStatus("Review note copied"); }
-                catch { setCopyStatus("Could not access clipboard"); }
-              }} />}
-            {copyStatus && <p role="status">{copyStatus}</p>}
+            {finding && <FindingDetail finding={finding} report={report} show={point => setFocusTile({ point })} />}
             <p className="wb-note">Checked against the service's bundled plugin collision and data. Displayed map collision:
               tiles {tiles.version}, cache {manifest?.cacheId ?? "unknown"}; its revision may differ.</p>
           </div>
@@ -152,7 +144,7 @@ export function InvariantsPage() {
   </div>;
 }
 
-function FindingDetail({ finding: f, report, show, copy }: { finding: Finding; report: InvariantReport; show(p: WorldPoint): void; copy(): void }) {
+function FindingDetail({ finding: f, report, show }: { finding: Finding; report: InvariantReport; show(p: WorldPoint): void }) {
   const ends = f.invariant === "location" ? [["location", f.focus] as const]
     : f.site ? [[invariantNames[f.invariant].toLowerCase(), f.focus] as const]
     : [["origin", f.row.origin] as const, ["destination", f.row.destination] as const];
@@ -170,8 +162,5 @@ function FindingDetail({ finding: f, report, show, copy }: { finding: Finding; r
     </tbody></table></details>}
     <details><summary>Exact row</summary><pre className="wb-draft-text">{f.raw}</pre></details>
     <p className="wb-mono">{f.id}</p>
-    <p><b>Review ledger:</b> {f.review.status}{f.review.explanation ? " — " + f.review.explanation : ""}</p>
-    {f.review.reference && <p>Decision reference: {f.review.reference}</p>}
-    <button type="button" onClick={copy}>Copy review note</button>
   </article>;
 }

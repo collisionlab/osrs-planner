@@ -1,7 +1,5 @@
 package shortestpath.workbench;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -9,12 +7,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import shortestpath.pathfinder.CollisionMap;
@@ -29,7 +25,6 @@ import shortestpath.transport.TransportType;
  * suggests a correction or changes transports.
  */
 public final class TransportInvariants {
-    private static final ObjectMapper JSON = new ObjectMapper();
     static final String RESOURCES = "src/main/resources";
     static final String SEASONAL = RESOURCES + TransportType.SEASONAL_TRANSPORTS.getResourcePath();
     /** The plugin's location files, as {@link ResourceLoader#destinations()} reads them. */
@@ -98,7 +93,6 @@ public final class TransportInvariants {
             value.put("row", current.row);
             value.put("focus", focus);
             value.put("failure", failure);
-            value.put("review", Map.of("status", "unreviewed"));
             list.add(value);
             return value;
         }
@@ -113,29 +107,7 @@ public final class TransportInvariants {
         } catch (NoSuchAlgorithmException error) { throw new IllegalStateException(error); }
     }
 
-    static void validateLedger(JsonNode ledger, Set<String> ids) {
-        validateLedger(ledger, ids, "invariants/reviews.json");
-    }
-
-    /** A review ledger: an object keyed by known ids, each a valid status with a nonempty explanation. */
-    static void validateLedger(JsonNode ledger, Set<String> ids, String file) {
-        if (!ledger.isObject()) throw new IllegalArgumentException(file + " must be an object keyed by finding ID");
-        ledger.fields().forEachRemaining(entry -> {
-            JsonNode decision = entry.getValue();
-            if (!ids.contains(entry.getKey())) throw new IllegalArgumentException("Unknown finding in " + file + ": " + entry.getKey());
-            if (!Set.of("accepted", "rejected", "needs_evidence", "deferred").contains(decision.path("status").asText())
-                || !decision.path("explanation").isTextual() || decision.path("explanation").asText().isBlank()) {
-                throw new IllegalArgumentException("Review " + entry.getKey() + " needs a valid status and nonempty explanation");
-            }
-            decision.fieldNames().forEachRemaining(key -> {
-                if (!Set.of("status", "explanation", "reference").contains(key) || !decision.path(key).isTextual()) {
-                    throw new IllegalArgumentException("Review " + entry.getKey() + ": invalid field " + key);
-                }
-            });
-        });
-    }
-
-    /** All findings of the bundled plugin data, with their review ledger decisions. */
+    /** All findings of the bundled plugin data. */
     public static Map<String, Object> bundled(Provenance provenance) {
         CollisionMap collision = new CollisionMap(PluginResources.map());
         Predicate<TransportDiff.Point> walkable = point -> !collision.isBlocked(point.x, point.y, point.plane);
@@ -146,19 +118,6 @@ public final class TransportInvariants {
         LocationViolations.collect(locationRows(), LocationViolations.Components.bundled(), findings);
         for (SiteViolations.SiteList list : SiteViolations.SiteList.values()) {
             SiteViolations.collect(list, SiteViolations.bundledRows(list), LocationViolations.Components.bundled(), findings);
-        }
-        JsonNode ledger;
-        try {
-            ledger = JSON.readTree(resource("/invariants/reviews.json"));
-        } catch (IOException error) {
-            throw new UncheckedIOException(error);
-        }
-        Set<String> ids = new HashSet<>();
-        for (var finding : findings.list) ids.add((String) finding.get("id"));
-        validateLedger(ledger, ids);
-        for (var finding : findings.list) {
-            JsonNode decision = ledger.get((String) finding.get("id"));
-            if (decision != null) finding.put("review", decision);
         }
         Map<String, Object> rules = new LinkedHashMap<>();
         rules.put("destination", DestinationViolations.RULE);

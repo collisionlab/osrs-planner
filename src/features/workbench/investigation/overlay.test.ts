@@ -29,18 +29,16 @@ describe("investigation overlay", () => {
     expect(overlay.anchors).toEqual([]);
   });
 
-  it("anchors a selected candidate's ends and lays out the regions they are in, in either mode", () => {
-    const candidate = { id: "k-1", from: { point: [105, 10005, 0] as [number, number, number] }, to: { point: [305, 10005, 0] as [number, number, number] },
-      support: "insufficient" as const, reasons: [], evidence: [], sources: [] };
+  it("anchors a drafted link's ends and lays out the regions they are in, in either mode", () => {
     const area = data.byId.get("area:dungeon")!;
-    const topology = { components: [], fragments: 0, candidates: [candidate], suspects: [] };
-    const overlay = investigationOverlay({ ...base, mode: "topology", area, topology, candidate, item: key.candidate("k-1") });
-    expect(overlay.features).toContainEqual({ kind: "edge", key: "cand:k-1", from: { x: 105, y: 10005, plane: 0 }, to: { x: 305, y: 10005, plane: 0 }, tone: "candidate", dashed: true });
+    const draft = { origin: { x: 105, y: 10005, plane: 0 }, destination: { x: 305, y: 10005, plane: 0 } };
+    const overlay = investigationOverlay({ ...base, mode: "topology", area, draft });
+    expect(overlay.features).toContainEqual({ kind: "edge", key: "draft", from: draft.origin, to: draft.destination, tone: "draft", dashed: true });
     expect(overlay.anchors.map(feature => feature.kind)).toEqual(["point", "point"]);
     expect(overlay.regions).toEqual([{ regionId: "dun-a" }, { regionId: "lost" }]);
-    expect(investigationOverlay({ ...base, area, candidate, item: key.candidate("k-1") }).regions).toEqual([{ regionId: "dun-a" }, { regionId: "lost" }]);
+    expect(investigationOverlay({ ...base, area, draft }).regions).toEqual([{ regionId: "dun-a" }, { regionId: "lost" }]);
     // An end on another floor of the same tiles goes beside them, not over them.
-    const upstairs = { ...candidate, to: { point: [105, 10005, 1] as [number, number, number] } };
-    expect(investigationOverlay({ ...base, area, candidate: upstairs, item: key.candidate("k-1") }).regions).toEqual([{ regionId: "dun-a" }, { regionId: "dun-b", aside: true }]);
+    const upstairs = { ...draft, destination: { x: 105, y: 10005, plane: 1 } };
+    expect(investigationOverlay({ ...base, area, draft: upstairs }).regions).toEqual([{ regionId: "dun-a" }, { regionId: "dun-b", aside: true }]);
   });
 });

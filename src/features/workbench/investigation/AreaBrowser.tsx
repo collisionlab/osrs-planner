@@ -5,18 +5,16 @@ import { filterAreas, hasTopologyGap, type Area, type AreaFilter, type AreaStatu
 const LISTED = 300;
 const SIZES = [0, 50, 200, 1000, 10000];
 
-export function AreaBrowser({ areas, filter, onFilter, selected, onSelect, gaps, ordered }: {
+export function AreaBrowser({ areas, filter, onFilter, selected, onSelect, ordered }: {
   areas: Area[];
   filter: AreaFilter;
   onFilter(filter: AreaFilter): void;
   selected?: string;
   onSelect(area: Area): void;
-  /** Areas the topology report finds a possible gap in, when it is loaded and trusted. */
-  gaps?: Set<string>;
   /** How the order was decided, in words. */
   ordered: string;
 }) {
-  const matches = useMemo(() => filterAreas(areas, filter, gaps), [areas, filter, gaps]);
+  const matches = useMemo(() => filterAreas(areas, filter), [areas, filter]);
   const set = (next: Partial<AreaFilter>) => onFilter({ ...filter, ...next });
   return <nav className="wb-units wb-explorer-side" aria-label="Areas">
     <form className="wb-search" role="search" onSubmit={event => event.preventDefault()}>
@@ -48,7 +46,7 @@ export function AreaBrowser({ areas, filter, onFilter, selected, onSelect, gaps,
         <span className="wb-unit-meta">
           <span>{area.regionIds.length} region{area.regionIds.length === 1 ? "" : "s"} · plane{area.planes.length > 1 ? "s" : ""} {area.planes.join(",")}</span>
           {/* One flag at most: the most pressing. */}
-          {hasTopologyGap(area, gaps) ? <span className="wb-flag gap" title="Possible topology gap">gap</span>
+          {hasTopologyGap(area) ? <span className="wb-flag gap" title="Possible topology gap">gap</span>
             : area.issues.length > 0 ? <span className="wb-flag issue" title={area.issues.map(issue => issue.message).join("\n")}>{area.issues.length} issue{area.issues.length === 1 ? "" : "s"}</span>
             : !area.entrance ? <span className="wb-flag" title="No known entrance">no entrance</span> : null}
         </span>

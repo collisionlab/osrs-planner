@@ -7,6 +7,7 @@ import { InvariantsPage } from "./InvariantsPage";
 import { CandidatesPage } from "./CandidatesPage";
 import { BenchmarksPage } from "./BenchmarksPage";
 import { InsetInvestigation } from "./investigation/InsetInvestigation";
+import { UndergroundPage } from "./UndergroundPage";
 import "./workbench.css";
 
 /**
@@ -28,6 +29,8 @@ export function WorkbenchRoutes() {
     <Route path="/candidates" element={<CandidatesPage />} />
     <Route path="/insets" element={<InsetInvestigation />} />
     <Route path="/benchmarks" element={<BenchmarksPage />} />
+    <Route path="/underground" element={<UndergroundPage />} />
+    <Route path="/underground/:map" element={<UndergroundPage />} />
     <Route path="/github/:owner/:repo/pull/:number" element={<ReviewPage />} />
     <Route path="/github/:owner/:repo/pull/:number/files" element={<ReviewPage />} />
     <Route path="/github/:owner/:repo/pull/:number/files/:range" element={<ReviewPage />} />
@@ -60,6 +63,7 @@ function WorkbenchHome({ missing }: { missing?: boolean }) {
         <Link to="/candidates"><b>Transport candidates</b><span>Ladders, stairs, cave entrances and world map links with no transport into areas nothing else reaches, and agility shortcuts and dungeon entrances with no transport.</span></Link>
         <Link to="/transports"><b>Transport explorer</b><span>Every transport on the map: where it goes, what it needs, and its row.</span></Link>
         <Link to="/benchmarks"><b>Benchmarks</b><span>Every benchmark case in shortest-path-tooling: where they start and end, and each one run on the engine.</span></Link>
+        <Link to="/underground"><b>Underground areas</b><span>Each underground world map in turn, with the walking areas in it that nothing reaches.</span></Link>
         <Link to="/insets"><b>Inset investigation</b><span>Areas off the main map: their entrances, connections and names.</span></Link>
         <a href="#review"><b>Pull request review</b><span>A pull request's transport changes on the map.</span></a>
       </nav>
