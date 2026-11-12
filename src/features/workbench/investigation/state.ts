@@ -8,7 +8,7 @@ export interface InvestigationState {
   /** The inset region selected within it. */
   region?: string;
   mode: "topology" | "labelling";
-  /** The selected candidate, suspect, component, evidence or connection, by its id. */
+  /** The selected evidence, anchor, region or transport, by its key. */
   item?: string;
   /** The plane shown. */
   plane?: number;

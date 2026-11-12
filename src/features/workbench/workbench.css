@@ -124,12 +124,7 @@ a.wb-brand { text-decoration: none; }
 .wb-placement { color: #ffc44d; }
 .wb-callout { margin: 8px 0; padding: 8px 10px; background: var(--raised); border-left: 3px solid var(--orange); }
 .wb-callout h4 { margin: 0 0 6px; font-size: 12px; }
-.wb-checks { list-style: none; margin: 0 0 6px; padding: 0; font-size: 12px; }
-.wb-checks li::before { content: "✓ "; color: #5ee08a; }
-.wb-checks li.differs::before { content: "⚠ "; color: #ffc44d; } .wb-checks li.unknown::before { content: "? "; color: var(--muted); }
 .wb-unavailable { margin: 0; padding: 6px 10px; color: var(--muted); border: 1px dashed var(--line); }
-.wb-support { margin-left: 6px; padding: 0 5px; border: 1px solid #5ee08a; color: #5ee08a; font-size: 11px; }
-.wb-support.insufficient { border-color: #ffc44d; color: #ffc44d; }
 .wb-bad { color: #ff6b6b; }
 .wb-kind { margin-left: 4px; padding: 0 5px; font-size: 10px; font-weight: 400; text-transform: uppercase; letter-spacing: .04em; }
 .wb-kind.fact { color: #5ee08a; border: 1px solid #5ee08a; } .wb-kind.suggestion { color: #ff7ad9; border: 1px dashed #ff7ad9; }

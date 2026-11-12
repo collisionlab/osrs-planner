@@ -63,6 +63,5 @@ describe("inset investigation data", () => {
     expect(ids({ flag: "multi-floor" })).toEqual(["area:dungeon"]);
     expect(ids({ flag: "no-entrance" })).toEqual(["region:dun-c", "region:lost"]);
     expect(ids({ flag: "issues" })).toEqual(["region:dun-c", "area:dungeon"]);
-    expect(filterAreas(areas, { flag: "topology" }, new Set(["region:lost"])).map(area => area.id)).toEqual(["region:lost"]);
   });
 });

@@ -5,17 +5,14 @@ import { expect, test, type Page } from "@playwright/test";
 import tiles from "../tiles.json" with { type: "json" };
 
 // The workbench's inset investigation over the pinned inset release (real regions, labels and
-// anchors from tiles.collisionlab.world), with investigations.json and the topology report from
-// checked-in fixtures that follow their contracts (src/features/workbench/investigation/data.ts and
-// topology.ts): they name real regions, but their candidates and components are made up for tests.
+// anchors from tiles.collisionlab.world), with investigations.json from a checked-in fixture that
+// follows its contract (src/features/workbench/investigation/data.ts): it names real regions, but its
+// candidates are made up for tests.
 test.use({ baseURL: "http://workbench.localhost:5179" });
 
 const fixture = (name: string) => readFileSync(path.resolve(import.meta.dirname, "fixtures", name), "utf8");
 const investigations = fixture("insets/investigations.json");
-// The report was recorded on cache 2746; it claims the pinned tiles' cache so a new game cache leaves it verified.
 const CACHE = Number(tiles.version.split("-")[0]);
-const recorded = JSON.parse(fixture("insets/topology.json"));
-const topology = { ...recorded, collision: { ...recorded.collision, cacheId: CACHE } };
 const transports = JSON.parse(fixture("transports.json")) as {
   meta: unknown; transports: { id: string; label: string; origin: Point | null; destination: Point }[];
 };
@@ -36,8 +33,8 @@ function forRelease(file: string, manifest: { files: Record<string, string> }) {
 }
 
 /** Mocks: the release's manifest gains investigations.json (unless `investigationsFile` is null), made for that
- * release unless `asIs`; the service answers topology and transports. */
-async function mock(page: Page, { investigationsFile = investigations as string | null, asIs = false, report = topology as unknown, reportStatus = 200 } = {}) {
+ * release unless `asIs`; the service answers transports. */
+async function mock(page: Page, { investigationsFile = investigations as string | null, asIs = false } = {}) {
   let served = investigationsFile;
   await page.route(`${bundle}/manifest.json`, async route => {
     const manifest = await (await route.fetch()).json();
@@ -50,8 +47,6 @@ async function mock(page: Page, { investigationsFile = investigations as string 
   if (investigationsFile !== null) await page.route(`${bundle}/investigations.json`, route => route.fulfill({ body: served!, contentType: "application/json" }));
   await page.route(url => url.pathname.startsWith("/api/"), route => {
     const url = new URL(route.request().url());
-    if (url.pathname === "/api/workbench/v1/topology") return reportStatus === 200 ? route.fulfill({ json: report })
-      : route.fulfill({ status: reportStatus, json: { error: "this build has no topology report from shortest-path-tooling" } });
     const rest = url.pathname.replace("/api/workbench/v1/transports", "");
     if (rest === "/meta") return route.fulfill({ json: transports.meta });
     if (rest === "" && url.searchParams.get("view")) {
@@ -144,50 +139,6 @@ test("selects a region by clicking its terrain and reports the tile", async ({ p
   await expect(details(page).locator("tr.selected")).toContainText("p1-2887-9797-df2334d7b8");
 });
 
-test("inspects a candidate link between two regions, with its evidence and rows", async ({ page }) => {
-  await mock(page);
-  await open(page, `?area=area:taverley-dungeon&region=${TAVERLEY}`);
-  const panel = details(page);
-  await panel.getByText("Checks and what “reached” means").click();
-  await expect(panel.getByText(`cache ${CACHE}, as the insets`)).toBeVisible();
-  await panel.getByRole("button", { name: /2905 9681 0 → 2791 9819 1/ }).click();
-  await expect(page).toHaveURL(/sel=cand:k-taverley-upper/);
-  const candidate = panel.getByRole("region", { name: "Selected candidate" });
-  await expect(candidate).toContainText("supported");
-  await expect(candidate).toContainText("plane 0");
-  await expect(candidate).toContainText("plane 1");
-  await expect(candidate).toContainText("No chain of transports reaches this walking component.");
-  await expect(candidate.getByRole("link", { name: "transports.tsv:1330" }).first())
-    .toHaveAttribute("href", "https://github.com/Skretzo/shortest-path/blob/12728cca1857ff25e40f92cecd10ff08970d6d32/src/main/resources/transports/transports.tsv#L1330");
-  // Both ends are drawn: the far end's region is laid out too, and the candidate is an edge.
-  await expect.poll(() => map(page, handle => handle.shows({ x: 2791, y: 9819, plane: 1 }))).toBe(true);
-  await expect.poll(async () => (await map(page, handle => handle.featureCount())).edge).toBeGreaterThan(0);
-});
-
-test("flags a candidate with insufficient evidence as a lead", async ({ page }) => {
-  await mock(page);
-  await open(page, "?area=area:taverley-dungeon&sel=cand:k-taverley-hunch");
-  const candidate = details(page).getByRole("region", { name: "Selected candidate" });
-  await expect(candidate).toContainText("insufficient evidence");
-  await expect(candidate).toContainText("none: this is a lead to check in game, not a finding");
-});
-
-test("lists a correctly mapped dungeon's several walking components without calling them gaps", async ({ page }) => {
-  await mock(page);
-  await open(page, "?area=area:cerberus-lair");
-  const panel = details(page);
-  const table = panel.getByRole("region", { name: "Walking components" }).getByRole("table");
-  await expect(table.locator("tbody tr")).toHaveCount(4);
-  await expect(table.locator(".wb-bad")).toHaveCount(0);
-  await expect(panel.getByRole("region", { name: "Candidate links" })).toContainText("None.");
-  const browser = page.getByRole("navigation", { name: "Areas" });
-  await expect(browser.getByRole("button", { name: /Cerberus' Lair/ }).locator(".wb-flag.gap")).toHaveCount(0);
-  await expect(browser.getByRole("button", { name: /Taverley Dungeon/ }).locator(".wb-flag.gap")).toHaveCount(1);
-  // Taverley's tiny fragment is counted, not drawn as a problem.
-  await browser.getByRole("button", { name: /Taverley Dungeon/ }).click();
-  await expect(panel.getByRole("region", { name: "Walking components" })).toContainText("1 small fragment not shown");
-});
-
 test("switches modes keeping the area, its regions and the view", async ({ page }) => {
   await mock(page);
   await open(page, "?area=area:taverley-dungeon&at=2890,9760,0&z=8");
@@ -246,28 +197,13 @@ test("refuses investigation data made from another release, and keeps working fr
   await expect(page.getByRole("navigation", { name: "Areas" }).locator(".wb-list-heading")).toContainText(/[1-9],\d{3} areas/);
 });
 
-test("marks a report from another cache or plugin as unverified", async ({ page }) => {
-  await mock(page, { report: { ...topology, collision: { ...topology.collision, cacheId: 2700 }, plugin: { ...topology.plugin, rev: "f".repeat(40) } } });
-  await open(page, "?area=area:taverley-dungeon&sel=cand:k-taverley-upper");
-  const panel = details(page);
-  await expect(panel.getByRole("alert")).toContainText("Unverified");
-  await expect(panel).toContainText(`report flooded cache 2700, but these insets were cut from cache ${CACHE}`);
-  await expect(panel).toContainText("the explorer shows @12728cc");
-  await expect(panel.getByRole("region", { name: "Selected candidate" })).toContainText("unverified report");
-  await expect(page.locator(".wb-footer")).toContainText("unverified against this page");
-});
-
-test("works without a topology report and says it is unavailable", async ({ page }) => {
-  await mock(page, { reportStatus: 404 });
+test("lists an area's connections in topology mode", async ({ page }) => {
+  await mock(page);
   await open(page, "?area=area:taverley-dungeon");
   const panel = details(page);
-  // Nothing about the report in the panel; the connections still are.
-  await expect(panel.getByRole("region", { name: "Topology report" })).toHaveCount(0);
   await expect(panel.getByRole("region", { name: "Ways in" })).toBeVisible();
-  await expect(panel.getByRole("region", { name: "Walking components" })).toHaveCount(0);
   await panel.getByRole("tab", { name: "Labelling" }).click();
   await expect(panel.getByRole("region", { name: "Evidence" }).locator("tbody tr").first()).toBeVisible();
-  await expect(page.locator(".wb-footer")).toContainText("Topology unavailable");
 });
 
 test("works without investigations.json, from the release's own labels", async ({ page }) => {
@@ -287,7 +223,6 @@ test("investigates a new link by hand and drafts a row without inventing its fie
   await link.getByLabel("destination tile").fill("2791 9819 1");
   await expect(link).toContainText(TAVERLEY);
   await expect(link).toContainText(TAVERLEY_UP);
-  await expect(link).toContainText("w-taverley-pocket");
   await expect(link).toContainText(/Collision(blocked|open|no walkable)/);
   await expect(link.getByRole("status")).toContainText("No known transport joins these tiles");
   const draft = link.getByLabel("Transport draft");

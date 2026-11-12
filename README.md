@@ -157,8 +157,8 @@ plugin's; a review's collision is never from the pull request, and its footer sa
 The **inset investigation** (`/insets`) is for areas off the main map: an area browser (curated area
 keys and provisional, unnamed regions, ordered by outstanding issues), the shared inset map, and a
 details panel in two modes over the same selection and view. *Topology* lists the release's
-entrances and connections, the transports on the area's terrain, the tooling's walking components,
-candidate links and suspect ends, and drafts a candidate `transports.tsv` row from two tiles, with
+entrances and connections and the transports on the area's terrain, and drafts a candidate
+`transports.tsv` row from two tiles, with
 every field it can't know marked `INVESTIGATE(…)`. *Labelling* lists names, regions, accepted
 evidence, suggested names, anchor chains and issues, and drafts an `annotations.json` area entry
 from what the developer chose. Nothing is written anywhere. The overlay's `regions` show inset
@@ -173,17 +173,11 @@ Its data (`src/features/workbench/investigation/`):
 - `investigations.json` from the same release, when osrs-tiles publishes it (schema 1, in `data.ts`):
   areas, name candidates, suggested evidence and issues. Its `catalogueSha256`, `labelsSha256` and
   `anchorsSha256` must be this release's, and every region and evidence id must resolve; otherwise
-  it is refused and areas come from the labels;
-- shortest-path-tooling's topology report (schema 1, in `topology.ts`), served by
-  `GET /api/workbench/v1/topology` from the file `WORKBENCH_TOPOLOGY` names or
-  `workbench-topology.json` on the classpath, 404 without one. It is joined to regions only by
-  tiles, and its conclusions are marked unverified unless its cache, plugin commit and collision
-  dumper match the insets', the explorer's and the map's. Without it the page says diagnostics are
-  unavailable; it never floods anything itself.
+  it is refused and areas come from the labels.
 
 URLs keep the area, region, mode, selected item, plane, view and release
 (`?area=…&region=…&mode=labelling&sel=…&plane=…&at=…&z=…&v=…`). The fixtures in
-`e2e/fixtures/insets/` follow both contracts and name real regions of the pinned release.
+`e2e/fixtures/insets/` follow that contract and name real regions of the pinned release.
 
 ## Route insets
 
