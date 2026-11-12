@@ -181,8 +181,7 @@ public final class Benchmarks {
             phases.put("reverseSearch", millis(search.getReverseSearchNanos()));
             phases.put("heuristicPrepare", millis(search.getHeuristicPrepareNanos()));
             phases.put("forwardSearch", millis(search.getForwardSearchNanos()));
-            phases.put("walkCanonicalize", millis(search.getWalkCanonicalizeNanos()));
-            phases.put("walkRewrite", millis(search.getWalkRewriteNanos()));
+            phases.put("walk", millis(search.getWalkNanos()));
             body.put("phasesMs", phases);
             body.put("statesPopped", search.getAStarStats() == null ? null : search.getAStarStats().statesPopped());
         }

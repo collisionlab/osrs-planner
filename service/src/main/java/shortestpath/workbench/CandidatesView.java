@@ -14,7 +14,6 @@ import shortestpath.candidates.ConnectorSnapshot;
 import shortestpath.candidates.Report;
 import shortestpath.candidates.Scope;
 import shortestpath.candidates.TransportCandidates;
-import shortestpath.candidates.Walking;
 import shortestpath.pathfinder.PluginResources;
 
 /**
@@ -31,7 +30,7 @@ final class CandidatesView {
     /** The plugin data on the classpath never changes, so the judgement is made once. */
     private static final class Judged {
         static final Report REPORT = TransportCandidates.judge(ConnectorSnapshot.bundled(),
-            Walking.of(LocationViolations.bundledWalking()), PluginResources.transports(),
+            LocationViolations.bundledWalking(), PluginResources.transports(),
             PluginResources.destinations(), Scope.bundled());
     }
 

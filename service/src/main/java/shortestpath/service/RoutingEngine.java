@@ -127,8 +127,7 @@ final class RoutingEngine {
         phases.put("reverseSearch", millis(pathfinder.getReverseSearchNanos()));
         phases.put("heuristicPrepare", millis(pathfinder.getHeuristicPrepareNanos()));
         phases.put("forwardSearch", millis(pathfinder.getForwardSearchNanos()));
-        phases.put("walkCanonicalize", millis(pathfinder.getWalkCanonicalizeNanos()));
-        phases.put("walkRewrite", millis(pathfinder.getWalkRewriteNanos()));
+        phases.put("walk", millis(pathfinder.getWalkNanos()));
         stats.put("phasesMs", phases);
         AStarForwardSearch.Counters counters = pathfinder.getAStarStats();
         if (counters != null) {
