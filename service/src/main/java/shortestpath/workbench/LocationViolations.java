@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import shortestpath.WorldPointUtil;
+import shortestpath.candidates.Walking;
 import shortestpath.pathfinder.CollisionMap;
 import shortestpath.pathfinder.PluginResources;
 import shortestpath.pathfinder.TargetReachability;
@@ -40,23 +41,34 @@ final class LocationViolations {
     }
 
     /** The bundled walking graph behind {@link Components#bundled()}, shared with the transport candidates. */
-    static RoutingStaticBuilder.WalkingGraph bundledWalking() {
+    static Walking bundledWalking() {
         return Bundled.INSTANCE.walking;
     }
 
     private static final class Bundled implements Components {
         static final Bundled INSTANCE = new Bundled();
-        private final RoutingStaticBuilder.WalkingGraph walking;
+        private final Walking walking;
         private final int[] sizes;
         private final TargetReachability snapping;
 
         private Bundled() {
             CollisionMap collision = new CollisionMap(PluginResources.map());
-            walking = RoutingStaticBuilder.walkingGraph(collision, ResourceLoader.transports());
-            sizes = new int[walking.naturalComponentCount() + 1];
-            for (int i = 0; i < walking.tileCount(); i++) sizes[walking.naturalComponent(i)]++;
+            walking = walking(RoutingStaticBuilder.walkingGraph(collision, ResourceLoader.transports()));
+            sizes = walking.areaSizes();
             snapping = new TargetReachability(collision, walking, PluginResources.transports(),
                 TargetReachability.DEFAULT_UNREACHABLE_DISTANCE);
+        }
+
+        /** The plugin keeps its walking-graph builder in its test sources (compiled in by service/build.gradle). */
+        private static Walking walking(RoutingStaticBuilder.WalkingGraph graph) {
+            return new Walking() {
+                @Override public int tileCount() { return graph.tileCount(); }
+                @Override public int tile(int index) { return graph.tile(index); }
+                @Override public int indexOf(int tile) { return graph.indexOf(tile); }
+                @Override public int naturalComponentCount() { return graph.naturalComponentCount(); }
+                @Override public int naturalComponent(int index) { return graph.naturalComponent(index); }
+                @Override public boolean isStructurallyReachable(int component) { return graph.isStructurallyReachable(component); }
+            };
         }
 
         @Override public int component(TransportDiff.Point point) {

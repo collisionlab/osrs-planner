@@ -10,6 +10,8 @@ dependencies {
     implementation 'com.networknt:json-schema-validator:1.5.9'
     implementation 'com.github.ben-manes.caffeine:caffeine:3.2.3'
     implementation 'io.micrometer:micrometer-registry-prometheus:1.13.6'
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
     runtimeOnly 'ch.qos.logback:logback-classic:1.5.21'
     runtimeOnly 'net.logstash.logback:logstash-logback-encoder:8.1'
 
@@ -19,6 +21,13 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.11.4'
 }
+
+// The location invariants walk the plugin's natural walking areas, which only its routing-component
+// builder computes; the plugin keeps that builder in its test sources, so compile it in as tooling does.
+compileJava.source fileTree(
+    dir: rootProject.file('tooling/shortest-path/src/test/java'),
+    include: 'shortestpath/pathfinder/astar/RoutingStaticBuilder.java'
+)
 
 application {
     applicationName = 'osrs-planner'

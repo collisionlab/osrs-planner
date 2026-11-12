@@ -190,7 +190,7 @@ public final class PlannerSettings {
         PluginSettings defaults = defaults();
         Map<String, Setting> result = new LinkedHashMap<>();
         for (ConfigKey row : ConfigKey.values()) {
-            Class<?> type = row.getType();
+            Class<?> type = unboxed(row.getType());
             String key = ACCESSORS.getOrDefault(row.getKey(), row.getKey());
             if (!row.getEffects().contains(Effect.ROUTE_INVALIDATING) || SEASONAL.contains(key)
                 || ACCOUNT.contains(key) || HOUSE.contains(key)
@@ -213,6 +213,11 @@ public final class PlannerSettings {
                 json(invoke(getter, defaults))));
         }
         return result;
+    }
+
+    /** The plugin types its keys {@code Boolean} and {@code Integer}; {@link PluginSettings} takes primitives. */
+    private static Class<?> unboxed(Class<?> type) {
+        return type == Boolean.class ? boolean.class : type == Integer.class ? int.class : type;
     }
 
     private static Object json(Object value) {
