@@ -48,6 +48,16 @@ export interface RoutingComponent {
   colour: number;
 }
 
+/** A walking area nothing reaches: a structurally unreachable natural component that isn't an expanse. */
+export interface UnreachedArea {
+  plane: number;
+  tiles: number;
+  /** x0, y0, x1, y1, the maxima exclusive. */
+  bounds: [number, number, number, number];
+  /** One of its tiles. */
+  representative: [number, number, number];
+}
+
 export interface RoutingCrossing {
   /** Stable within the manifest's version; never a gameplay transport. */
   id: number;
@@ -135,7 +145,7 @@ export function decodeRouting(bytes: ArrayBuffer): RoutingSquare {
   return { owners, status, boundaries, naturalSizes, crossings, edges: [] };
 }
 
-const FILE_PATH = /^(components\.json|crossings\.json|p[0-3]\/\d+\/\d+\.(bin|crossings\.json)|(components|blocked)\/(p[1-3]\/)?[3-8]\/\d+\/\d+\.png)$/;
+const FILE_PATH = /^(components\.json|crossings\.json|unreachable\.json|p[0-3]\/\d+\/\d+\.(bin|crossings\.json)|(components|blocked)\/(p[1-3]\/)?[3-8]\/\d+\/\d+\.png)$/;
 
 /** The manifest must be the one the pin names, for the pinned tiles, plugin and inputs. */
 export function validateRoutingManifest(manifest: RoutingManifest, pin: RoutingPin, tileVersion: string) {
@@ -274,6 +284,12 @@ export class RoutingData {
     this.components ??= this.file("components.json")
       .then(bytes => new Map((JSON.parse(new TextDecoder().decode(bytes)) as RoutingComponent[]).map(component => [component.id, component])));
     return (await this.components).get(id);
+  }
+
+  /** The areas nothing reaches, or undefined for a release from before they were published. */
+  async unreached(): Promise<UnreachedArea[] | undefined> {
+    if (!this.manifest.files["unreachable.json"]) return undefined;
+    return JSON.parse(new TextDecoder().decode(await this.file("unreachable.json"))) as UnreachedArea[];
   }
 
   /** What the release says about a tile, each case said separately. */

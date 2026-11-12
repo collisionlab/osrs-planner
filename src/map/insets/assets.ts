@@ -9,7 +9,7 @@ export interface InsetManifest {
   layout: "explv-tms-v1";
   tileVersion: string;
   cacheIdx255Sha256: string;
-  files: Record<"regions.json" | "labels.json", string> & { "anchors.json"?: string };
+  files: Record<"regions.json" | "labels.json", string> & { "anchors.json"?: string; "world-maps.json"?: string };
 }
 export interface InsetAssets {
   catalogue: Catalogue;

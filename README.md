@@ -154,6 +154,16 @@ tiles release's `collision/<version>/manifest.json`, which names the tooling com
 When the two tooling commits differ the footer says so rather than implying the walls drawn are the
 plugin's; a review's collision is never from the pull request, and its footer says that too.
 
+**Underground areas** (`/underground`, `/underground/<map>`) go through every world map besides the
+main one, one at a time, to check its topology is complete. The list is the inset release's
+`world-maps.json` (each map's real tiles, from the cache's world map composites); each map's
+unreached areas are the routing release's `unreachable.json` (walking areas nothing reaches in the
+pinned plugin's own graph), put in the map that draws their representative tile and listed largest
+first from 20 tiles up. The map shows the map's inset regions on the plane chosen, where they really
+are, with the structurally unreachable layer on. `j`/`k` move between maps and `n`/`p` between
+areas; the URL keeps the map, plane (`?plane=`) and area (`#area=x_y_plane`). Releases from before
+those files existed say so instead.
+
 The **inset investigation** (`/insets`) is for areas off the main map: an area browser (curated area
 keys and provisional, unnamed regions, ordered by outstanding issues), the shared inset map, and a
 details panel in two modes over the same selection and view. *Topology* lists the release's
