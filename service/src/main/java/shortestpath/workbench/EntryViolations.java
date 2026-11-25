@@ -15,7 +15,7 @@ import java.util.function.Predicate;
 final class EntryViolations {
     static final String RULE = "A transport starts on a walkable tile, or on a blocked tile that a chain of transports "
         + "reaches from open ground or a teleport. Fairy rings are not checked yet.";
-    static final String FAIRY_RINGS = TransportInvariants.RESOURCES + shortestpath.transport.TransportType.FAIRY_RING.getResourcePath();
+    static final String FAIRY_RINGS = TransportInvariants.RESOURCES + shortestpath.transport.TransportType.FAIRY_RING.getResourcePaths().get(0);
 
     private EntryViolations() { }
 
