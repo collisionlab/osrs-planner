@@ -414,32 +414,54 @@ public final class TransportCatalog {
 
     /** The catalogue of the plugin on the classpath. */
     public static TransportCatalog load(IntFunction<String> itemName) {
-        Map<String, String> files = new LinkedHashMap<>();
+        List<File> files = new ArrayList<>();
         for (TransportType type : TransportType.values()) {
-            if (type.hasResourcePath()) {
-                files.put(type.name(), resource(type.getResourcePath()));
+            for (String path : type.getResourcePaths()) {
+                files.add(new File(type, path, resource(path)));
             }
         }
         return build(files, itemName);
     }
 
-    /** The catalogue of these transport files, by {@link TransportType} name; for tests. */
+    /** The catalogue of these transport files, by {@link TransportType} name, each in the type's first file; for tests. */
     static TransportCatalog build(Map<String, String> contentsByType, IntFunction<String> itemName) {
+        List<File> files = new ArrayList<>();
+        contentsByType.forEach((name, contents) -> {
+            TransportType type = TransportType.valueOf(name);
+            files.add(new File(type, type.getResourcePaths().get(0), contents));
+        });
+        return build(files, itemName);
+    }
+
+    /** One transport file: a type may load from several. */
+    private static final class File {
+        final TransportType type;
+        final String path;
+        final String contents;
+
+        File(TransportType type, String path, String contents) {
+            this.type = type;
+            this.path = path;
+            this.contents = contents;
+        }
+    }
+
+    private static TransportCatalog build(List<File> files, IntFunction<String> itemName) {
         Map<Integer, Set<Transport>> all = new HashMap<>();
         // Each file's transports in the order the plugin made them: rows in file order, then pairings.
         Map<String, List<Transport>> byFile = new LinkedHashMap<>();
         Map<String, List<TransportDiff.Row>> rowsByFile = new HashMap<>();
-        for (Map.Entry<String, String> file : contentsByType.entrySet()) {
-            TransportType type = TransportType.valueOf(file.getKey());
-            String path = RESOURCES + type.getResourcePath();
+        for (File file : files) {
+            TransportType type = file.type;
+            String path = RESOURCES + file.path;
             Map<Integer, Set<Transport>> own = new HashMap<>();
-            ResourceLoader.addTransportsFromContents(own, file.getValue(), type, type.hasRadiusThreshold() ? type.getRadiusThreshold() : 0);
+            ResourceLoader.addTransportsFromContents(own, file.contents, type, type.hasRadiusThreshold() ? type.getRadiusThreshold() : 0);
             List<Transport> made = byFile.computeIfAbsent(path, key -> new ArrayList<>());
             own.forEach((origin, transports) -> {
                 all.computeIfAbsent(origin, key -> new LinkedHashSet<>()).addAll(transports);
                 made.addAll(transports);
             });
-            rowsByFile.put(path, TransportDiff.parse(path, file.getValue()));
+            rowsByFile.put(path, TransportDiff.parse(path, file.contents));
         }
         Map<Transport, Integer> before = new IdentityHashMap<>();
         all.values().forEach(set -> set.forEach(transport -> before.put(transport, transport.getDestination())));

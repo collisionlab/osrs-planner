@@ -26,7 +26,7 @@ import shortestpath.transport.TransportType;
  */
 public final class TransportInvariants {
     static final String RESOURCES = "src/main/resources";
-    static final String SEASONAL = RESOURCES + TransportType.SEASONAL_TRANSPORTS.getResourcePath();
+    static final String SEASONAL = RESOURCES + TransportType.SEASONAL_TRANSPORTS.getResourcePaths().get(0);
     /** The plugin's location files, as {@link ResourceLoader#destinations()} reads them. */
     static final List<String> LOCATIONS = List.of("/destinations/game_features/altar.tsv", "/destinations/game_features/bank.tsv",
         "/destinations/training/anvil.tsv", "/destinations/shopping/apothecary.tsv");
@@ -62,8 +62,8 @@ public final class TransportInvariants {
     static List<CurrentRow> transportRows() {
         List<CurrentRow> rows = new ArrayList<>();
         for (TransportType type : TransportType.values()) {
-            if (!type.hasResourcePath() || type == TransportType.SEASONAL_TRANSPORTS) continue;
-            rows.addAll(rows(RESOURCES + type.getResourcePath(), resource(type.getResourcePath())));
+            if (type == TransportType.SEASONAL_TRANSPORTS) continue;
+            for (String path : type.getResourcePaths()) rows.addAll(rows(RESOURCES + path, resource(path)));
         }
         rows.sort(java.util.Comparator.comparing((CurrentRow row) -> row.row.file).thenComparingInt(row -> row.row.line));
         return rows;
