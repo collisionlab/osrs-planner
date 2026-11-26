@@ -1,14 +1,14 @@
 {
   "base": "https://tiles.collisionlab.world",
-  "version": "2772-f44651b39dd6",
+  "version": "2777-f44651b39dd6",
   "styles": [
     "standard",
     "tactical",
     "blueprint"
   ],
   "insets": {
-    "version": "5508dbd6c018d4e13de9d8a7",
-    "tileVersion": "2772-f44651b39dd6"
+    "version": "8d2d829ead2a024483bd08bb",
+    "tileVersion": "2777-f44651b39dd6"
   },
   "routingLayers": {
     "version": "34a3a907c12da90261786c01",
